@@ -1,0 +1,30 @@
+# Core dependencies
+Python>=3.8
+
+# Window tracking
+pygetwindow==0.0.9
+pywinctl==0.0.45
+pywin32==306
+
+# Screenshot capture
+mss==9.0.1
+
+# OCR processing
+pytesseract==0.3.10
+Pillow==10.0.0
+opencv-python==4.8.1.78
+
+# Audio processing
+pyaudio==0.2.13
+librosa==0.10.1
+numpy==1.24.3
+
+# Web framework
+Flask==2.3.3
+
+# Utilities
+python-dateutil==2.8.2
+schedule==1.2.0
+
+# Testing
+pytest==7.4.0
