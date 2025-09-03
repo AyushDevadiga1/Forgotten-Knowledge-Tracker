@@ -15,18 +15,25 @@ class DatabaseManager:
             os.makedirs(db_dir, exist_ok=True)
         self.initialize_database()
     
-    def execute_query(self, query, params=()):
+    def execute_query(self, query, params=(), fetch_results=False):
         """Execute a SQL query with parameters"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             cursor.execute(query, params)
-            conn.commit()
-            conn.close()
-            return True
+            
+            if fetch_results:
+                results = cursor.fetchall()
+                conn.close()
+                return results
+            else:
+                conn.commit()
+                conn.close()
+                return True
+                
         except Exception as e:
             logger.error(f"Error executing query: {e}")
-            return False
+            return False if not fetch_results else []
     
     def initialize_database(self):
         """Create all necessary tables if they don't exist"""

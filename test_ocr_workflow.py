@@ -60,7 +60,10 @@ def test_screenshot_capture():
     
     if result:
         print(f"✅ Screenshot captured: {result['path']}")
-        print(f"   Size: {result['dimensions']}, File size: {result['size']} bytes")
+        # Handle missing keys gracefully
+        dimensions = result.get('dimensions', 'Unknown')
+        file_size = result.get('size', 'Unknown')
+        print(f"   Size: {dimensions}, File size: {file_size} bytes")
         return result['path']
     else:
         print("❌ Screenshot capture failed")
@@ -96,7 +99,7 @@ def test_ocr_processing(image_path):
         print("✅ Confidence-based OCR successful!")
         print(f"Word count: {result['word_count']}")
         print(f"Confidence: {result['confidence']}%")
-        print(f"Character count: {result['character_count']}")
+        print(f"Character count: {result.get('char_count', 'N/A')}")
         return True
     else:
         print("❌ Confidence-based OCR failed")
