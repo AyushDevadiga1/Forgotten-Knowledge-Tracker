@@ -10,17 +10,22 @@ from core.app_controller import AppController
 
 def main():
     print("🚀 Starting Forgotten Knowledge Tracker...")
+    print("📊 Phase 3: Audio Monitoring Enabled")
     
-    # Initialize controller with 30-second screenshot interval
-    controller = AppController(screenshot_interval=30)
+    # Initialize controller with audio monitoring every 5 minutes
+    controller = AppController(
+        screenshot_interval=30,    # Capture screenshots every 30 seconds
+        audio_interval=300         # Capture audio every 5 minutes
+    )
     
     try:
-        # Start tracking
+        # Start tracking (includes audio now)
         controller.start()
         
         print("\n📋 App is now running:")
         print("• Window tracking: Active")
         print("• Screenshot capture: Every 30 seconds")
+        print("• Audio monitoring: Every 5 minutes")#We have to delete tracking after each phase as it will compare data from new trackin each time
         print("• OCR processing: Automatic")
         print("• Database storage: Active")
         print("\n⌨️  Press Ctrl+C to stop...")
@@ -44,6 +49,8 @@ def main():
             print(f"• Screenshots captured: {stats['screenshot_count']}")
             print(f"• OCR processes completed: {stats['ocr_processing_count']}")
             print(f"• Window tracking entries: {stats['window_stats']['total_entries']}")
+            print(f"• Audio recordings: {stats['audio_stats'].get('total_recordings', 0)}")
+            print(f"• Audio duration: {stats['audio_stats'].get('total_duration_seconds', 0)} seconds")
             
         except Exception as e:
             print(f"Error getting final stats: {e}")

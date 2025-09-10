@@ -5,35 +5,53 @@ from .tracker import TabTracker
 from .screenshot import ScreenshotCapturer
 from .ocr import OCRProcessor
 from .database import DatabaseManager
+from .audio import AudioMonitor, AudioProcessor
 
 class AppController:
-    def __init__(self, screenshot_interval=30, db_path="data/tracking.db"):
+    def __init__(self, screenshot_interval=30, audio_interval=300, db_path="data/tracking.db"):
         self.tracker = TabTracker(db_path=db_path)
         self.screenshot_capturer = ScreenshotCapturer()
         self.ocr_processor = OCRProcessor()
         self.db = DatabaseManager(db_path=db_path)
         self.screenshot_interval = screenshot_interval  # seconds
+        self.audio_interval = audio_interval  # 5 minutes by default
         self.is_running = False
         self.screenshot_thread = None
-    
+        self.audio_monitor = AudioMonitor()
+        self.audio_processor = AudioProcessor()
+
     def start(self):
-        """Start both window tracking and periodic screenshot capture"""
+        """Start all tracking activities"""
         self.is_running = True
         self.tracker.start_tracking()
         self.start_screenshot_capture()
-        print("✅ App controller started - tracking windows and capturing screenshots")
-    
+        self.start_audio_monitoring()
+        print("✅ App controller started - tracking windows, screenshots, and audio")
+
     def start_screenshot_capture(self):
         """Start periodic screenshot capture in a separate thread"""
         def screenshot_loop():
             while self.is_running:
                 time.sleep(self.screenshot_interval)
                 self.capture_and_process_screenshot()
-        
+
         self.screenshot_thread = threading.Thread(target=screenshot_loop)
         self.screenshot_thread.daemon = True
         self.screenshot_thread.start()
-    
+
+    def start_audio_monitoring(self):
+        """Start audio monitoring with database integration"""
+        self.audio_monitor.start_continuous_monitoring(
+            interval=self.audio_interval,
+            db_manager=self.db,
+            audio_processor=self.audio_processor
+        )
+    print("🎤 Audio monitoring started with database integration")
+    def stop_audio_monitoring(self):
+        """Stop audio monitoring"""
+        self.audio_monitor.stop_monitoring()
+        print("🎤 Audio monitoring stopped")
+
     def capture_and_process_screenshot(self):
         """Capture screenshot, extract text, and save to database"""
         try:
@@ -48,13 +66,13 @@ class AppController:
             except Exception as e:
                 print(f"⚠️  Could not get window info: {e}")
                 current_window = {'title': 'Unknown', 'app': 'Unknown'}
-            
+
             # Capture screenshot
             screenshot = self.screenshot_capturer.capture_screenshot()
-            
+
             # Extract text via OCR
             ocr_result = self.ocr_processor.extract_text_from_image(screenshot['path'])
-            
+
             # Save to database
             screenshot_id = self.db.save_screenshot(
                 screenshot['path'], 
@@ -62,7 +80,7 @@ class AppController:
                 current_window.get('title', 'Unknown'),
                 current_window.get('app', 'Unknown')
             )
-            
+
             if screenshot_id:
                 self.db.save_ocr_result(
                     screenshot_id,
@@ -70,26 +88,56 @@ class AppController:
                     ocr_result.get('confidence', 0.0),
                     ocr_result.get('word_count', 0)
                 )
-                
+
                 print(f"📸 Captured and processed screenshot #{screenshot_id}")
             else:
                 print("❌ Failed to save screenshot to database")
-                
+
         except Exception as e:
             print(f"❌ Error in screenshot capture: {e}")
-    
+
+    def process_audio_file(self, audio_path):
+        """Process an audio file (transcribe and analyze)"""
+        try:
+            # Transcribe audio
+            transcription = self.audio_processor.transcribe_audio(audio_path)
+            
+            if transcription['success']:
+                # Analyze content
+                analysis = self.audio_processor.analyze_audio_content(transcription['text'])
+                
+                # Save to database
+                self.db.save_audio_recording(
+                    file_path=audio_path,
+                    timestamp=datetime.now().isoformat(),
+                    duration=30,  # Assuming 30-second recordings
+                    transcribed_text=transcription['text'],
+                    confidence=transcription['confidence'],
+                    word_count=transcription['word_count'],
+                    keywords=analysis['keywords'],
+                    is_educational=analysis['is_educational']
+                )
+                
+                print(f"🎵 Processed audio: {len(transcription['text'])} characters")
+                
+        except Exception as e:
+            print(f"❌ Error processing audio: {e}")
+
     def stop(self):
         """Stop all tracking activities"""
         self.is_running = False
         self.tracker.stop_tracking()
+        self.stop_audio_monitoring()
         if self.screenshot_thread:
             self.screenshot_thread.join(timeout=2.0)
         print("🛑 App controller stopped")
-    
+
     def get_stats(self):
         """Get comprehensive statistics"""
+        audio_stats = self.db.get_audio_stats()
         return {
             "window_stats": self.tracker.get_stats(),
             "screenshot_count": self.db.get_screenshot_count(),
-            "ocr_processing_count": self.db.get_ocr_result_count()
+            "ocr_processing_count": self.db.get_ocr_result_count(),
+            "audio_stats": audio_stats
         }

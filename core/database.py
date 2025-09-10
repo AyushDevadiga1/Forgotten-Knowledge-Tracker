@@ -37,7 +37,7 @@ class DatabaseManager:
     
     def initialize_database(self):
         """Create all necessary tables if they don't exist"""
-        # Window tracking table (existing)
+        # Window tracking table
         window_table = """
         CREATE TABLE IF NOT EXISTS window_history (
             id INTEGER PRIMARY KEY,
@@ -49,7 +49,7 @@ class DatabaseManager:
         )
         """
         
-        # Screenshots table (new)
+        # Screenshots table
         screenshots_table = """
         CREATE TABLE IF NOT EXISTS screenshots (
             id INTEGER PRIMARY KEY,
@@ -61,7 +61,7 @@ class DatabaseManager:
         )
         """
         
-        # OCR results table (new)
+        # OCR results table
         ocr_table = """
         CREATE TABLE IF NOT EXISTS ocr_results (
             id INTEGER PRIMARY KEY,
@@ -74,10 +74,26 @@ class DatabaseManager:
         )
         """
         
+        # Audio recordings table
+        audio_table = """
+        CREATE TABLE IF NOT EXISTS audio_recordings (
+            id INTEGER PRIMARY KEY,
+            file_path TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            duration INTEGER NOT NULL,
+            transcribed_text TEXT,
+            confidence REAL,
+            word_count INTEGER,
+            keywords TEXT,
+            is_educational INTEGER,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+        
         self.execute_query(window_table)
         self.execute_query(screenshots_table)
         self.execute_query(ocr_table)
-    
+        self.execute_query(audio_table)
     def save_screenshot(self, file_path, timestamp, window_title, app_name):
         """Save screenshot metadata to database"""
         try:
@@ -128,33 +144,79 @@ class DatabaseManager:
             logger.error(f"Error saving to database: {e}")
             return False
     
-    def get_recent_history(self, limit=50):
-        """Get recent tracking history"""
+    def save_audio_recording(self, file_path, timestamp, duration, transcribed_text=None, 
+                            confidence=None, word_count=None, keywords=None, is_educational=None):
+        """Save audio recording metadata to database"""
+        # Convert keywords list to JSON string if provided
+        keywords_json = json.dumps(keywords) if keywords else None
+        
+        query = """
+        INSERT INTO audio_recordings (file_path, timestamp, duration, transcribed_text, 
+                                    confidence, word_count, keywords, is_educational)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """
+        return self.execute_query(query, (file_path, timestamp, duration, transcribed_text, 
+                                        confidence, word_count, keywords_json, is_educational))
+
+    def get_audio_recordings(self, limit=50):
+        """Get recent audio recordings"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
-            
             cursor.execute('''
-            SELECT title, app, start_time, duration 
-            FROM window_history 
-            ORDER BY start_time DESC 
-            LIMIT ?
+                SELECT id, file_path, timestamp, duration, transcribed_text, 
+                    confidence, word_count, keywords, is_educational
+                FROM audio_recordings 
+                ORDER BY timestamp DESC 
+                LIMIT ?
             ''', (limit,))
             
             results = cursor.fetchall()
             conn.close()
             
-            return [{
-                'title': row[0],
-                'app': row[1],
-                'timestamp': row[2],
-                'duration': row[3]
-            } for row in results]
+            recordings = []
+            for row in results:
+                recordings.append({
+                    'id': row[0],
+                    'file_path': row[1],
+                    'timestamp': row[2],
+                    'duration': row[3],
+                    'transcribed_text': row[4],
+                    'confidence': row[5],
+                    'word_count': row[6],
+                    'keywords': json.loads(row[7]) if row[7] else [],
+                    'is_educational': bool(row[8]) if row[8] is not None else False
+                })
+            
+            return recordings
             
         except Exception as e:
-            logger.error(f"Error reading from database: {e}")
+            logger.error(f"Error getting audio recordings: {e}")
             return []
-    
+
+    def get_audio_stats(self):
+        """Get audio recording statistics"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute('SELECT COUNT(*) FROM audio_recordings')
+            total_count = cursor.fetchone()[0] or 0
+            
+            cursor.execute('SELECT SUM(duration) FROM audio_recordings')
+            total_duration = cursor.fetchone()[0] or 0
+            
+            conn.close()
+            
+            return {
+                'total_recordings': total_count,
+                'total_duration_seconds': total_duration
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting audio stats: {e}")
+            return {}
+        
     def get_total_tracking_time(self):
         """Get total tracking time from database"""
         try:
@@ -207,6 +269,7 @@ class DatabaseManager:
             cursor.execute('DELETE FROM window_history')
             cursor.execute('DELETE FROM screenshots')
             cursor.execute('DELETE FROM ocr_results')
+            cursor.execute('DELETE FROM audio_recordings')
             
             conn.commit()
             conn.close()
