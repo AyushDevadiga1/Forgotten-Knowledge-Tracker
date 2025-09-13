@@ -6,6 +6,8 @@ from .screenshot import ScreenshotCapturer
 from .ocr import OCRProcessor
 from .database import DatabaseManager
 from .audio import AudioMonitor, AudioProcessor
+from .forgetting_curve import ForgettingCurve
+from .reminder_system import ReminderSystem
 
 class AppController:
     def __init__(self, screenshot_interval=30, audio_interval=300, db_path="data/tracking.db"):
@@ -17,8 +19,14 @@ class AppController:
         self.audio_interval = audio_interval  # 5 minutes by default
         self.is_running = False
         self.screenshot_thread = None
+        
+        # Audio components
         self.audio_monitor = AudioMonitor()
         self.audio_processor = AudioProcessor()
+        
+        # Forgetting curve and reminder system
+        self.forgetting_curve = ForgettingCurve()
+        self.reminder_system = ReminderSystem(self.db, self.forgetting_curve)
 
     def start(self):
         """Start all tracking activities"""
@@ -26,7 +34,11 @@ class AppController:
         self.tracker.start_tracking()
         self.start_screenshot_capture()
         self.start_audio_monitoring()
-        print("✅ App controller started - tracking windows, screenshots, and audio")
+        
+        # Start reminder system with daily checks
+        self.reminder_system.start_daily_checks(['09:00', '14:00', '19:00'])
+        
+        print("✅ App controller started - tracking windows, screenshots, audio, and reminders")
 
     def start_screenshot_capture(self):
         """Start periodic screenshot capture in a separate thread"""
@@ -46,7 +58,8 @@ class AppController:
             db_manager=self.db,
             audio_processor=self.audio_processor
         )
-    print("🎤 Audio monitoring started with database integration")
+        print("🎤 Audio monitoring started with database integration")
+
     def stop_audio_monitoring(self):
         """Stop audio monitoring"""
         self.audio_monitor.stop_monitoring()
@@ -128,6 +141,8 @@ class AppController:
         self.is_running = False
         self.tracker.stop_tracking()
         self.stop_audio_monitoring()
+        self.reminder_system.stop()  # Stop reminder system
+        
         if self.screenshot_thread:
             self.screenshot_thread.join(timeout=2.0)
         print("🛑 App controller stopped")
@@ -135,9 +150,21 @@ class AppController:
     def get_stats(self):
         """Get comprehensive statistics"""
         audio_stats = self.db.get_audio_stats()
+        
+        # Get reminder stats if available
+        reminder_stats = {}
+        if hasattr(self.reminder_system, 'get_stats'):
+            reminder_stats = self.reminder_system.get_stats()
+        
         return {
             "window_stats": self.tracker.get_stats(),
             "screenshot_count": self.db.get_screenshot_count(),
             "ocr_processing_count": self.db.get_ocr_result_count(),
-            "audio_stats": audio_stats
+            "audio_stats": audio_stats,
+            "reminder_stats": reminder_stats
         }
+
+    def trigger_manual_review_check(self):
+        """Manually trigger a review check (for testing)"""
+        print("🔍 Manually triggering review check...")
+        self.reminder_system.check_for_reviews()

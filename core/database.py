@@ -305,3 +305,73 @@ class DatabaseManager:
         except Exception as e:
             logger.error(f"Error getting OCR result count: {e}")
             return 0
+    def get_knowledge_for_review(self, limit=50):
+        """Get knowledge items that might need review"""
+        try:
+            # Get recent items from all sources
+            items = []
+            
+            # Get window history
+            window_items = self.get_recent_history(limit)
+            for item in window_items:
+                items.append({
+                    'type': 'window',
+                    'title': item['title'],
+                    'app': item['app'],
+                    'timestamp': item['timestamp'],
+                    'duration': item['duration']
+                })
+            
+            # Get OCR content
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT s.timestamp, s.window_title, o.extracted_text, o.word_count
+                FROM ocr_results o
+                JOIN screenshots s ON o.screenshot_id = s.id
+                WHERE o.word_count > 10
+                ORDER BY s.timestamp DESC
+                LIMIT ?
+            ''', (limit,))
+            
+            for timestamp, window_title, text, word_count in cursor.fetchall():
+                items.append({
+                    'type': 'ocr',
+                    'title': window_title,
+                    'content': text,
+                    'timestamp': timestamp,
+                    'word_count': word_count
+                })
+            
+            conn.close()
+            return items
+            
+        except Exception as e:
+            logger.error(f"Error getting knowledge for review: {e}")
+            return []
+    def get_recent_history(self, limit=50):
+        """Get recent tracking history - alias for get_recent_entries for compatibility"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+            SELECT title, app, start_time, duration 
+            FROM window_history 
+            ORDER BY start_time DESC 
+            LIMIT ?
+            ''', (limit,))
+            
+            results = cursor.fetchall()
+            conn.close()
+            
+            return [{
+                'title': row[0],
+                'app': row[1],
+                'timestamp': row[2],
+                'duration': row[3]
+            } for row in results]
+            
+        except Exception as e:
+            logger.error(f"Error reading from database: {e}")
+            return []
