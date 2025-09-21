@@ -1,13 +1,13 @@
+# Global configuration for Forgotten Knowledge Tracker
 import os
 
-# Database configuration
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'tracking.db')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Web interface configuration
-WEB_HOST = '0.0.0.0'
-WEB_PORT = 5000
-DEBUG = True
+# Database path
+DB_PATH = os.path.join(BASE_DIR, "db", "tracker.db")
 
-# Tracking intervals
-SCREENSHOT_INTERVAL = 30
-AUDIO_INTERVAL = 300
+# Sampling intervals (seconds)
+WINDOW_POLL_INTERVAL = 3
+SCREENSHOT_INTERVAL = 15
+AUDIO_CLIP_DURATION = 5
+VIDEO_FRAME_INTERVAL = 2
