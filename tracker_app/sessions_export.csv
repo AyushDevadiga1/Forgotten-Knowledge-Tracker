@@ -1,0 +1,886 @@
+id,start_ts,end_ts,app_name,window_title,interaction_rate,interaction_count,audio_label,intent_label,intent_confidence
+1,2025-09-27 10:28:42,2025-09-27 10:28:42,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+2,2025-09-27 10:28:44,2025-09-27 10:28:44,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+3,2025-09-27 10:33:51,2025-09-27 10:33:51,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+4,2025-09-27 10:33:53,2025-09-27 10:33:53,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+5,2025-09-27 10:33:55,2025-09-27 10:33:55,Google Chrome,TheGAME - Google Chrome,1.0,0,,,
+6,2025-09-27 10:33:57,2025-09-27 10:33:57,Google Chrome,TheGAME - Google Chrome,0.0,0,,,
+7,2025-09-27 10:33:59,2025-09-27 10:33:59,Visual Studio Code,tracker.py - FKT - Visual Studio Code,2.0,0,,,
+8,2025-09-27 10:34:01,2025-09-27 10:34:01,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+9,2025-09-27 10:34:04,2025-09-27 10:34:04,Google Chrome,TheGAME - Google Chrome,2.0,0,,,
+10,2025-09-27 10:34:06,2025-09-27 10:34:06,Google Chrome,TheGAME - Google Chrome,1.0,0,,,
+11,2025-09-27 10:34:08,2025-09-27 10:34:08,FKT,FKT,4.0,0,,,
+12,2025-09-27 10:34:10,2025-09-27 10:34:10,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+13,2025-09-27 10:41:49,2025-09-27 10:41:49,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+14,2025-09-27 10:41:51,2025-09-27 10:41:51,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+15,2025-09-27 10:41:53,2025-09-27 10:41:53,Google Chrome,Debugging workspace setup - Google Chrome,3.0,0,,,
+16,2025-09-27 10:41:55,2025-09-27 10:41:55,Google Chrome,Debugging workspace setup - Google Chrome,2.0,0,,,
+17,2025-09-27 10:41:57,2025-09-27 10:41:57,Google Chrome,Debugging workspace setup - Google Chrome,5.0,0,,,
+18,2025-09-27 10:42:03,2025-09-27 10:42:03,Visual Studio Code,tracker.py - FKT - Visual Studio Code,5.0,0,,,
+19,2025-09-27 10:42:05,2025-09-27 10:42:05,Google Chrome,Debugging workspace setup - Google Chrome,2.0,0,,,
+20,2025-09-27 10:42:07,2025-09-27 10:42:07,Google Chrome,TheGAME - Google Chrome,1.0,0,,,
+21,2025-09-27 10:42:09,2025-09-27 10:42:09,Google Chrome,TheGAME - Google Chrome,0.0,0,,,
+22,2025-09-27 10:42:11,2025-09-27 10:42:11,FKT,FKT,1.0,0,,,
+23,2025-09-27 10:42:15,2025-09-27 10:42:15,Notepad,requirements - Notepad,3.0,0,,,
+24,2025-09-27 10:42:17,2025-09-27 10:42:17,Notepad,requirements - Notepad,0.0,0,,,
+25,2025-09-27 10:42:19,2025-09-27 10:42:19,Notepad,requirements - Notepad,6.0,0,,,
+26,2025-09-27 10:42:21,2025-09-27 10:42:21,Notepad,requirements - Notepad,3.0,0,,,
+27,2025-09-27 10:42:23,2025-09-27 10:42:23,FKT,FKT,1.0,0,,,
+28,2025-09-27 10:49:12,2025-09-27 10:49:12,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+29,2025-09-27 10:49:14,2025-09-27 10:49:14,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+30,2025-09-27 10:49:16,2025-09-27 10:49:16,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+31,2025-09-27 10:49:24,2025-09-27 10:49:24,Visual Studio Code,tracker.py - FKT - Visual Studio Code,5.0,0,,,
+32,2025-09-27 10:49:26,2025-09-27 10:49:26,Visual Studio Code,tracker.py - FKT - Visual Studio Code,2.0,0,,,
+33,2025-09-27 10:49:31,2025-09-27 10:49:31,Visual Studio Code,tracker.py - FKT - Visual Studio Code,6.0,0,,,
+34,2025-09-27 10:49:39,2025-09-27 10:49:39,Visual Studio Code,tracker.py - FKT - Visual Studio Code,6.0,0,,,
+35,2025-09-27 10:49:41,2025-09-27 10:49:41,Visual Studio Code,tracker.py - FKT - Visual Studio Code,3.0,0,,,
+36,2025-09-27 10:49:43,2025-09-27 10:49:43,Visual Studio Code,tracker.py - FKT - Visual Studio Code,4.0,0,,,
+37,2025-09-27 10:49:50,2025-09-27 10:49:50,FKT,FKT,8.0,0,,,
+38,2025-09-27 10:49:54,2025-09-27 10:49:54,Visual Studio Code,tracker.py - FKT - Visual Studio Code,4.0,0,,,
+39,2025-09-27 11:24:42,2025-09-27 11:24:42,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+40,2025-09-27 11:24:44,2025-09-27 11:24:44,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+41,2025-09-27 11:24:46,2025-09-27 11:24:46,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+42,2025-09-27 11:24:54,2025-09-27 11:24:54,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,10.0,0,,,
+43,2025-09-27 11:24:56,2025-09-27 11:24:56,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,4.0,0,,,
+44,2025-09-27 11:25:01,2025-09-27 11:25:01,Downloads,Downloads,11.0,0,,,
+45,2025-09-27 11:25:09,2025-09-27 11:25:09,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,11.0,0,,,
+46,2025-09-27 11:29:44,2025-09-27 11:29:44,Visual Studio Code,config.py - FKT - Visual Studio Code,0.0,0,,,
+47,2025-09-27 11:29:46,2025-09-27 11:29:46,Visual Studio Code,config.py - FKT - Visual Studio Code,0.0,0,,,
+48,2025-09-27 11:29:49,2025-09-27 11:29:49,Visual Studio Code,config.py - FKT - Visual Studio Code,1.0,0,,,
+49,2025-09-27 11:35:55,2025-09-27 11:35:55,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+50,2025-09-27 11:35:57,2025-09-27 11:35:57,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+51,2025-09-27 11:35:59,2025-09-27 11:35:59,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+52,2025-09-27 11:36:14,2025-09-27 11:36:14,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,2.0,0,,,
+53,2025-09-27 11:36:16,2025-09-27 11:36:16,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+54,2025-09-27 11:36:21,2025-09-27 11:36:21,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+55,2025-09-27 11:36:37,2025-09-27 11:36:37,Google Chrome,Debugging workspace setup - Google Chrome,4.0,0,,,
+56,2025-09-27 11:36:39,2025-09-27 11:36:39,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,1.0,0,,,
+57,2025-09-27 11:36:41,2025-09-27 11:36:41,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+58,2025-09-27 11:39:04,2025-09-27 11:39:04,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+59,2025-09-27 11:39:06,2025-09-27 11:39:06,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+60,2025-09-27 11:39:08,2025-09-27 11:39:08,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+61,2025-09-27 11:39:22,2025-09-27 11:39:22,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+62,2025-09-27 11:39:24,2025-09-27 11:39:24,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+63,2025-09-27 11:39:30,2025-09-27 11:39:30,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,2.0,0,,,
+64,2025-09-27 11:39:44,2025-09-27 11:39:44,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+65,2025-09-27 11:39:46,2025-09-27 11:39:46,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,1.0,0,,,
+66,2025-09-27 11:39:48,2025-09-27 11:39:48,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,1.0,0,,,
+67,2025-09-27 11:46:01,2025-09-27 11:46:01,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+68,2025-09-27 11:46:03,2025-09-27 11:46:03,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+69,2025-09-27 11:46:05,2025-09-27 11:46:05,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+70,2025-09-27 11:46:12,2025-09-27 11:46:12,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+71,2025-09-27 11:46:14,2025-09-27 11:46:14,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+72,2025-09-27 11:46:19,2025-09-27 11:46:19,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+73,2025-09-27 11:46:26,2025-09-27 11:46:26,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+74,2025-09-27 11:46:28,2025-09-27 11:46:28,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+75,2025-09-27 11:46:30,2025-09-27 11:46:30,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+76,2025-09-27 11:46:38,2025-09-27 11:46:38,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+77,2025-09-27 11:46:43,2025-09-27 11:46:43,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+78,2025-09-27 11:46:45,2025-09-27 11:46:45,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+79,2025-09-27 11:46:52,2025-09-27 11:46:52,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+80,2025-09-27 11:46:54,2025-09-27 11:46:54,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+81,2025-09-27 11:46:56,2025-09-27 11:46:56,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+82,2025-09-27 11:47:13,2025-09-27 11:47:13,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+83,2025-09-27 11:47:15,2025-09-27 11:47:15,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+84,2025-09-27 11:47:17,2025-09-27 11:47:17,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+85,2025-09-27 12:26:39,2025-09-27 12:26:39,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+86,2025-09-27 12:26:41,2025-09-27 12:26:41,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+87,2025-09-27 12:26:43,2025-09-27 12:26:43,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+88,2025-09-27 12:26:50,2025-09-27 12:26:50,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+89,2025-09-27 12:26:52,2025-09-27 12:26:52,Visual Studio Code,tracker.py - FKT - Visual Studio Code,2.0,0,,,
+90,2025-09-27 12:26:58,2025-09-27 12:26:58,Visual Studio Code,tracker.py - FKT - Visual Studio Code,8.0,0,,,
+91,2025-09-27 12:27:05,2025-09-27 12:27:05,Visual Studio Code,tracker.py - FKT - Visual Studio Code,7.0,0,,,
+92,2025-09-27 12:27:07,2025-09-27 12:27:07,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+93,2025-09-27 12:27:09,2025-09-27 12:27:09,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+94,2025-09-27 12:27:16,2025-09-27 12:27:16,Visual Studio Code,tracker.py - FKT - Visual Studio Code,4.0,0,,,
+95,2025-09-27 12:27:22,2025-09-27 12:27:22,Downloads,Downloads,8.0,0,,,
+96,2025-09-27 12:27:24,2025-09-27 12:27:24,Google Chrome,Debugging workspace setup - Google Chrome,1.0,0,,,
+97,2025-09-27 12:27:31,2025-09-27 12:27:31,Tougen Anki,Tougen Anki,11.0,0,,,
+98,2025-09-27 12:27:33,2025-09-27 12:27:33,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+99,2025-09-27 12:27:35,2025-09-27 12:27:35,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+100,2025-09-27 12:27:53,2025-09-27 12:27:53,Visual Studio Code,tracker.py - FKT - Visual Studio Code,11.0,0,,,
+101,2025-09-27 13:10:04,2025-09-27 13:10:04,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+102,2025-09-27 13:10:06,2025-09-27 13:10:06,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+103,2025-09-27 13:10:09,2025-09-27 13:10:09,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+104,2025-09-27 13:10:17,2025-09-27 13:10:17,Visual Studio Code,tracker.py - FKT - Visual Studio Code,9.0,0,,,
+105,2025-09-27 13:10:19,2025-09-27 13:10:19,Google Chrome,Debugging workspace setup - Google Chrome,6.0,0,,,
+106,2025-09-27 13:10:23,2025-09-27 13:10:23,Visual Studio Code,tracker.py - FKT - Visual Studio Code,8.0,0,,,
+107,2025-09-27 13:10:30,2025-09-27 13:10:30,2,2,4.0,0,,,
+108,2025-09-27 13:10:32,2025-09-27 13:10:32,core,core,2.0,0,,,
+109,2025-09-27 13:10:34,2025-09-27 13:10:34,FKT,FKT,2.0,0,,,
+110,2025-09-27 13:10:41,2025-09-27 13:10:41,Visual Studio Code,tracker.py - FKT - Visual Studio Code,6.0,0,,,
+111,2025-09-27 13:10:46,2025-09-27 13:10:46,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+112,2025-09-27 13:10:49,2025-09-27 13:10:49,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+113,2025-09-27 13:10:56,2025-09-27 13:10:56,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+114,2025-09-27 13:10:58,2025-09-27 13:10:58,Visual Studio Code,tracker.py - FKT - Visual Studio Code,4.0,0,,,
+115,2025-09-27 13:11:00,2025-09-27 13:11:00,Visual Studio Code,tracker.py - FKT - Visual Studio Code,5.0,0,,,
+116,2025-09-27 13:11:18,2025-09-27 13:11:18,,,10.0,0,,,
+117,2025-09-27 13:11:20,2025-09-27 13:11:20,,,0.0,0,,,
+118,2025-09-27 13:11:22,2025-09-27 13:11:22,,,0.0,0,,,
+119,2025-09-27 13:11:29,2025-09-27 13:11:29,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+120,2025-09-27 13:14:32,2025-09-27 13:14:32,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+121,2025-09-27 13:14:34,2025-09-27 13:14:34,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+122,2025-09-27 13:14:36,2025-09-27 13:14:36,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,0.0,0,,,
+123,2025-09-27 13:14:44,2025-09-27 13:14:44,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,9.0,0,,,
+124,2025-09-27 13:14:46,2025-09-27 13:14:46,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,5.0,0,,,
+125,2025-09-27 13:14:51,2025-09-27 13:14:51,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,10.0,0,,,
+126,2025-09-27 13:14:58,2025-09-27 13:14:58,Google Chrome,Debugging workspace setup - Google Chrome,6.0,0,,,
+127,2025-09-27 13:15:00,2025-09-27 13:15:00,Google Chrome,Debugging workspace setup - Google Chrome,0.0,0,,,
+128,2025-09-27 13:15:02,2025-09-27 13:15:02,Google Chrome,Debugging workspace setup - Google Chrome,0.0,0,,,
+129,2025-09-27 13:15:10,2025-09-27 13:15:10,Visual Studio Code,webcam_module.py - FKT - Visual Studio Code,2.0,0,,,
+130,2025-09-27 13:15:16,2025-09-27 13:15:16,Visual Studio Code,tracker.py - FKT - Visual Studio Code,3.0,0,,,
+131,2025-09-27 13:15:18,2025-09-27 13:15:18,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+132,2025-09-27 13:15:25,2025-09-27 13:15:25,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+133,2025-09-27 13:15:27,2025-09-27 13:15:27,,,1.0,0,,,
+134,2025-09-27 13:15:29,2025-09-27 13:15:29,Google Chrome,Debugging workspace setup - Google Chrome,0.0,0,,,
+135,2025-09-27 13:15:45,2025-09-27 13:15:45,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+136,2025-09-27 13:15:47,2025-09-27 13:15:47,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+137,2025-09-27 13:15:49,2025-09-27 13:15:49,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+138,2025-09-27 13:31:31,2025-09-27 13:31:31,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+139,2025-09-27 13:31:33,2025-09-27 13:31:33,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+140,2025-09-27 13:31:35,2025-09-27 13:31:35,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+141,2025-09-27 13:31:42,2025-09-27 13:31:42,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+142,2025-09-27 13:31:44,2025-09-27 13:31:44,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+143,2025-09-27 13:31:49,2025-09-27 13:31:49,Visual Studio Code,tracker.py - FKT - Visual Studio Code,5.0,0,,,
+144,2025-09-27 13:31:56,2025-09-27 13:31:56,Google Chrome,Download history - Google Chrome,9.0,0,,,
+145,2025-09-27 13:31:58,2025-09-27 13:31:58,Google Chrome,Download history - Google Chrome,4.0,0,,,
+146,2025-09-27 13:32:00,2025-09-27 13:32:00,Google Chrome,TheGAME - Google Chrome,2.0,0,,,
+147,2025-09-27 13:32:08,2025-09-27 13:32:08,,,8.0,0,,,
+148,2025-09-27 13:32:12,2025-09-27 13:32:12,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+149,2025-09-27 13:32:14,2025-09-27 13:32:14,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+150,2025-09-27 13:40:53,2025-09-27 13:40:53,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+151,2025-09-27 13:40:55,2025-09-27 13:40:55,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+152,2025-09-27 13:40:57,2025-09-27 13:40:57,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+153,2025-09-27 13:41:05,2025-09-27 13:41:05,Visual Studio Code,tracker.py - FKT - Visual Studio Code,17.0,0,,,
+154,2025-09-27 13:41:07,2025-09-27 13:41:07,Visual Studio Code,tracker.py - FKT - Visual Studio Code,3.0,0,,,
+155,2025-09-27 13:41:12,2025-09-27 13:41:12,Google Chrome,Debugging workspace setup - Google Chrome,2.0,0,,,
+156,2025-09-27 13:41:19,2025-09-27 13:41:19,Visual Studio Code,tracker.py - FKT - Visual Studio Code,2.0,0,,,
+157,2025-09-27 13:41:21,2025-09-27 13:41:21,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+158,2025-09-27 13:47:45,2025-09-27 13:47:45,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+159,2025-09-27 13:47:47,2025-09-27 13:47:47,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+160,2025-09-27 13:47:49,2025-09-27 13:47:49,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+161,2025-09-27 13:47:57,2025-09-27 13:47:57,Visual Studio Code,tracker.py - FKT - Visual Studio Code,4.0,0,,,
+162,2025-09-27 13:47:59,2025-09-27 13:47:59,Visual Studio Code,tracker.py - FKT - Visual Studio Code,4.0,0,,,
+163,2025-09-27 13:48:04,2025-09-27 13:48:04,Visual Studio Code,tracker.py - FKT - Visual Studio Code,7.0,0,,,
+164,2025-09-27 13:48:11,2025-09-27 13:48:11,Visual Studio Code,tracker.py - FKT - Visual Studio Code,13.0,0,,,
+165,2025-09-27 13:48:13,2025-09-27 13:48:13,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+166,2025-09-27 14:04:13,2025-09-27 14:04:13,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+167,2025-09-27 14:04:15,2025-09-27 14:04:15,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+168,2025-09-27 14:04:17,2025-09-27 14:04:17,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+169,2025-09-27 14:04:24,2025-09-27 14:04:24,Google Chrome,New tab - Google Chrome,6.0,0,,,
+170,2025-09-27 14:04:26,2025-09-27 14:04:26,Google Chrome,Google's 27th birthday - Google Search - Google Chrome,1.0,0,,,
+171,2025-09-27 14:04:30,2025-09-27 14:04:30,Google Chrome,Google's 27th Birthday Doodle - Google Doodles - Google Chrome,1.0,0,,,
+172,2025-09-27 14:04:37,2025-09-27 14:04:37,New notification,New notification,1.0,0,,,
+173,2025-09-27 14:04:39,2025-09-27 14:04:39,New notification,New notification,1.0,0,,,
+174,2025-09-27 14:04:41,2025-09-27 14:04:41,New notification,New notification,1.0,0,,,
+175,2025-09-28T07:44:42.142778,2025-09-28T07:44:42.142778,Visual Studio Code,config.py - FKT - Visual Studio Code,0.0,0,,,
+176,2025-09-28T07:44:44.182057,2025-09-28T07:44:44.182057,Visual Studio Code,config.py - FKT - Visual Studio Code,0.0,0,,,
+177,2025-09-28T07:44:46.216146,2025-09-28T07:44:46.216146,Visual Studio Code,config.py - FKT - Visual Studio Code,0.0,0,,,
+178,2025-09-28T07:44:48.251870,2025-09-28T07:44:48.251870,Visual Studio Code,config.py - FKT - Visual Studio Code,2.0,0,,,
+179,2025-09-28T07:44:50.283688,2025-09-28T07:44:50.283688,Visual Studio Code,config.py - FKT - Visual Studio Code,7.0,0,,,
+180,2025-09-28T07:44:52.321123,2025-09-28T07:44:52.321123,Visual Studio Code,config.py - FKT - Visual Studio Code,7.0,0,,,
+181,2025-09-28T07:44:54.356827,2025-09-28T07:44:54.356827,Visual Studio Code,config.py - FKT - Visual Studio Code,10.0,0,,,
+182,2025-09-28T07:44:56.392735,2025-09-28T07:44:56.392735,Visual Studio Code,config.py - FKT - Visual Studio Code,13.0,0,,,
+183,2025-09-28T07:44:58.426813,2025-09-28T07:44:58.426813,Visual Studio Code,config.py - FKT - Visual Studio Code,16.0,0,,,
+184,2025-09-28T07:45:00.462720,2025-09-28T07:45:00.462720,Google Chrome,AI-Powered Learning Companion System Analysis - DeepSeek - Google Chrome,20.0,0,,,
+185,2025-09-28T07:45:02.493438,2025-09-28T07:45:02.493438,Program Manager,Program Manager,24.0,0,,,
+186,2025-09-28T07:45:04.526671,2025-09-28T07:45:04.526671,Program Manager,Program Manager,33.0,0,,,
+187,2025-09-28T07:45:06.560435,2025-09-28T07:45:06.560435,Program Manager,Program Manager,41.0,0,,,
+188,2025-09-28T07:45:08.592527,2025-09-28T07:45:08.592527,Google Chrome,AI-Powered Learning Companion System Analysis - DeepSeek - Google Chrome,42.0,0,,,
+189,2025-09-28T07:45:10.627478,2025-09-28T07:45:10.627478,Visual Studio Code,config.py - FKT - Visual Studio Code,43.0,0,,,
+190,2025-09-28T07:45:12.663809,2025-09-28T07:45:12.663809,Visual Studio Code,config.py - FKT - Visual Studio Code,44.0,0,,,
+191,2025-09-28 16:31:28,2025-09-28 16:31:28,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+192,2025-09-28 16:31:30,2025-09-28 16:31:30,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+193,2025-09-28 16:31:32,2025-09-28 16:31:32,Visual Studio Code,tracker.py - FKT - Visual Studio Code,4.0,0,,,
+194,2025-09-28 16:31:39,2025-09-28 16:31:39,Google Chrome,Cults - Always Forever - YouTube - Google Chrome,14.0,0,,,
+195,2025-09-28 16:31:41,2025-09-28 16:31:41,Visual Studio Code,tracker.py - FKT - Visual Studio Code,2.0,0,,,
+230,2025-10-02 04:22:18,2025-10-02 04:22:18,Visual Studio Code,test_audio.py - FKT - Visual Studio Code,0.0,0,,,
+231,2025-10-02 04:22:20,2025-10-02 04:22:20,Visual Studio Code,test_audio.py - FKT - Visual Studio Code,0.0,0,,,
+232,2025-10-02 04:22:22,2025-10-02 04:22:22,Google Chrome,Multi-Modal Data Logging - Google Chrome,2.0,0,,,
+233,2025-10-02 04:22:30,2025-10-02 04:22:30,Visual Studio Code,test_audio.py - FKT - Visual Studio Code,13.0,0,,,
+234,2025-10-02 04:22:32,2025-10-02 04:22:32,FKT,FKT,3.0,0,,,
+235,2025-10-02 04:22:38,2025-10-02 04:22:38,Downloads,Downloads,6.0,0,,,
+236,2025-10-02 04:22:45,2025-10-02 04:22:45,Program Manager,Program Manager,6.0,0,,,
+237,2025-10-02 04:22:47,2025-10-02 04:22:47,Google Chrome,Multi-Modal Data Logging - Google Chrome,1.0,0,,,
+238,2025-10-02 04:22:49,2025-10-02 04:22:49,Visual Studio Code,test_audio.py - FKT - Visual Studio Code,1.0,0,,,
+239,2025-10-02 04:38:59,2025-10-02 04:38:59,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+240,2025-10-02 04:39:01,2025-10-02 04:39:01,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+241,2025-10-02 04:39:03,2025-10-02 04:39:03,Visual Studio Code,tracker.py - FKT - Visual Studio Code,2.0,0,,,
+242,2025-10-02 04:42:37,2025-10-02 04:42:37,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+243,2025-10-02 04:42:39,2025-10-02 04:42:39,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+244,2025-10-02 04:42:41,2025-10-02 04:42:41,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+245,2025-10-02 04:45:20,2025-10-02 04:45:20,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+246,2025-10-02 04:45:22,2025-10-02 04:45:22,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+247,2025-10-02 04:45:24,2025-10-02 04:45:24,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+248,2025-10-02 04:48:04,2025-10-02 04:48:04,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+249,2025-10-02 04:48:06,2025-10-02 04:48:06,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+250,2025-10-02 04:48:08,2025-10-02 04:48:08,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+251,2025-10-02 04:55:40,2025-10-02 04:55:40,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+252,2025-10-02 04:55:42,2025-10-02 04:55:42,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+253,2025-10-02 04:55:44,2025-10-02 04:55:44,Visual Studio Code,tracker.py - FKT - Visual Studio Code,3.0,0,,,
+254,2025-10-02 04:55:56,2025-10-02 04:55:56,Visual Studio Code,tracker.py - FKT - Visual Studio Code,18.0,0,,,
+255,2025-10-02 04:55:58,2025-10-02 04:55:58,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+256,2025-10-02 05:00:07,2025-10-02 05:00:07,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+257,2025-10-02 05:00:09,2025-10-02 05:00:09,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+258,2025-10-02 05:00:11,2025-10-02 05:00:11,Visual Studio Code,tracker.py - FKT - Visual Studio Code,3.0,0,,,
+259,2025-10-02 05:00:23,2025-10-02 05:00:23,JavaDump,JavaDump,19.0,0,,,
+260,2025-10-02 05:00:25,2025-10-02 05:00:25,Visual Studio Code,tracker.py - FKT - Visual Studio Code,2.0,0,,,
+261,2025-10-02 05:06:54,2025-10-02 05:06:54,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+262,2025-10-02 05:06:56,2025-10-02 05:06:56,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+263,2025-10-02 05:06:58,2025-10-02 05:06:58,Visual Studio Code,tracker.py - FKT - Visual Studio Code,2.0,0,,,
+264,2025-10-02 06:05:10,2025-10-02 06:05:10,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+265,2025-10-02 06:05:12,2025-10-02 06:05:12,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+266,2025-10-02 06:05:14,2025-10-02 06:05:14,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+267,2025-10-02 06:05:27,2025-10-02 06:05:27,Visual Studio Code,tracker.py - FKT - Visual Studio Code,10.0,0,,,
+268,2025-10-02 06:05:29,2025-10-02 06:05:29,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+269,2025-10-02 06:07:50,2025-10-02 06:07:50,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+270,2025-10-02 06:07:52,2025-10-02 06:07:52,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+271,2025-10-02 06:07:54,2025-10-02 06:07:54,Visual Studio Code,tracker.py - FKT - Visual Studio Code,2.0,0,,,
+272,2025-10-02 06:22:48,2025-10-02 06:22:48,Visual Studio Code,test_db.py - FKT - Visual Studio Code,0.0,0,,,
+273,2025-10-02 06:22:50,2025-10-02 06:22:50,Visual Studio Code,test_db.py - FKT - Visual Studio Code,0.0,0,,,
+274,2025-10-02 06:22:52,2025-10-02 06:22:52,Visual Studio Code,test_db.py - FKT - Visual Studio Code,0.0,0,,,
+275,2025-10-02 06:28:42,2025-10-02 06:28:42,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+276,2025-10-02 06:28:44,2025-10-02 06:28:44,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+277,2025-10-02 06:28:46,2025-10-02 06:28:46,Visual Studio Code,tracker.py - FKT - Visual Studio Code,2.0,0,,,
+278,2025-10-02 06:42:41,2025-10-02 06:42:41,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+279,2025-10-02 06:42:43,2025-10-02 06:42:43,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+280,2025-10-02 06:42:45,2025-10-02 06:42:45,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+281,2025-10-02 06:42:54,2025-10-02 06:42:54,Visual Studio Code,tracker.py - FKT - Visual Studio Code,20.0,0,,,
+282,2025-10-02 06:49:31,2025-10-02 06:49:31,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+283,2025-10-02 06:49:33,2025-10-02 06:49:33,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+284,2025-10-02 06:49:35,2025-10-02 06:49:35,Visual Studio Code,tracker.py - FKT - Visual Studio Code,1.0,0,,,
+285,2025-10-02 06:49:46,2025-10-02 06:49:46,Google Chrome,Multi-Modal Data Logging - Google Chrome,4.0,0,,,
+286,2025-10-02 06:49:48,2025-10-02 06:49:48,Google Chrome,Multi-Modal Data Logging - Google Chrome,0.0,0,,,
+287,2025-10-02 06:49:54,2025-10-02 06:49:54,Google Chrome,Multi-Modal Data Logging - Google Chrome,0.0,0,,,
+288,2025-10-02 06:50:01,2025-10-02 06:50:01,Google Chrome,Multi-Modal Data Logging - Google Chrome,0.0,0,,,
+289,2025-10-02 06:50:03,2025-10-02 06:50:03,Google Chrome,Multi-Modal Data Logging - Google Chrome,0.0,0,,,
+290,2025-10-02 06:50:05,2025-10-02 06:50:05,Google Chrome,Multi-Modal Data Logging - Google Chrome,0.0,0,,,
+291,2025-10-02 06:50:12,2025-10-02 06:50:12,Google Chrome,Multi-Modal Data Logging - Google Chrome,0.0,0,,,
+292,2025-10-02 06:50:17,2025-10-02 06:50:17,Google Chrome,Multi-Modal Data Logging - Google Chrome,0.0,0,,,
+293,2025-10-02 06:50:19,2025-10-02 06:50:19,Google Chrome,Multi-Modal Data Logging - Google Chrome,0.0,0,,,
+294,2025-10-02 06:50:26,2025-10-02 06:50:26,Google Chrome,Multi-Modal Data Logging - Google Chrome,0.0,0,,,
+295,2025-10-02 06:50:28,2025-10-02 06:50:28,Google Chrome,Multi-Modal Data Logging - Google Chrome,0.0,0,,,
+296,2025-10-02 06:50:30,2025-10-02 06:50:30,Visual Studio Code,tracker.py - FKT - Visual Studio Code,2.0,0,,,
+297,2025-10-02 07:23:40,2025-10-02 07:23:40,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+298,2025-10-02 07:23:42,2025-10-02 07:23:42,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+299,2025-10-02 07:23:45,2025-10-02 07:23:45,Visual Studio Code,tracker.py - FKT - Visual Studio Code,3.0,0,,,
+300,2025-10-02 07:23:57,2025-10-02 07:23:57,Visual Studio Code,tracker.py - FKT - Visual Studio Code,14.0,0,,,
+301,2025-10-02 07:29:25,2025-10-02 07:29:25,Visual Studio Code,test_db.py - FKT - Visual Studio Code,0.0,0,,,
+302,2025-10-02 07:29:25,2025-10-02 07:29:25,Visual Studio Code,test_db.py - FKT - Visual Studio Code,0.0,0,,,
+303,,,,Test Window,,1,speech,studying,
+304,2025-10-02 08:17:03,2025-10-02 08:17:03,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+305,2025-10-02 08:17:06,2025-10-02 08:17:06,Visual Studio Code,tracker.py - FKT - Visual Studio Code,0.0,0,,,
+306,2025-10-02 08:17:08,2025-10-02 08:17:08,Visual Studio Code,tracker.py - FKT - Visual Studio Code,2.0,0,,,
+307,2025-10-02 08:17:18,2025-10-02 08:17:18,JavaDump,JavaDump,16.0,0,,,
+308,2025-10-02 08:17:20,2025-10-02 08:17:20,Google Chrome,Multi-Modal Data Logging - Google Chrome,2.0,0,,,
+309,2025-10-02 08:17:25,2025-10-02 08:17:25,Visual Studio Code,tracker.py - FKT - Visual Studio Code,4.0,0,,,
+310,2025-10-02 08:22:35,2025-10-02 08:22:35,Visual Studio Code,Visual Studio Code,10.0,0,silence,passive,0.9845332503318787
+311,2025-10-02 08:22:35,2025-10-02 08:22:35,Google Chrome,Google Chrome,0.0,0,speech,passive,0.9230810403823853
+312,2025-10-02 08:22:35,2025-10-02 08:22:35,TestWindow,TestWindow,100.0,0,silence,passive,0.9992914199829102
+313,2025-10-02 08:22:35,2025-10-02 08:22:35,Google Chrome,Google Chrome,10.0,0,silence,passive,0.9845332503318787
+314,2025-10-02 08:22:35,2025-10-02 08:22:35,Google Chrome,Google Chrome,3.0,0,unknown,passive,0.9997972846031189
+315,2025-10-02 08:22:35,2025-10-02 08:22:35,Visual Studio Code,Visual Studio Code,10.0,0,silence,passive,0.9999796152114868
+316,2025-10-02 08:22:35,2025-10-02 08:22:35,TestWindow,TestWindow,3.0,0,speech,passive,0.9882581830024719
+317,2025-10-02 08:22:35,2025-10-02 08:22:35,特殊窗口,特殊窗口,3.0,0,speech,passive,0.7691731452941895
+318,2025-10-02 08:22:35,2025-10-02 08:22:35,Unknown App,,50.0,0,music,passive,0.9854649901390076
+319,2025-10-02 08:22:35,2025-10-02 08:22:35,Google Chrome,Google Chrome,3.0,0,silence,passive,0.9999815225601196
+320,2025-10-02 08:22:35,2025-10-02 08:22:35,Visual Studio Code,Visual Studio Code,100.0,0,music,passive,0.9854649901390076
+321,2025-10-02 08:22:35,2025-10-02 08:22:35,Google Chrome,Google Chrome,100.0,0,unknown,passive,0.9999330043792725
+322,2025-10-02 08:22:35,2025-10-02 08:22:35,Unknown App,,50.0,0,silence,passive,0.9999330043792725
+323,2025-10-02 08:22:35,2025-10-02 08:22:35,特殊窗口,特殊窗口,10.0,0,music,passive,0.999987006187439
+324,2025-10-02 08:22:35,2025-10-02 08:22:35,TestWindow,TestWindow,50.0,0,unknown,passive,0.9786438345909119
+325,2025-10-02 08:22:35,2025-10-02 08:22:35,特殊窗口,特殊窗口,3.0,0,unknown,passive,0.9999815225601196
+326,2025-10-02 08:22:35,2025-10-02 08:22:35,TestWindow,TestWindow,10.0,0,speech,passive,0.9824224710464478
+327,2025-10-02 08:22:35,2025-10-02 08:22:35,Google Chrome,Google Chrome,50.0,0,unknown,passive,0.9999330043792725
+328,2025-10-02 08:22:35,2025-10-02 08:22:35,Google Chrome,Google Chrome,50.0,0,music,passive,0.9995666146278381
+329,2025-10-02 08:22:35,2025-10-02 08:22:35,Unknown App,,3.0,0,music,passive,0.992790699005127
+330,2025-10-02 08:22:35,2025-10-02 08:22:35,TestWindow,TestWindow,10.0,0,silence,passive,0.9997836947441101
+331,2025-10-02 08:22:35,2025-10-02 08:22:35,Google Chrome,Google Chrome,10.0,0,unknown,passive,0.9997836947441101
+332,2025-10-02 08:22:35,2025-10-02 08:22:35,Visual Studio Code,Visual Studio Code,10.0,0,music,passive,0.999987006187439
+333,2025-10-02 08:22:35,2025-10-02 08:22:35,特殊窗口,特殊窗口,0.0,0,silence,idle,0.9997785687446594
+334,2025-10-02 08:22:35,2025-10-02 08:22:35,Unknown App,,100.0,0,silence,passive,0.9992914199829102
+335,2025-10-02 08:22:35,2025-10-02 08:22:35,Visual Studio Code,Visual Studio Code,100.0,0,speech,passive,0.5733183026313782
+336,2025-10-02 08:22:35,2025-10-02 08:22:35,特殊窗口,特殊窗口,50.0,0,music,passive,0.9999574422836304
+337,2025-10-02 08:22:35,2025-10-02 08:22:35,Google Chrome,Google Chrome,100.0,0,speech,passive,0.9446017146110535
+338,2025-10-02 08:22:35,2025-10-02 08:22:35,Unknown App,,3.0,0,silence,passive,0.9885652661323547
+339,2025-10-02 08:22:35,2025-10-02 08:22:35,TestWindow,TestWindow,100.0,0,music,passive,0.9999574422836304
+340,2025-10-02 08:22:35,2025-10-02 08:22:35,Google Chrome,Google Chrome,0.0,0,silence,idle,0.9988242983818054
+341,2025-10-02 08:22:35,2025-10-02 08:22:35,TestWindow,TestWindow,0.0,0,unknown,idle,0.9997785687446594
+342,2025-10-02 08:22:35,2025-10-02 08:22:35,Visual Studio Code,Visual Studio Code,0.0,0,speech,passive,0.9230810403823853
+343,2025-10-02 08:22:35,2025-10-02 08:22:35,TestWindow,TestWindow,100.0,0,silence,passive,0.9786438345909119
+344,2025-10-02 08:22:35,2025-10-02 08:22:35,TestWindow,TestWindow,3.0,0,silence,passive,0.9885652661323547
+345,2025-10-02 08:22:35,2025-10-02 08:22:35,Unknown App,,100.0,0,music,passive,0.9995666146278381
+346,2025-10-02 08:22:35,2025-10-02 08:22:35,Google Chrome,Google Chrome,0.0,0,silence,idle,0.9997785687446594
+347,2025-10-02 08:22:35,2025-10-02 08:22:35,Visual Studio Code,Visual Studio Code,100.0,0,speech,passive,0.5733183026313782
+348,2025-10-02 08:22:35,2025-10-02 08:22:35,Google Chrome,Google Chrome,50.0,0,silence,passive,0.9786438345909119
+349,2025-10-02 08:22:35,2025-10-02 08:22:35,TestWindow,TestWindow,10.0,0,unknown,passive,0.9997836947441101
+350,2025-10-02 08:22:35,2025-10-02 08:22:35,Visual Studio Code,Visual Studio Code,50.0,0,music,passive,0.9999574422836304
+351,2025-10-02 08:22:35,2025-10-02 08:22:35,Google Chrome,Google Chrome,3.0,0,silence,passive,0.9999815225601196
+352,2025-10-02 08:22:35,2025-10-02 08:22:35,Visual Studio Code,Visual Studio Code,3.0,0,music,passive,0.9999890327453613
+353,2025-10-02 08:22:35,2025-10-02 08:22:35,Google Chrome,Google Chrome,10.0,0,music,passive,0.9894934892654419
+354,2025-10-02 08:22:35,2025-10-02 08:22:35,Visual Studio Code,Visual Studio Code,50.0,0,music,passive,0.9995666146278381
+355,2025-10-02 08:22:35,2025-10-02 08:22:35,Visual Studio Code,Visual Studio Code,0.0,0,silence,idle,0.9999731779098511
+356,2025-10-02 08:22:35,2025-10-02 08:22:35,特殊窗口,特殊窗口,3.0,0,silence,passive,0.9999815225601196
+357,2025-10-02 08:22:35,2025-10-02 08:22:35,特殊窗口,特殊窗口,50.0,0,silence,passive,0.9999330043792725
+358,2025-10-02 08:22:35,2025-10-02 08:22:35,Visual Studio Code,Visual Studio Code,100.0,0,speech,passive,0.9446017146110535
+359,2025-10-02 08:22:35,2025-10-02 08:22:35,特殊窗口,特殊窗口,3.0,0,unknown,passive,0.9885652661323547
+360,2025-10-02 08:24:43,2025-10-02 08:24:43,,Visual Studio Code,0.0,0,speech,passive,0.6446126699447632
+361,2025-10-02 08:24:43,2025-10-02 08:24:43,,Visual Studio Code,0.0,0,speech,passive,0.9230810403823853
+362,2025-10-02 08:24:43,2025-10-02 08:24:43,,Visual Studio Code,0.0,0,speech,studying,0.5073068141937256
+363,2025-10-02 08:24:43,2025-10-02 08:24:43,,Visual Studio Code,0.0,0,speech,passive,0.9230810403823853
+364,2025-10-02 08:24:43,2025-10-02 08:24:43,,Visual Studio Code,1.0,0,speech,passive,0.9459353685379028
+365,2025-10-02 08:24:43,2025-10-02 08:24:43,,Visual Studio Code,1.0,0,speech,passive,0.9914353489875793
+366,2025-10-02 08:24:43,2025-10-02 08:24:43,,Visual Studio Code,1.0,0,speech,studying,0.4960952699184418
+367,2025-10-02 08:24:43,2025-10-02 08:24:43,,Visual Studio Code,1.0,0,speech,passive,0.9914353489875793
+368,2025-10-02 08:24:43,2025-10-02 08:24:43,,Visual Studio Code,3.0,0,speech,passive,0.9953781366348267
+369,2025-10-02 08:24:43,2025-10-02 08:24:43,,Visual Studio Code,3.0,0,speech,passive,0.9882581830024719
+370,2025-10-02 08:24:43,2025-10-02 08:24:43,,Visual Studio Code,3.0,0,speech,passive,0.7691731452941895
+371,2025-10-02 08:24:43,2025-10-02 08:24:43,,Visual Studio Code,3.0,0,speech,passive,0.9882581830024719
+372,2025-10-02 08:24:43,2025-10-02 08:24:43,,Visual Studio Code,5.0,0,speech,passive,0.9952050447463989
+373,2025-10-02 08:24:43,2025-10-02 08:24:43,,Visual Studio Code,5.0,0,speech,passive,0.9867972135543823
+374,2025-10-02 08:24:43,2025-10-02 08:24:43,,Visual Studio Code,5.0,0,speech,passive,0.7142936587333679
+375,2025-10-02 08:24:43,2025-10-02 08:24:43,,Visual Studio Code,5.0,0,speech,passive,0.9867972135543823
+376,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,10.0,0,speech,passive,0.9946841597557068
+377,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,10.0,0,speech,passive,0.9824224710464478
+378,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,10.0,0,speech,passive,0.6511386632919312
+379,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,10.0,0,speech,passive,0.9824224710464478
+380,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,50.0,0,speech,passive,0.9827839136123657
+381,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,50.0,0,speech,passive,0.9446017146110535
+382,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,50.0,0,speech,passive,0.5733183026313782
+383,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,50.0,0,speech,passive,0.9446017146110535
+384,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,100.0,0,speech,passive,0.9827839136123657
+385,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,100.0,0,speech,passive,0.9446017146110535
+386,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,100.0,0,speech,passive,0.5733183026313782
+387,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,100.0,0,speech,passive,0.9446017146110535
+388,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,0.0,0,music,idle,0.9997078776359558
+389,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,0.0,0,music,idle,0.995764970779419
+390,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,0.0,0,music,idle,0.98598712682724
+391,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,0.0,0,music,idle,0.995764970779419
+392,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,1.0,0,music,idle,0.9988995790481567
+393,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,1.0,0,music,idle,0.9832062721252441
+394,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,1.0,0,music,idle,0.9849364161491394
+395,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,1.0,0,music,idle,0.9832062721252441
+396,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,3.0,0,music,passive,0.9998812675476074
+397,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,3.0,0,music,passive,0.9999890327453613
+398,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,3.0,0,music,passive,0.992790699005127
+399,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,3.0,0,music,passive,0.9999890327453613
+400,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,5.0,0,music,passive,0.9998767375946045
+401,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,5.0,0,music,passive,0.999988317489624
+402,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,5.0,0,music,passive,0.9908185601234436
+403,2025-10-02 08:24:44,2025-10-02 08:24:44,,Visual Studio Code,5.0,0,music,passive,0.999988317489624
+404,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,10.0,0,music,passive,0.9998677968978882
+405,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,10.0,0,music,passive,0.999987006187439
+406,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,10.0,0,music,passive,0.9894934892654419
+407,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,10.0,0,music,passive,0.999987006187439
+408,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,50.0,0,music,passive,0.9995666146278381
+409,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,50.0,0,music,passive,0.9999574422836304
+410,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,50.0,0,music,passive,0.9854649901390076
+411,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,50.0,0,music,passive,0.9999574422836304
+412,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,100.0,0,music,passive,0.9995666146278381
+413,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,100.0,0,music,passive,0.9999574422836304
+414,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,100.0,0,music,passive,0.9854649901390076
+415,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,100.0,0,music,passive,0.9999574422836304
+416,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,0.0,0,silence,idle,0.9999731779098511
+417,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,0.0,0,silence,idle,0.9997785687446594
+418,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,0.0,0,silence,idle,0.9988242983818054
+419,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,0.0,0,silence,idle,0.9997785687446594
+420,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,1.0,0,silence,idle,0.9999655485153198
+421,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,1.0,0,silence,idle,0.9997010231018066
+422,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,1.0,0,silence,idle,0.998735249042511
+423,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,1.0,0,silence,idle,0.9997010231018066
+424,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,3.0,0,silence,passive,0.9997972846031189
+425,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,3.0,0,silence,passive,0.9999815225601196
+426,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,3.0,0,silence,passive,0.9885652661323547
+427,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,3.0,0,silence,passive,0.9999815225601196
+428,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,5.0,0,silence,passive,0.999792754650116
+429,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,5.0,0,silence,passive,0.9999809265136719
+430,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,5.0,0,silence,passive,0.9858450889587402
+431,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,5.0,0,silence,passive,0.9999809265136719
+432,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,10.0,0,silence,passive,0.9997836947441101
+433,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,10.0,0,silence,passive,0.9999796152114868
+434,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,10.0,0,silence,passive,0.9845332503318787
+435,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,10.0,0,silence,passive,0.9999796152114868
+436,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,50.0,0,silence,passive,0.9992914199829102
+437,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,50.0,0,silence,passive,0.9999330043792725
+438,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,50.0,0,silence,passive,0.9786438345909119
+439,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,50.0,0,silence,passive,0.9999330043792725
+440,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,100.0,0,silence,passive,0.9992914199829102
+441,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,100.0,0,silence,passive,0.9999330043792725
+442,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,100.0,0,silence,passive,0.9786438345909119
+443,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,100.0,0,silence,passive,0.9999330043792725
+444,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,0.0,0,unknown,idle,0.9999731779098511
+445,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,0.0,0,unknown,idle,0.9997785687446594
+446,2025-10-02 08:24:45,2025-10-02 08:24:45,,Visual Studio Code,0.0,0,unknown,idle,0.9988242983818054
+447,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,0.0,0,unknown,idle,0.9997785687446594
+448,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,1.0,0,unknown,idle,0.9999655485153198
+449,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,1.0,0,unknown,idle,0.9997010231018066
+450,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,1.0,0,unknown,idle,0.998735249042511
+451,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,1.0,0,unknown,idle,0.9997010231018066
+452,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,3.0,0,unknown,passive,0.9997972846031189
+453,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,3.0,0,unknown,passive,0.9999815225601196
+454,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,3.0,0,unknown,passive,0.9885652661323547
+455,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,3.0,0,unknown,passive,0.9999815225601196
+456,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,5.0,0,unknown,passive,0.999792754650116
+457,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,5.0,0,unknown,passive,0.9999809265136719
+458,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,5.0,0,unknown,passive,0.9858450889587402
+459,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,5.0,0,unknown,passive,0.9999809265136719
+460,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,10.0,0,unknown,passive,0.9997836947441101
+461,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,10.0,0,unknown,passive,0.9999796152114868
+462,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,10.0,0,unknown,passive,0.9845332503318787
+463,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,10.0,0,unknown,passive,0.9999796152114868
+464,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,50.0,0,unknown,passive,0.9992914199829102
+465,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,50.0,0,unknown,passive,0.9999330043792725
+466,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,50.0,0,unknown,passive,0.9786438345909119
+467,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,50.0,0,unknown,passive,0.9999330043792725
+468,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,100.0,0,unknown,passive,0.9992914199829102
+469,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,100.0,0,unknown,passive,0.9999330043792725
+470,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,100.0,0,unknown,passive,0.9786438345909119
+471,2025-10-02 08:24:46,2025-10-02 08:24:46,,Visual Studio Code,100.0,0,unknown,passive,0.9999330043792725
+472,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,0.0,0,speech,passive,0.6446126699447632
+473,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,0.0,0,speech,passive,0.9230810403823853
+474,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,0.0,0,speech,studying,0.5073068141937256
+475,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,0.0,0,speech,passive,0.9230810403823853
+476,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,1.0,0,speech,passive,0.9459353685379028
+477,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,1.0,0,speech,passive,0.9914353489875793
+478,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,1.0,0,speech,studying,0.4960952699184418
+479,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,1.0,0,speech,passive,0.9914353489875793
+480,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,3.0,0,speech,passive,0.9953781366348267
+481,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,3.0,0,speech,passive,0.9882581830024719
+482,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,3.0,0,speech,passive,0.7691731452941895
+483,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,3.0,0,speech,passive,0.9882581830024719
+484,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,5.0,0,speech,passive,0.9952050447463989
+485,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,5.0,0,speech,passive,0.9867972135543823
+486,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,5.0,0,speech,passive,0.7142936587333679
+487,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,5.0,0,speech,passive,0.9867972135543823
+488,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,10.0,0,speech,passive,0.9946841597557068
+489,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,10.0,0,speech,passive,0.9824224710464478
+490,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,10.0,0,speech,passive,0.6511386632919312
+491,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,10.0,0,speech,passive,0.9824224710464478
+492,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,50.0,0,speech,passive,0.9827839136123657
+493,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,50.0,0,speech,passive,0.9446017146110535
+494,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,50.0,0,speech,passive,0.5733183026313782
+495,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,50.0,0,speech,passive,0.9446017146110535
+496,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,100.0,0,speech,passive,0.9827839136123657
+497,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,100.0,0,speech,passive,0.9446017146110535
+498,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,100.0,0,speech,passive,0.5733183026313782
+499,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,100.0,0,speech,passive,0.9446017146110535
+500,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,0.0,0,music,idle,0.9997078776359558
+501,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,0.0,0,music,idle,0.995764970779419
+502,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,0.0,0,music,idle,0.98598712682724
+503,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,0.0,0,music,idle,0.995764970779419
+504,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,1.0,0,music,idle,0.9988995790481567
+505,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,1.0,0,music,idle,0.9832062721252441
+506,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,1.0,0,music,idle,0.9849364161491394
+507,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,1.0,0,music,idle,0.9832062721252441
+508,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,3.0,0,music,passive,0.9998812675476074
+509,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,3.0,0,music,passive,0.9999890327453613
+510,2025-10-02 08:24:46,2025-10-02 08:24:46,,Google Chrome,3.0,0,music,passive,0.992790699005127
+511,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,3.0,0,music,passive,0.9999890327453613
+512,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,5.0,0,music,passive,0.9998767375946045
+513,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,5.0,0,music,passive,0.999988317489624
+514,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,5.0,0,music,passive,0.9908185601234436
+515,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,5.0,0,music,passive,0.999988317489624
+516,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,10.0,0,music,passive,0.9998677968978882
+517,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,10.0,0,music,passive,0.999987006187439
+518,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,10.0,0,music,passive,0.9894934892654419
+519,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,10.0,0,music,passive,0.999987006187439
+520,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,50.0,0,music,passive,0.9995666146278381
+521,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,50.0,0,music,passive,0.9999574422836304
+522,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,50.0,0,music,passive,0.9854649901390076
+523,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,50.0,0,music,passive,0.9999574422836304
+524,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,100.0,0,music,passive,0.9995666146278381
+525,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,100.0,0,music,passive,0.9999574422836304
+526,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,100.0,0,music,passive,0.9854649901390076
+527,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,100.0,0,music,passive,0.9999574422836304
+528,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,0.0,0,silence,idle,0.9999731779098511
+529,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,0.0,0,silence,idle,0.9997785687446594
+530,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,0.0,0,silence,idle,0.9988242983818054
+531,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,0.0,0,silence,idle,0.9997785687446594
+532,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,1.0,0,silence,idle,0.9999655485153198
+533,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,1.0,0,silence,idle,0.9997010231018066
+534,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,1.0,0,silence,idle,0.998735249042511
+535,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,1.0,0,silence,idle,0.9997010231018066
+536,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,3.0,0,silence,passive,0.9997972846031189
+537,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,3.0,0,silence,passive,0.9999815225601196
+538,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,3.0,0,silence,passive,0.9885652661323547
+539,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,3.0,0,silence,passive,0.9999815225601196
+540,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,5.0,0,silence,passive,0.999792754650116
+541,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,5.0,0,silence,passive,0.9999809265136719
+542,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,5.0,0,silence,passive,0.9858450889587402
+543,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,5.0,0,silence,passive,0.9999809265136719
+544,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,10.0,0,silence,passive,0.9997836947441101
+545,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,10.0,0,silence,passive,0.9999796152114868
+546,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,10.0,0,silence,passive,0.9845332503318787
+547,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,10.0,0,silence,passive,0.9999796152114868
+548,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,50.0,0,silence,passive,0.9992914199829102
+549,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,50.0,0,silence,passive,0.9999330043792725
+550,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,50.0,0,silence,passive,0.9786438345909119
+551,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,50.0,0,silence,passive,0.9999330043792725
+552,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,100.0,0,silence,passive,0.9992914199829102
+553,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,100.0,0,silence,passive,0.9999330043792725
+554,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,100.0,0,silence,passive,0.9786438345909119
+555,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,100.0,0,silence,passive,0.9999330043792725
+556,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,0.0,0,unknown,idle,0.9999731779098511
+557,2025-10-02 08:24:47,2025-10-02 08:24:47,,Google Chrome,0.0,0,unknown,idle,0.9997785687446594
+558,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,0.0,0,unknown,idle,0.9988242983818054
+559,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,0.0,0,unknown,idle,0.9997785687446594
+560,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,1.0,0,unknown,idle,0.9999655485153198
+561,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,1.0,0,unknown,idle,0.9997010231018066
+562,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,1.0,0,unknown,idle,0.998735249042511
+563,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,1.0,0,unknown,idle,0.9997010231018066
+564,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,3.0,0,unknown,passive,0.9997972846031189
+565,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,3.0,0,unknown,passive,0.9999815225601196
+566,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,3.0,0,unknown,passive,0.9885652661323547
+567,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,3.0,0,unknown,passive,0.9999815225601196
+568,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,5.0,0,unknown,passive,0.999792754650116
+569,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,5.0,0,unknown,passive,0.9999809265136719
+570,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,5.0,0,unknown,passive,0.9858450889587402
+571,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,5.0,0,unknown,passive,0.9999809265136719
+572,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,10.0,0,unknown,passive,0.9997836947441101
+573,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,10.0,0,unknown,passive,0.9999796152114868
+574,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,10.0,0,unknown,passive,0.9845332503318787
+575,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,10.0,0,unknown,passive,0.9999796152114868
+576,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,50.0,0,unknown,passive,0.9992914199829102
+577,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,50.0,0,unknown,passive,0.9999330043792725
+578,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,50.0,0,unknown,passive,0.9786438345909119
+579,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,50.0,0,unknown,passive,0.9999330043792725
+580,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,100.0,0,unknown,passive,0.9992914199829102
+581,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,100.0,0,unknown,passive,0.9999330043792725
+582,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,100.0,0,unknown,passive,0.9786438345909119
+583,2025-10-02 08:24:48,2025-10-02 08:24:48,,Google Chrome,100.0,0,unknown,passive,0.9999330043792725
+584,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,0.0,0,speech,passive,0.6446126699447632
+585,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,0.0,0,speech,passive,0.9230810403823853
+586,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,0.0,0,speech,studying,0.5073068141937256
+587,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,0.0,0,speech,passive,0.9230810403823853
+588,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,1.0,0,speech,passive,0.9459353685379028
+589,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,1.0,0,speech,passive,0.9914353489875793
+590,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,1.0,0,speech,studying,0.4960952699184418
+591,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,1.0,0,speech,passive,0.9914353489875793
+592,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,3.0,0,speech,passive,0.9953781366348267
+593,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,3.0,0,speech,passive,0.9882581830024719
+594,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,3.0,0,speech,passive,0.7691731452941895
+595,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,3.0,0,speech,passive,0.9882581830024719
+596,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,5.0,0,speech,passive,0.9952050447463989
+597,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,5.0,0,speech,passive,0.9867972135543823
+598,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,5.0,0,speech,passive,0.7142936587333679
+599,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,5.0,0,speech,passive,0.9867972135543823
+600,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,10.0,0,speech,passive,0.9946841597557068
+601,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,10.0,0,speech,passive,0.9824224710464478
+602,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,10.0,0,speech,passive,0.6511386632919312
+603,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,10.0,0,speech,passive,0.9824224710464478
+604,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,50.0,0,speech,passive,0.9827839136123657
+605,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,50.0,0,speech,passive,0.9446017146110535
+606,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,50.0,0,speech,passive,0.5733183026313782
+607,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,50.0,0,speech,passive,0.9446017146110535
+608,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,100.0,0,speech,passive,0.9827839136123657
+609,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,100.0,0,speech,passive,0.9446017146110535
+610,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,100.0,0,speech,passive,0.5733183026313782
+611,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,100.0,0,speech,passive,0.9446017146110535
+612,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,0.0,0,music,idle,0.9997078776359558
+613,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,0.0,0,music,idle,0.995764970779419
+614,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,0.0,0,music,idle,0.98598712682724
+615,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,0.0,0,music,idle,0.995764970779419
+616,2025-10-02 08:24:48,2025-10-02 08:24:48,,TestWindow,1.0,0,music,idle,0.9988995790481567
+617,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,1.0,0,music,idle,0.9832062721252441
+618,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,1.0,0,music,idle,0.9849364161491394
+619,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,1.0,0,music,idle,0.9832062721252441
+620,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,3.0,0,music,passive,0.9998812675476074
+621,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,3.0,0,music,passive,0.9999890327453613
+622,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,3.0,0,music,passive,0.992790699005127
+623,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,3.0,0,music,passive,0.9999890327453613
+624,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,5.0,0,music,passive,0.9998767375946045
+625,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,5.0,0,music,passive,0.999988317489624
+626,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,5.0,0,music,passive,0.9908185601234436
+627,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,5.0,0,music,passive,0.999988317489624
+628,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,10.0,0,music,passive,0.9998677968978882
+629,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,10.0,0,music,passive,0.999987006187439
+630,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,10.0,0,music,passive,0.9894934892654419
+631,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,10.0,0,music,passive,0.999987006187439
+632,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,50.0,0,music,passive,0.9995666146278381
+633,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,50.0,0,music,passive,0.9999574422836304
+634,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,50.0,0,music,passive,0.9854649901390076
+635,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,50.0,0,music,passive,0.9999574422836304
+636,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,100.0,0,music,passive,0.9995666146278381
+637,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,100.0,0,music,passive,0.9999574422836304
+638,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,100.0,0,music,passive,0.9854649901390076
+639,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,100.0,0,music,passive,0.9999574422836304
+640,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,0.0,0,silence,idle,0.9999731779098511
+641,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,0.0,0,silence,idle,0.9997785687446594
+642,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,0.0,0,silence,idle,0.9988242983818054
+643,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,0.0,0,silence,idle,0.9997785687446594
+644,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,1.0,0,silence,idle,0.9999655485153198
+645,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,1.0,0,silence,idle,0.9997010231018066
+646,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,1.0,0,silence,idle,0.998735249042511
+647,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,1.0,0,silence,idle,0.9997010231018066
+648,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,3.0,0,silence,passive,0.9997972846031189
+649,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,3.0,0,silence,passive,0.9999815225601196
+650,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,3.0,0,silence,passive,0.9885652661323547
+651,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,3.0,0,silence,passive,0.9999815225601196
+652,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,5.0,0,silence,passive,0.999792754650116
+653,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,5.0,0,silence,passive,0.9999809265136719
+654,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,5.0,0,silence,passive,0.9858450889587402
+655,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,5.0,0,silence,passive,0.9999809265136719
+656,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,10.0,0,silence,passive,0.9997836947441101
+657,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,10.0,0,silence,passive,0.9999796152114868
+658,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,10.0,0,silence,passive,0.9845332503318787
+659,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,10.0,0,silence,passive,0.9999796152114868
+660,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,50.0,0,silence,passive,0.9992914199829102
+661,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,50.0,0,silence,passive,0.9999330043792725
+662,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,50.0,0,silence,passive,0.9786438345909119
+663,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,50.0,0,silence,passive,0.9999330043792725
+664,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,100.0,0,silence,passive,0.9992914199829102
+665,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,100.0,0,silence,passive,0.9999330043792725
+666,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,100.0,0,silence,passive,0.9786438345909119
+667,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,100.0,0,silence,passive,0.9999330043792725
+668,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,0.0,0,unknown,idle,0.9999731779098511
+669,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,0.0,0,unknown,idle,0.9997785687446594
+670,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,0.0,0,unknown,idle,0.9988242983818054
+671,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,0.0,0,unknown,idle,0.9997785687446594
+672,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,1.0,0,unknown,idle,0.9999655485153198
+673,2025-10-02 08:24:49,2025-10-02 08:24:49,,TestWindow,1.0,0,unknown,idle,0.9997010231018066
+674,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,1.0,0,unknown,idle,0.998735249042511
+675,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,1.0,0,unknown,idle,0.9997010231018066
+676,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,3.0,0,unknown,passive,0.9997972846031189
+677,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,3.0,0,unknown,passive,0.9999815225601196
+678,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,3.0,0,unknown,passive,0.9885652661323547
+679,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,3.0,0,unknown,passive,0.9999815225601196
+680,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,5.0,0,unknown,passive,0.999792754650116
+681,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,5.0,0,unknown,passive,0.9999809265136719
+682,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,5.0,0,unknown,passive,0.9858450889587402
+683,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,5.0,0,unknown,passive,0.9999809265136719
+684,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,10.0,0,unknown,passive,0.9997836947441101
+685,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,10.0,0,unknown,passive,0.9999796152114868
+686,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,10.0,0,unknown,passive,0.9845332503318787
+687,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,10.0,0,unknown,passive,0.9999796152114868
+688,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,50.0,0,unknown,passive,0.9992914199829102
+689,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,50.0,0,unknown,passive,0.9999330043792725
+690,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,50.0,0,unknown,passive,0.9786438345909119
+691,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,50.0,0,unknown,passive,0.9999330043792725
+692,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,100.0,0,unknown,passive,0.9992914199829102
+693,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,100.0,0,unknown,passive,0.9999330043792725
+694,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,100.0,0,unknown,passive,0.9786438345909119
+695,2025-10-02 08:24:50,2025-10-02 08:24:50,,TestWindow,100.0,0,unknown,passive,0.9999330043792725
+696,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,0.0,0,speech,passive,0.6446126699447632
+697,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,0.0,0,speech,passive,0.9230810403823853
+698,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,0.0,0,speech,studying,0.5073068141937256
+699,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,0.0,0,speech,passive,0.9230810403823853
+700,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,1.0,0,speech,passive,0.9459353685379028
+701,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,1.0,0,speech,passive,0.9914353489875793
+702,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,1.0,0,speech,studying,0.4960952699184418
+703,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,1.0,0,speech,passive,0.9914353489875793
+704,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,3.0,0,speech,passive,0.9953781366348267
+705,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,3.0,0,speech,passive,0.9882581830024719
+706,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,3.0,0,speech,passive,0.7691731452941895
+707,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,3.0,0,speech,passive,0.9882581830024719
+708,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,5.0,0,speech,passive,0.9952050447463989
+709,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,5.0,0,speech,passive,0.9867972135543823
+710,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,5.0,0,speech,passive,0.7142936587333679
+711,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,5.0,0,speech,passive,0.9867972135543823
+712,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,10.0,0,speech,passive,0.9946841597557068
+713,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,10.0,0,speech,passive,0.9824224710464478
+714,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,10.0,0,speech,passive,0.6511386632919312
+715,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,10.0,0,speech,passive,0.9824224710464478
+716,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,50.0,0,speech,passive,0.9827839136123657
+717,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,50.0,0,speech,passive,0.9446017146110535
+718,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,50.0,0,speech,passive,0.5733183026313782
+719,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,50.0,0,speech,passive,0.9446017146110535
+720,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,100.0,0,speech,passive,0.9827839136123657
+721,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,100.0,0,speech,passive,0.9446017146110535
+722,2025-10-02 08:24:50,2025-10-02 08:24:50,,Unknown,100.0,0,speech,passive,0.5733183026313782
+723,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,100.0,0,speech,passive,0.9446017146110535
+724,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,0.0,0,music,idle,0.9997078776359558
+725,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,0.0,0,music,idle,0.995764970779419
+726,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,0.0,0,music,idle,0.98598712682724
+727,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,0.0,0,music,idle,0.995764970779419
+728,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,1.0,0,music,idle,0.9988995790481567
+729,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,1.0,0,music,idle,0.9832062721252441
+730,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,1.0,0,music,idle,0.9849364161491394
+731,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,1.0,0,music,idle,0.9832062721252441
+732,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,3.0,0,music,passive,0.9998812675476074
+733,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,3.0,0,music,passive,0.9999890327453613
+734,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,3.0,0,music,passive,0.992790699005127
+735,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,3.0,0,music,passive,0.9999890327453613
+736,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,5.0,0,music,passive,0.9998767375946045
+737,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,5.0,0,music,passive,0.999988317489624
+738,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,5.0,0,music,passive,0.9908185601234436
+739,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,5.0,0,music,passive,0.999988317489624
+740,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,10.0,0,music,passive,0.9998677968978882
+741,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,10.0,0,music,passive,0.999987006187439
+742,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,10.0,0,music,passive,0.9894934892654419
+743,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,10.0,0,music,passive,0.999987006187439
+744,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,50.0,0,music,passive,0.9995666146278381
+745,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,50.0,0,music,passive,0.9999574422836304
+746,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,50.0,0,music,passive,0.9854649901390076
+747,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,50.0,0,music,passive,0.9999574422836304
+748,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,100.0,0,music,passive,0.9995666146278381
+749,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,100.0,0,music,passive,0.9999574422836304
+750,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,100.0,0,music,passive,0.9854649901390076
+751,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,100.0,0,music,passive,0.9999574422836304
+752,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,0.0,0,silence,idle,0.9999731779098511
+753,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,0.0,0,silence,idle,0.9997785687446594
+754,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,0.0,0,silence,idle,0.9988242983818054
+755,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,0.0,0,silence,idle,0.9997785687446594
+756,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,1.0,0,silence,idle,0.9999655485153198
+757,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,1.0,0,silence,idle,0.9997010231018066
+758,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,1.0,0,silence,idle,0.998735249042511
+759,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,1.0,0,silence,idle,0.9997010231018066
+760,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,3.0,0,silence,passive,0.9997972846031189
+761,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,3.0,0,silence,passive,0.9999815225601196
+762,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,3.0,0,silence,passive,0.9885652661323547
+763,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,3.0,0,silence,passive,0.9999815225601196
+764,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,5.0,0,silence,passive,0.999792754650116
+765,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,5.0,0,silence,passive,0.9999809265136719
+766,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,5.0,0,silence,passive,0.9858450889587402
+767,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,5.0,0,silence,passive,0.9999809265136719
+768,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,10.0,0,silence,passive,0.9997836947441101
+769,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,10.0,0,silence,passive,0.9999796152114868
+770,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,10.0,0,silence,passive,0.9845332503318787
+771,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,10.0,0,silence,passive,0.9999796152114868
+772,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,50.0,0,silence,passive,0.9992914199829102
+773,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,50.0,0,silence,passive,0.9999330043792725
+774,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,50.0,0,silence,passive,0.9786438345909119
+775,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,50.0,0,silence,passive,0.9999330043792725
+776,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,100.0,0,silence,passive,0.9992914199829102
+777,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,100.0,0,silence,passive,0.9999330043792725
+778,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,100.0,0,silence,passive,0.9786438345909119
+779,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,100.0,0,silence,passive,0.9999330043792725
+780,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,0.0,0,unknown,idle,0.9999731779098511
+781,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,0.0,0,unknown,idle,0.9997785687446594
+782,2025-10-02 08:24:51,2025-10-02 08:24:51,,Unknown,0.0,0,unknown,idle,0.9988242983818054
+783,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,0.0,0,unknown,idle,0.9997785687446594
+784,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,1.0,0,unknown,idle,0.9999655485153198
+785,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,1.0,0,unknown,idle,0.9997010231018066
+786,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,1.0,0,unknown,idle,0.998735249042511
+787,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,1.0,0,unknown,idle,0.9997010231018066
+788,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,3.0,0,unknown,passive,0.9997972846031189
+789,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,3.0,0,unknown,passive,0.9999815225601196
+790,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,3.0,0,unknown,passive,0.9885652661323547
+791,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,3.0,0,unknown,passive,0.9999815225601196
+792,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,5.0,0,unknown,passive,0.999792754650116
+793,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,5.0,0,unknown,passive,0.9999809265136719
+794,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,5.0,0,unknown,passive,0.9858450889587402
+795,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,5.0,0,unknown,passive,0.9999809265136719
+796,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,10.0,0,unknown,passive,0.9997836947441101
+797,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,10.0,0,unknown,passive,0.9999796152114868
+798,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,10.0,0,unknown,passive,0.9845332503318787
+799,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,10.0,0,unknown,passive,0.9999796152114868
+800,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,50.0,0,unknown,passive,0.9992914199829102
+801,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,50.0,0,unknown,passive,0.9999330043792725
+802,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,50.0,0,unknown,passive,0.9786438345909119
+803,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,50.0,0,unknown,passive,0.9999330043792725
+804,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,100.0,0,unknown,passive,0.9992914199829102
+805,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,100.0,0,unknown,passive,0.9999330043792725
+806,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,100.0,0,unknown,passive,0.9786438345909119
+807,2025-10-02 08:24:52,2025-10-02 08:24:52,,Unknown,100.0,0,unknown,passive,0.9999330043792725
+808,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,0.0,0,speech,passive,0.6446126699447632
+809,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,0.0,0,speech,passive,0.9230810403823853
+810,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,0.0,0,speech,studying,0.5073068141937256
+811,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,0.0,0,speech,passive,0.9230810403823853
+812,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,1.0,0,speech,passive,0.9459353685379028
+813,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,1.0,0,speech,passive,0.9914353489875793
+814,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,1.0,0,speech,studying,0.4960952699184418
+815,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,1.0,0,speech,passive,0.9914353489875793
+816,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,3.0,0,speech,passive,0.9953781366348267
+817,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,3.0,0,speech,passive,0.9882581830024719
+818,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,3.0,0,speech,passive,0.7691731452941895
+819,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,3.0,0,speech,passive,0.9882581830024719
+820,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,5.0,0,speech,passive,0.9952050447463989
+821,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,5.0,0,speech,passive,0.9867972135543823
+822,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,5.0,0,speech,passive,0.7142936587333679
+823,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,5.0,0,speech,passive,0.9867972135543823
+824,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,10.0,0,speech,passive,0.9946841597557068
+825,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,10.0,0,speech,passive,0.9824224710464478
+826,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,10.0,0,speech,passive,0.6511386632919312
+827,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,10.0,0,speech,passive,0.9824224710464478
+828,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,50.0,0,speech,passive,0.9827839136123657
+829,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,50.0,0,speech,passive,0.9446017146110535
+830,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,50.0,0,speech,passive,0.5733183026313782
+831,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,50.0,0,speech,passive,0.9446017146110535
+832,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,100.0,0,speech,passive,0.9827839136123657
+833,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,100.0,0,speech,passive,0.9446017146110535
+834,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,100.0,0,speech,passive,0.5733183026313782
+835,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,100.0,0,speech,passive,0.9446017146110535
+836,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,0.0,0,music,idle,0.9997078776359558
+837,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,0.0,0,music,idle,0.995764970779419
+838,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,0.0,0,music,idle,0.98598712682724
+839,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,0.0,0,music,idle,0.995764970779419
+840,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,1.0,0,music,idle,0.9988995790481567
+841,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,1.0,0,music,idle,0.9832062721252441
+842,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,1.0,0,music,idle,0.9849364161491394
+843,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,1.0,0,music,idle,0.9832062721252441
+844,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,3.0,0,music,passive,0.9998812675476074
+845,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,3.0,0,music,passive,0.9999890327453613
+846,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,3.0,0,music,passive,0.992790699005127
+847,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,3.0,0,music,passive,0.9999890327453613
+848,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,5.0,0,music,passive,0.9998767375946045
+849,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,5.0,0,music,passive,0.999988317489624
+850,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,5.0,0,music,passive,0.9908185601234436
+851,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,5.0,0,music,passive,0.999988317489624
+852,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,10.0,0,music,passive,0.9998677968978882
+853,2025-10-02 08:24:52,2025-10-02 08:24:52,,特殊窗口,10.0,0,music,passive,0.999987006187439
+854,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,10.0,0,music,passive,0.9894934892654419
+855,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,10.0,0,music,passive,0.999987006187439
+856,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,50.0,0,music,passive,0.9995666146278381
+857,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,50.0,0,music,passive,0.9999574422836304
+858,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,50.0,0,music,passive,0.9854649901390076
+859,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,50.0,0,music,passive,0.9999574422836304
+860,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,100.0,0,music,passive,0.9995666146278381
+861,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,100.0,0,music,passive,0.9999574422836304
+862,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,100.0,0,music,passive,0.9854649901390076
+863,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,100.0,0,music,passive,0.9999574422836304
+864,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,0.0,0,silence,idle,0.9999731779098511
+865,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,0.0,0,silence,idle,0.9997785687446594
+866,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,0.0,0,silence,idle,0.9988242983818054
+867,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,0.0,0,silence,idle,0.9997785687446594
+868,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,1.0,0,silence,idle,0.9999655485153198
+869,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,1.0,0,silence,idle,0.9997010231018066
+870,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,1.0,0,silence,idle,0.998735249042511
+871,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,1.0,0,silence,idle,0.9997010231018066
+872,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,3.0,0,silence,passive,0.9997972846031189
+873,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,3.0,0,silence,passive,0.9999815225601196
+874,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,3.0,0,silence,passive,0.9885652661323547
+875,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,3.0,0,silence,passive,0.9999815225601196
+876,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,5.0,0,silence,passive,0.999792754650116
+877,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,5.0,0,silence,passive,0.9999809265136719
+878,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,5.0,0,silence,passive,0.9858450889587402
+879,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,5.0,0,silence,passive,0.9999809265136719
+880,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,10.0,0,silence,passive,0.9997836947441101
+881,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,10.0,0,silence,passive,0.9999796152114868
+882,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,10.0,0,silence,passive,0.9845332503318787
+883,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,10.0,0,silence,passive,0.9999796152114868
+884,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,50.0,0,silence,passive,0.9992914199829102
+885,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,50.0,0,silence,passive,0.9999330043792725
+886,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,50.0,0,silence,passive,0.9786438345909119
+887,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,50.0,0,silence,passive,0.9999330043792725
+888,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,100.0,0,silence,passive,0.9992914199829102
+889,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,100.0,0,silence,passive,0.9999330043792725
+890,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,100.0,0,silence,passive,0.9786438345909119
+891,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,100.0,0,silence,passive,0.9999330043792725
+892,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,0.0,0,unknown,idle,0.9999731779098511
+893,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,0.0,0,unknown,idle,0.9997785687446594
+894,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,0.0,0,unknown,idle,0.9988242983818054
+895,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,0.0,0,unknown,idle,0.9997785687446594
+896,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,1.0,0,unknown,idle,0.9999655485153198
+897,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,1.0,0,unknown,idle,0.9997010231018066
+898,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,1.0,0,unknown,idle,0.998735249042511
+899,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,1.0,0,unknown,idle,0.9997010231018066
+900,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,3.0,0,unknown,passive,0.9997972846031189
+901,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,3.0,0,unknown,passive,0.9999815225601196
+902,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,3.0,0,unknown,passive,0.9885652661323547
+903,2025-10-02 08:24:53,2025-10-02 08:24:53,,特殊窗口,3.0,0,unknown,passive,0.9999815225601196
+904,2025-10-02 08:24:54,2025-10-02 08:24:54,,特殊窗口,5.0,0,unknown,passive,0.999792754650116
+905,2025-10-02 08:24:54,2025-10-02 08:24:54,,特殊窗口,5.0,0,unknown,passive,0.9999809265136719
+906,2025-10-02 08:24:54,2025-10-02 08:24:54,,特殊窗口,5.0,0,unknown,passive,0.9858450889587402
+907,2025-10-02 08:24:54,2025-10-02 08:24:54,,特殊窗口,5.0,0,unknown,passive,0.9999809265136719
+908,2025-10-02 08:24:54,2025-10-02 08:24:54,,特殊窗口,10.0,0,unknown,passive,0.9997836947441101
+909,2025-10-02 08:24:54,2025-10-02 08:24:54,,特殊窗口,10.0,0,unknown,passive,0.9999796152114868
+910,2025-10-02 08:24:54,2025-10-02 08:24:54,,特殊窗口,10.0,0,unknown,passive,0.9845332503318787
+911,2025-10-02 08:24:54,2025-10-02 08:24:54,,特殊窗口,10.0,0,unknown,passive,0.9999796152114868
+912,2025-10-02 08:24:54,2025-10-02 08:24:54,,特殊窗口,50.0,0,unknown,passive,0.9992914199829102
+913,2025-10-02 08:24:54,2025-10-02 08:24:54,,特殊窗口,50.0,0,unknown,passive,0.9999330043792725
+914,2025-10-02 08:24:54,2025-10-02 08:24:54,,特殊窗口,50.0,0,unknown,passive,0.9786438345909119
+915,2025-10-02 08:24:54,2025-10-02 08:24:54,,特殊窗口,50.0,0,unknown,passive,0.9999330043792725
+916,2025-10-02 08:24:54,2025-10-02 08:24:54,,特殊窗口,100.0,0,unknown,passive,0.9992914199829102
+917,2025-10-02 08:24:54,2025-10-02 08:24:54,,特殊窗口,100.0,0,unknown,passive,0.9999330043792725
+918,2025-10-02 08:24:54,2025-10-02 08:24:54,,特殊窗口,100.0,0,unknown,passive,0.9786438345909119
+919,2025-10-02 08:24:54,2025-10-02 08:24:54,,特殊窗口,100.0,0,unknown,passive,0.9999330043792725
