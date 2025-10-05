@@ -1,23 +1,27 @@
-# core/tracker.py
+# ==========================================================
+# core/tracker.py | Upgraded Tracker with OCR v2, Memory, Intent, Reminders
+# ==========================================================
 
 import time
 import sqlite3
-from pynput import keyboard, mouse
-import win32gui
-from datetime import datetime, timedelta
 import json
 import pickle
 import os
+from threading import Event
+from datetime import datetime, timedelta
 
-from core.db_module import init_db, init_multi_modal_db,init_memory_decay_db
+from pynput import keyboard, mouse
+import win32gui
+from plyer import notification
+
+from core.db_module import init_db, init_multi_modal_db, init_memory_decay_db
 from config import DB_PATH, TRACK_INTERVAL, SCREENSHOT_INTERVAL, AUDIO_INTERVAL, WEBCAM_INTERVAL, USER_ALLOW_WEBCAM
 from core.ocr_module import ocr_pipeline
 from core.audio_module import record_audio, extract_features as audio_extract_features
 from core.webcam_module import webcam_pipeline
-from core.intent_module import extract_features as intent_extract_features,predict_intent
-from core.knowledge_graph import add_concepts, get_graph,add_edges
-from core.memory_model import compute_memory_score, schedule_next_review,forgetting_curve,log_forgetting_curve
-from plyer import notification
+from core.intent_module import extract_features as intent_extract_features, predict_intent
+from core.knowledge_graph import add_concepts, get_graph, add_edges
+from core.memory_model import compute_memory_score, schedule_next_review, log_forgetting_curve
 from core.face_detection_module import FaceDetector
 
 # -----------------------------
@@ -83,8 +87,8 @@ def start_listeners():
 # -----------------------------
 def get_active_window():
     hwnd = win32gui.GetForegroundWindow()
-    title = win32gui.GetWindowText(hwnd)
-    interaction_rate = keyboard_events + mouse_events
+    title = win32gui.GetWindowText(hwnd) or "Unknown"
+    interaction_rate = int((keyboard_events or 0) + (mouse_events or 0))
     return title, interaction_rate
 
 # -----------------------------
@@ -94,28 +98,27 @@ def log_session(window_title, interaction_rate):
     global keyboard_events, mouse_events
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    ts = time.strftime("%Y-%m-%d %H:%M:%S")
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     app_name = window_title.split(" - ")[-1] if " - " in window_title else window_title
-
-    # Ensure native Python types
     interaction_rate = int(interaction_rate)
 
-    c.execute("""INSERT INTO sessions 
-                 (start_ts, end_ts, app_name, window_title, interaction_rate) 
-                 VALUES (?, ?, ?, ?, ?)""",
-              (ts, ts, app_name, window_title, interaction_rate))
-    conn.commit()
-    conn.close()
+    try:
+        c.execute("""INSERT INTO sessions 
+                     (start_ts, end_ts, app_name, window_title, interaction_rate) 
+                     VALUES (?, ?, ?, ?, ?)""",
+                  (ts, ts, app_name, window_title, interaction_rate))
+        conn.commit()
+        print(f"Logged: {app_name}, Interaction: {interaction_rate}")
+    except Exception as e:
+        print(f"Failed to log session: {e}")
+    finally:
+        conn.close()
 
     keyboard_events = 0
     mouse_events = 0
-    print(f"Logged: {app_name}, Interaction: {interaction_rate}")
 
 # -----------------------------
 # Log multi-modal data
-# -----------------------------
-# -----------------------------
-# Safe Multi-Modal Logging
 # -----------------------------
 def log_multi_modal(window, ocr_keywords, audio_label, attention_score, interaction_rate, intent_label, intent_confidence, memory_score=0.0):
     conn = sqlite3.connect(DB_PATH)
@@ -135,34 +138,37 @@ def log_multi_modal(window, ocr_keywords, audio_label, attention_score, interact
         else:
             ocr_data_to_store[kw] = {"score": float(info), "count": 1}
 
-    c.execute('''
-        INSERT INTO multi_modal_logs
-        (timestamp, window_title, ocr_keywords, audio_label, attention_score, interaction_rate, intent_label, intent_confidence, memory_score)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        timestamp,
-        window,
-        json.dumps(ocr_data_to_store),
-        audio_label,
-        attention_score,
-        interaction_rate,
-        intent_label,
-        intent_confidence,
-        float(memory_score)
-    ))
-
-    conn.commit()
-    conn.close()
-
-
+    try:
+        c.execute('''
+            INSERT INTO multi_modal_logs
+            (timestamp, window_title, ocr_keywords, audio_label, attention_score, interaction_rate, intent_label, intent_confidence, memory_score)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            timestamp,
+            window,
+            json.dumps(ocr_data_to_store),
+            audio_label,
+            int(attention_score),
+            int(interaction_rate),
+            intent_label,
+            float(intent_confidence),
+            float(memory_score)
+        ))
+        conn.commit()
+    except Exception as e:
+        print(f"Failed to write multi_modal_logs: {e}")
+    finally:
+        conn.close()
 
 # -----------------------------
 # Persist knowledge graph
 # -----------------------------
 def save_knowledge_graph():
     G = get_graph()
+    os.makedirs("data", exist_ok=True)
     with open("data/knowledge_graph.pkl", "wb") as f:
         pickle.dump(G, f)
+    print("Knowledge graph saved.")
 
 # -----------------------------
 # Predict audio
@@ -172,7 +178,7 @@ def classify_audio_live():
     if audio_clf:
         features = audio_extract_features(audio).reshape(1, -1)
         label = audio_clf.predict(features)[0]
-        confidence = max(audio_clf.predict_proba(features)[0])
+        confidence = float(max(audio_clf.predict_proba(features)[0]))
         return label, confidence
     else:
         return "unknown", 0.0
@@ -180,30 +186,30 @@ def classify_audio_live():
 # -----------------------------
 # Predict intent
 # -----------------------------
-def predict_intent_live(ocr_keywords, audio_label, attention_score, interaction_rate):
-    """Predict intent safely using trained classifier and fallback rules."""
+def predict_intent_live(ocr_keywords, audio_label, attention_score, interaction_rate, use_webcam=False):
     try:
-        # Ensure numeric types
-        attention_score = int(attention_score)
-        interaction_rate = int(interaction_rate)
+        attention_score = int(attention_score or 0)
+        interaction_rate = int(interaction_rate or 0)
 
         features = intent_extract_features(
-            ocr_keywords, audio_label, attention_score, interaction_rate, use_webcam=USER_ALLOW_WEBCAM
+            ocr_keywords, audio_label, attention_score, interaction_rate, use_webcam=use_webcam
         )
 
-        if intent_clf and intent_label_map:
-            idx = int(intent_clf.predict(features)[0])
+        if intent_clf is not None and intent_label_map is not None:
+            pred_idx = intent_clf.predict(features)[0]
             confidence = float(max(intent_clf.predict_proba(features)[0]))
-
-            # Correct usage of LabelEncoder
-            label = intent_label_map.inverse_transform([idx])[0]
-
+            try:
+                label = intent_label_map.inverse_transform([int(pred_idx)])[0]
+            except Exception:
+                try:
+                    label = intent_label_map[int(pred_idx)]
+                except Exception:
+                    label = str(pred_idx)
             return {"intent_label": label, "confidence": confidence}
-
         else:
             # fallback rules
             if audio_label == "speech" and interaction_rate > 5:
-                if USER_ALLOW_WEBCAM and attention_score > 50:
+                if use_webcam and attention_score > 50:
                     return {"intent_label": "studying", "confidence": 0.8}
                 else:
                     return {"intent_label": "passive", "confidence": 0.6}
@@ -216,167 +222,191 @@ def predict_intent_live(ocr_keywords, audio_label, attention_score, interaction_
         print(f"Intent prediction failed: {e}")
         return {"intent_label": "unknown", "confidence": 0.0}
 
+# -----------------------------
+# Memory & Reminder Helper
+# -----------------------------
+MEMORY_THRESHOLD = 0.6
+REMINDER_COOLDOWN = timedelta(minutes=30)
+
+def maybe_notify(concept, memory_score, graph):
+    now = datetime.now()
+    last_reminded_str = graph.nodes[concept].get('last_reminded_time')
+    next_review_str = graph.nodes[concept].get('next_review_time')
+
+    try:
+        last_reminded = datetime.fromisoformat(last_reminded_str) if last_reminded_str else now - REMINDER_COOLDOWN
+    except:
+        last_reminded = now - REMINDER_COOLDOWN
+
+    try:
+        next_review = datetime.fromisoformat(next_review_str) if next_review_str else now
+    except:
+        next_review = now
+
+    if memory_score < MEMORY_THRESHOLD and (now - last_reminded >= REMINDER_COOLDOWN):
+        notification.notify(
+            title="Time to Review!",
+            message=f"Concept: {concept}\nMemory Score: {memory_score:.2f}",
+            timeout=5
+        )
+        graph.nodes[concept]['last_reminded_time'] = now.isoformat()
+        graph.nodes[concept]['next_review_time'] = (now + timedelta(hours=1)).isoformat()
 
 # -----------------------------
-# Tracker loop (updated)
+# Tracker loop
 # -----------------------------
-def track_loop():
-    # -----------------------------
-    # Initialize DBs and listeners
-    # -----------------------------
+def track_loop(stop_event: Event = None):
+    if stop_event is None:
+        stop_event = Event()
+
     init_db()
     init_multi_modal_db()
     init_memory_decay_db()
-    start_listeners()
+    kb_listener, ms_listener = start_listeners()
 
-    ocr_counter = 0
-    audio_counter = 0
-    webcam_counter = 0
-    save_counter = 0
-
-    latest_ocr = {}
-    latest_audio = "silence"
-    latest_attention = 0
-    latest_interaction = 0
-
+    ocr_counter = audio_counter = webcam_counter = save_counter = 0
+    latest_ocr, latest_audio, latest_attention, latest_interaction = {}, "silence", 0, 0
     face_detector = FaceDetector()
-    MEMORY_THRESHOLD = 0.6
-    SAVE_INTERVAL = 300  # save knowledge graph every 5 minutes
+    SAVE_INTERVAL = 300
+    G = get_graph()
 
-    while True:
-        try:
-            # -------- Active Window & Logging --------
-            window, latest_interaction = get_active_window()
-            log_session(window, latest_interaction)
+    try:
+        while not stop_event.is_set():
+            try:
+                window, latest_interaction = get_active_window()
+                log_session(window, latest_interaction)
 
-            # -------- OCR --------
-            ocr_counter += TRACK_INTERVAL
-            if ocr_counter >= SCREENSHOT_INTERVAL:
-                ocr_data = ocr_pipeline()
-                latest_ocr = ocr_data.get('keywords', {}) or {}
+                # -------- Audio --------
+                audio_counter += TRACK_INTERVAL
+                if audio_counter >= AUDIO_INTERVAL:
+                    try:
+                        latest_audio, audio_conf = classify_audio_live()
+                        print(f"Audio -> {latest_audio} | Confidence: {audio_conf:.2f}")
+                    except:
+                        latest_audio, audio_conf = "unknown", 0.0
+                    audio_counter = 0
 
-                # Safe conversion
-                safe_ocr = {}
-                for kw, info in latest_ocr.items():
-                    if isinstance(info, dict):
-                        safe_ocr[str(kw)] = {
-                            "score": float(info.get("score", 0.5)),
-                            "count": int(info.get("count", 1))
-                        }
-                    else:
-                        safe_ocr[str(kw)] = {"score": float(info), "count": 1}
-                latest_ocr = safe_ocr
+                # -------- OCR --------
+                ocr_counter += TRACK_INTERVAL
+                if ocr_counter >= SCREENSHOT_INTERVAL:
+                    try:
+                        ocr_data = ocr_pipeline() or {}
+                        latest_ocr = ocr_data.get('keywords', {}) or {}
+                        safe_ocr = {}
+                        for kw, info in latest_ocr.items():
+                            if isinstance(info, dict):
+                                safe_ocr[str(kw)] = {"score": float(info.get("score", 0.5)), "count": int(info.get("count", 1))}
+                            else:
+                                safe_ocr[str(kw)] = {"score": float(info), "count": 1}
+                        latest_ocr = safe_ocr
 
-                if latest_ocr:
-                    print(f"OCR Keywords: {latest_ocr}")
-                    add_concepts(list(latest_ocr.keys()))
-                else:
-                    print("OCR Keywords: None")
+                        if latest_ocr:
+                            print(f"OCR Keywords: {latest_ocr}")
+                            add_concepts(list(latest_ocr.keys()))
+                        else:
+                            print("OCR Keywords: None")
+                    except Exception as e:
+                        print(f"OCR error: {e}")
+                        latest_ocr = {}
+                    ocr_counter = 0
+                    G = get_graph()
 
-                ocr_counter = 0
+                    # -------- Memory & Reminders --------
+                    for concept, info in latest_ocr.items():
+                        try:
+                            if concept not in G.nodes:
+                                add_concepts([concept])
+                                G = get_graph()
 
-                # -------- Memory Modeling & Knowledge Graph --------
-                G = get_graph()
-                for concept, info in latest_ocr.items():
-                    kw_score = float(info.get("score", 0.5))
-                    count = int(info.get("count", 1))
+                            last_review = G.nodes[concept].get('last_review')
+                            if isinstance(last_review, str):
+                                try: last_review = datetime.fromisoformat(last_review)
+                                except: last_review = datetime.now()
+                            elif last_review is None: last_review = datetime.now()
 
-                    last_review = G.nodes[concept].get('last_review', datetime.now())
-                    lambda_val = 0.1
-                    intent_conf = float(G.nodes[concept].get('intent_conf', 1.0))
-                    attention_score = int(latest_attention)
-                    audio_conf = 1.0
+                            lambda_val = 0.1
+                            intent_conf = float(G.nodes[concept].get('intent_conf', 1.0))
+                            attention_score = int(latest_attention or 0)
+                            audio_conf = 1.0
+                            kw_score = float(info.get("score", 0.5))
+                            count = int(info.get("count", 1))
 
-                    # Compute memory score
-                    mem_score = compute_memory_score(
-                        last_review, lambda_val, intent_conf, attention_score, audio_conf
-                    )
+                            mem_score = compute_memory_score(
+                                last_review, lambda_val, intent_conf, attention_score, audio_conf
+                            )
 
-                    # Apply boosts
-                    mem_score *= min(1.0, kw_score + 0.5)
-                    mem_score *= min(1.5, 1 + 0.05 * (count - 1))
+                            mem_score = float(mem_score) * min(1.0, kw_score + 0.5)
+                            mem_score = mem_score * min(1.5, 1 + 0.05 * (count - 1))
 
-                    # Compute next review
-                    next_review = schedule_next_review(last_review, mem_score, lambda_val)
+                            next_review = schedule_next_review(last_review, mem_score, lambda_val)
 
-                    # Update graph
-                    G.nodes[concept]['memory_score'] = mem_score
-                    G.nodes[concept]['next_review_time'] = next_review
-                    G.nodes[concept]['last_review'] = datetime.now()
-                    G.nodes[concept]['intent_conf'] = intent_conf
+                            G.nodes[concept]['memory_score'] = float(mem_score)
+                            G.nodes[concept]['next_review_time'] = next_review.isoformat() if isinstance(next_review, datetime) else str(next_review)
+                            G.nodes[concept]['last_review'] = datetime.now().isoformat()
+                            G.nodes[concept]['intent_conf'] = float(intent_conf)
 
-                    # Send reminder if memory low
-                    if mem_score < MEMORY_THRESHOLD or next_review <= datetime.now():
-                        notification.notify(
-                            title="Time to Review!",
-                            message=f"Concept: {concept}\nMemory Score: {mem_score:.2f}",
-                            timeout=5
-                        )
-                        G.nodes[concept]['next_review_time'] = datetime.now() + timedelta(hours=1)
+                            maybe_notify(concept, mem_score, G)
+                            _ = log_forgetting_curve(concept, last_review, observed_usage=count)
+                        except Exception as e:
+                            print(f"Error updating memory for {concept}: {e}")
 
-                    # -------- Forgetting Curve Logging --------
-                    pred_recall = log_forgetting_curve(concept, last_review, observed_usage=count)
+                # -------- Webcam --------
+                webcam_counter += TRACK_INTERVAL
+                if webcam_counter >= WEBCAM_INTERVAL and USER_ALLOW_WEBCAM:
+                    try:
+                        frame = webcam_pipeline()
+                        faces, num_faces = face_detector.detect_faces(frame)
+                        latest_attention = int(num_faces)
+                        print(f"Faces detected: {num_faces}")
+                    except:
+                        latest_attention = 0
+                    webcam_counter = 0
 
-                # Build knowledge graph edges
-                add_edges(latest_ocr, latest_audio, intent_data['intent_label'])
+                # -------- Intent --------
+                intent_data = predict_intent_live(
+                    latest_ocr, latest_audio, latest_attention, latest_interaction, use_webcam=USER_ALLOW_WEBCAM
+                )
+                print(f"Intent -> {intent_data['intent_label']} | Confidence: {intent_data['confidence']:.2f}")
 
-            # -------- Audio --------
-            audio_counter += TRACK_INTERVAL
-            if audio_counter >= AUDIO_INTERVAL:
-                latest_audio, audio_conf = classify_audio_live()
-                print(f"Audio -> {latest_audio} | Confidence: {audio_conf:.2f}")
-                audio_counter = 0
-
-            # -------- Webcam --------
-            webcam_counter += TRACK_INTERVAL
-            if webcam_counter >= WEBCAM_INTERVAL and USER_ALLOW_WEBCAM:
+                # Add edges safely
                 try:
-                    frame = webcam_pipeline()
-                    faces, num_faces = face_detector.detect_faces(frame)
-                    latest_attention = int(num_faces)
-                    print(f"Faces detected: {num_faces}")
+                    add_edges(latest_ocr, latest_audio, intent_data.get('intent_label', 'unknown'))
                 except Exception as e:
-                    print(f"Webcam error (ignored): {e}")
-                    latest_attention = 0
-                webcam_counter = 0
+                    print(f"Failed to add edges: {e}")
 
-            # -------- Intent --------
-            intent_data = predict_intent(
-                latest_ocr,
-                latest_audio,
-                latest_attention,
-                latest_interaction,
-                use_webcam=USER_ALLOW_WEBCAM
-            )
-            print(f"Intent -> {intent_data['intent_label']} | Confidence: {intent_data['confidence']:.2f}")
+                # -------- Multi-modal logging --------
+                try:
+                    memory_score = max([float(G.nodes[kw].get('memory_score', 0.0)) for kw in latest_ocr.keys()] or [0.0])
+                    log_multi_modal(
+                        window, latest_ocr, latest_audio, latest_attention,
+                        latest_interaction, intent_data.get('intent_label', 'unknown'),
+                        float(intent_data.get('confidence', 0.0)),
+                        memory_score=memory_score
+                    )
+                except Exception as e:
+                    print(f"Failed multi-modal log: {e}")
 
-            # -------- Log Multi-Modal Data including memory score --------
-            log_multi_modal(
-                window,
-                latest_ocr,
-                latest_audio,
-                latest_attention,
-                latest_interaction,
-                intent_data['intent_label'],
-                float(intent_data['confidence']),
-                memory_score=max([G.nodes[kw]['memory_score'] for kw in latest_ocr.keys()]) if latest_ocr else 0.0
-            )
+                # -------- Periodic Knowledge Graph Save --------
+                save_counter += TRACK_INTERVAL
+                if save_counter >= SAVE_INTERVAL:
+                    save_knowledge_graph()
+                    save_counter = 0
 
-            # -------- Periodic Knowledge Graph Save --------
-            save_counter += TRACK_INTERVAL
-            if save_counter >= SAVE_INTERVAL:
-                save_knowledge_graph()
-                save_counter = 0
+                time.sleep(TRACK_INTERVAL)
 
-            time.sleep(TRACK_INTERVAL)
-
-        except KeyboardInterrupt:
-            print("Tracker stopped by user.")
-            save_knowledge_graph()
-            break
-        except Exception as e:
-            print(f"Unexpected error: {e}")
-            time.sleep(TRACK_INTERVAL)
+            except KeyboardInterrupt:
+                print("Tracker stopped by user (KeyboardInterrupt).")
+                break
+            except Exception as e:
+                print(f"Unexpected loop error: {e}")
+                time.sleep(TRACK_INTERVAL)
+    finally:
+        save_knowledge_graph()
+        try:
+            kb_listener.stop()
+            ms_listener.stop()
+        except:
+            pass
 
 # -----------------------------
 # Entry point

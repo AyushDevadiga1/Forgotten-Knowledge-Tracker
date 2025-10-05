@@ -1,0 +1,2 @@
+id,start_ts,end_ts,app_name,window_title,interaction_rate,interaction_count,audio_label,intent_label,intent_confidence
+303,,,,Test Window,,1,speech,studying,

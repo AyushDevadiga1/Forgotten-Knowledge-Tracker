@@ -1,204 +1,282 @@
-# dashboard/dashboard.py
 import sys
 import os
-import streamlit as st
+import sqlite3
+from datetime import datetime, timedelta
+import numpy as np
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
-import sqlite3
-from datetime import datetime, timedelta
 import plotly.express as px
 import plotly.graph_objects as go
-import numpy as np
+import streamlit as st
 
-# -----------------------------
-# Set project paths
-# -----------------------------
-PROJECT_ROOT = r"C:\Users\hp\Desktop\FKT\tracker_app"  # adjust to your path
+# Fix font warnings in matplotlib
+plt.rcParams['font.sans-serif'] = ['Arial']
+
+# Project Root
+PROJECT_ROOT = r"C:\Users\hp\Desktop\FKT\tracker_app"
 sys.path.append(PROJECT_ROOT)
 
-from core.knowledge_graph import get_graph, sync_db_to_graph
 from config import DB_PATH
+from core.knowledge_graph import get_graph, sync_db_to_graph
+
+# -----------------------------
+# Utility: Load & Clean Data
+# -----------------------------
+def load_cleaned_data():
+    conn = sqlite3.connect(DB_PATH)
+    
+    # Sessions
+    df_sessions = pd.read_sql("SELECT * FROM sessions", conn)
+    df_sessions["start_ts"] = pd.to_datetime(df_sessions["start_ts"], errors='coerce')
+    df_sessions["end_ts"] = pd.to_datetime(df_sessions["end_ts"], errors='coerce')
+    df_sessions["app_name"] = df_sessions["app_name"].fillna("Unknown App")
+    df_sessions["audio_label"] = df_sessions["audio_label"].fillna("N/A")
+    df_sessions["intent_label"] = df_sessions["intent_label"].fillna("N/A")
+    df_sessions["intent_confidence"] = pd.to_numeric(df_sessions["intent_confidence"], errors='coerce').fillna(0)
+    df_sessions["duration_min"] = (df_sessions["end_ts"] - df_sessions["start_ts"]).dt.total_seconds() / 60
+
+    # Multi-Modal Logs
+    df_logs = pd.read_sql("SELECT * FROM multi_modal_logs", conn)
+    df_logs["timestamp"] = pd.to_datetime(df_logs["timestamp"], errors='coerce')
+
+    # Memory Decay
+    df_decay = pd.read_sql("SELECT * FROM memory_decay", conn)
+    df_decay["last_seen_ts"] = pd.to_datetime(df_decay["last_seen_ts"], errors='coerce')
+    df_decay["updated_at"] = pd.to_datetime(df_decay["updated_at"], errors='coerce')
+
+    # Metrics / Reminders
+    df_metrics = pd.read_sql("SELECT concept, next_review_time, memory_score FROM metrics", conn)
+    df_metrics["next_review_time"] = pd.to_datetime(df_metrics["next_review_time"], errors='coerce')
+
+    conn.close()
+    return df_sessions, df_logs, df_decay, df_metrics
+
+df_sessions, df_logs, df_decay, df_metrics = load_cleaned_data()
+
+# -----------------------------
+# Streamlit Page Setup
+# -----------------------------
+st.set_page_config(page_title="Forgotten Knowledge Tracker", layout="wide")
+st.title("🔮 Forgotten Knowledge Tracker Dashboard")
+st.markdown("Visualize your learning sessions, memory scores, knowledge graph, upcoming reminders, and more.")
 
 # -----------------------------
 # Sidebar Settings
 # -----------------------------
-st.sidebar.title("Settings")
+st.sidebar.title("Tracker Settings")
 camera_on = st.sidebar.checkbox("Enable Webcam", value=False)
 audio_on = st.sidebar.checkbox("Enable Audio", value=True)
 screenshot_on = st.sidebar.checkbox("Enable Screenshots", value=True)
-
 st.sidebar.markdown("---")
-st.sidebar.markdown("**Graph Design Settings:**")
+st.sidebar.subheader("Graph Visual Settings")
 node_min_size = st.sidebar.slider("Min Node Size", 100, 500, 200)
 node_max_size = st.sidebar.slider("Max Node Size", 500, 2000, 800)
 edge_alpha = st.sidebar.slider("Edge Transparency", 0.1, 1.0, 0.5)
 
 # -----------------------------
-# Page Title
+# Tabs
 # -----------------------------
-st.title("🔮 Forgotten Knowledge Tracker Dashboard")
-st.markdown("Visualize your learning sessions, memory scores, and knowledge graph in real-time.")
+tabs = st.tabs([
+    "Overview", "Knowledge Graph", "Sessions",
+    "Memory Decay", "Predicted Forgetting",
+    "Multi-Modal Logs", "Upcoming Reminders"
+])
 
 # -----------------------------
-# Sync Knowledge Graph
+# Overview Tab
 # -----------------------------
-sync_db_to_graph()
-G = get_graph()
+with tabs[0]:
+    st.subheader("📊 Dashboard Overview")
+    
+    # KPI Cards
+    df_sessions_filtered = df_sessions.dropna(subset=["start_ts","end_ts"])
+    total_hours = df_sessions_filtered["duration_min"].sum() / 60 if not df_sessions_filtered.empty else 0
+    avg_session = df_sessions_filtered["duration_min"].mean() if not df_sessions_filtered.empty else 0
+    num_sessions = len(df_sessions_filtered)
 
-# -----------------------------
-# Knowledge Graph Section
-# -----------------------------
-st.subheader("📚 Knowledge Graph Concepts")
-if len(G.nodes) == 0:
-    st.warning("Knowledge graph is empty. Run the tracker first!")
-else:
-    # Table of concepts
-    table_data = []
-    for node in G.nodes:
-        mem_score = G.nodes[node].get('memory_score', 0.3)
-        next_review = G.nodes[node].get('next_review_time', "N/A")
-        table_data.append({
-            "Concept": node,
-            "Memory Score": round(mem_score, 2),
-            "Next Review": next_review
-        })
-    df = pd.DataFrame(table_data)
-    st.dataframe(df, use_container_width=True)
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Total Hours", f"{total_hours:.2f} h")
+    col2.metric("Avg Session", f"{avg_session:.1f} min")
+    col3.metric("Number of Sessions", f"{num_sessions}")
 
-    # Knowledge Graph Visualization
-    st.subheader("🕸️ Knowledge Graph Visualization")
-    memory_scores = [G.nodes[n].get('memory_score', 0.3) for n in G.nodes]
-    cmap = cm.viridis
-    norm = mcolors.Normalize(vmin=0, vmax=1)
-    node_colors = [cmap(norm(score)) for score in memory_scores]
-    node_sizes = [node_min_size + (node_max_size - node_min_size) * score for score in memory_scores]
+    if not df_sessions_filtered.empty:
+        daily_hours = df_sessions_filtered.groupby(df_sessions_filtered["start_ts"].dt.date)["duration_min"].sum() / 60
+        col4.line_chart(daily_hours, height=100)
 
-    fig, ax = plt.subplots(figsize=(12, 10))
-    pos = nx.spring_layout(G, seed=42, k=0.8)
-    nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=node_sizes, ax=ax)
-    nx.draw_networkx_edges(G, pos, alpha=edge_alpha, ax=ax)
-    nx.draw_networkx_labels(G, pos, font_size=10, ax=ax)
-    sm = cm.ScalarMappable(cmap=cmap, norm=norm)
-    sm.set_array([])
-    fig.colorbar(sm, ax=ax, label="Memory Score")
-    st.pyplot(fig)
+    st.markdown("---")
 
-    # Memory Scores Progress Bars
-    st.subheader("📊 Memory Scores Overview")
-    for node in G.nodes:
-        mem_score = G.nodes[node].get('memory_score', 0.3)
-        st.markdown(f"**{node}:** {mem_score:.2f}")
-        st.progress(mem_score)
+    # Memory Scores from Knowledge Graph
+    st.subheader("🧠 Memory Scores")
+    sync_db_to_graph()
+    G = get_graph()
+    
+    if G.nodes:
+        mem_table = []
+        for node in G.nodes:
+            mem_score = G.nodes[node].get("memory_score", 0.3)
+            next_review = G.nodes[node].get("next_review_time", "N/A")
+            mem_table.append({"Concept": node, "Memory Score": round(mem_score,2), "Next Review": next_review})
 
-# -----------------------------
-# Session Timeline Section
-# -----------------------------
-st.subheader("⏱️ Session Timeline")
-try:
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute("SELECT start_ts, end_ts, app_name FROM sessions ORDER BY start_ts DESC LIMIT 50")
-    rows = c.fetchall()
-    conn.close()
+        df_mem = pd.DataFrame(mem_table).sort_values("Memory Score")
+        st.dataframe(df_mem.style.background_gradient(subset=["Memory Score"], cmap="viridis"))
 
-    if len(rows) == 0:
-        st.warning("No session data found. Run the tracker first!")
+        # Top 3 concepts
+        top3 = df_mem.sort_values("Memory Score", ascending=False).head(3)
+        st.subheader("Top Concepts")
+        c1, c2, c3 = st.columns(3)
+        for idx, col in enumerate([c1, c2, c3]):
+            if idx < len(top3):
+                concept = top3.iloc[idx]["Concept"]
+                score = top3.iloc[idx]["Memory Score"]
+                next_r = top3.iloc[idx]["Next Review"]
+                col.markdown(f"**{concept}**")
+                col.metric("Memory Score", f"{score:.2f}")
+                col.markdown(f"Next Review: {next_r}")
     else:
-        session_df = pd.DataFrame(rows, columns=["Start", "End", "App"])
-        session_df["Start"] = pd.to_datetime(session_df["Start"], errors='coerce')
-        session_df["End"] = pd.to_datetime(session_df["End"], errors='coerce')
-        session_df = session_df.dropna(subset=["Start", "End"])
-        min_duration = pd.Timedelta(seconds=5)
-        session_df["End"] = session_df["End"].where(session_df["End"] > session_df["Start"], session_df["Start"] + min_duration)
+        st.info("No concepts found in the knowledge graph yet.")
 
-        # Timeline plot
-        fig2 = px.timeline(
-            session_df,
-            x_start="Start",
-            x_end="End",
-            y="App",
-            color="App",
-            hover_data=["Start", "End"],
-            title="Recent Activity Timeline"
-        )
-        fig2.update_yaxes(autorange="reversed")
-        st.plotly_chart(fig2, width="stretch")
+# -----------------------------
+# Knowledge Graph Tab
+# -----------------------------
+with tabs[1]:
+    st.subheader("🕸️ Knowledge Graph")
+    if G.nodes:
+        memory_scores = [G.nodes[n].get('memory_score', 0.3) for n in G.nodes]
+        cmap = cm.viridis
+        norm = mcolors.Normalize(vmin=0, vmax=1)
+        node_colors = [cmap(norm(score)) for score in memory_scores]
+        node_sizes = [node_min_size + (node_max_size - node_min_size) * score for score in memory_scores]
 
-        # Heatmap: App Usage Duration
-        st.subheader("🔥 App Usage Heatmap")
-        session_df["Duration"] = (session_df["End"] - session_df["Start"]).dt.total_seconds() / 60  # minutes
-        heatmap_df = session_df.groupby(["App", session_df["Start"].dt.date])["Duration"].sum().reset_index()
-        heatmap_pivot = heatmap_df.pivot(index="App", columns="Start", values="Duration").fillna(0)
+        fig, ax = plt.subplots(figsize=(12,10))
+        pos = nx.spring_layout(G, seed=42, k=0.8)
+        nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=node_sizes, ax=ax)
+        nx.draw_networkx_edges(G, pos, alpha=edge_alpha, ax=ax)
+        nx.draw_networkx_labels(G, pos, font_size=10, ax=ax)
+        sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+        sm.set_array([])
+        fig.colorbar(sm, ax=ax, label="Memory Score")
+        st.pyplot(fig)
+    else:
+        st.info("Knowledge graph empty.")
 
-        fig3 = go.Figure(
-            data=go.Heatmap(
-                z=heatmap_pivot.values,
-                x=[str(d) for d in heatmap_pivot.columns],
-                y=heatmap_pivot.index,
-                colorscale="Viridis",
-                hovertemplate="App: %{y}<br>Date: %{x}<br>Duration: %{z:.1f} mins<extra></extra>"
+# -----------------------------
+# Sessions Tab
+# -----------------------------
+with tabs[2]:
+    st.subheader("⏱️ Session Timeline & Heatmap")
+    if not df_sessions_filtered.empty:
+        df_sess = df_sessions_filtered.copy()
+        df_sess["end_ts"] = df_sess["end_ts"].where(df_sess["end_ts"] > df_sess["start_ts"], df_sess["start_ts"] + pd.Timedelta(seconds=5))
+        df_sess["duration"] = (df_sess["end_ts"] - df_sess["start_ts"]).dt.total_seconds()/60
+
+        fig_tl = px.timeline(df_sess, x_start="start_ts", x_end="end_ts", y="app_name", color="app_name")
+        fig_tl.update_yaxes(autorange="reversed")
+        st.plotly_chart(fig_tl, use_container_width=True)
+
+        # Heatmap
+        heat_df = df_sess.groupby(["app_name", df_sess["start_ts"].dt.date])["duration"].sum().reset_index()
+        heat_pivot = heat_df.pivot(index="app_name", columns="start_ts", values="duration").fillna(0)
+        fig_hm = go.Figure(data=go.Heatmap(
+            z=heat_pivot.values,
+            x=[str(d) for d in heat_pivot.columns],
+            y=heat_pivot.index,
+            colorscale="Viridis",
+            hovertemplate="App: %{y}<br>Date: %{x}<br>Duration: %{z:.1f} min<extra></extra>"
+        ))
+        fig_hm.update_layout(title="App Usage Duration Heatmap")
+        st.plotly_chart(fig_hm, use_container_width=True)
+
+# -----------------------------
+# Memory Decay Tab
+# -----------------------------
+with tabs[3]:
+    st.subheader("📉 Memory Decay Curves")
+    def fetch_decay(concept=None):
+        conn = sqlite3.connect(DB_PATH)
+        if concept:
+            df = pd.read_sql(
+                "SELECT keyword AS concept, last_seen_ts AS timestamp, predicted_recall AS memory_score FROM memory_decay WHERE keyword = ? ORDER BY last_seen_ts ASC",
+                conn, params=(concept,)
             )
-        )
-        fig3.update_layout(title="App Usage Duration Heatmap (Minutes)", xaxis_title="Date", yaxis_title="App")
-        st.plotly_chart(fig3, width="stretch")
+        else:
+            df = pd.read_sql(
+                "SELECT keyword AS concept, last_seen_ts AS timestamp, predicted_recall AS memory_score FROM memory_decay ORDER BY last_seen_ts ASC",
+                conn
+            )
+        conn.close()
+        return df
 
-except sqlite3.OperationalError as e:
-    st.error(f"Database error: {e}")
+    df_decay = fetch_decay()
+    if not df_decay.empty:
+        df_decay["timestamp"] = pd.to_datetime(df_decay["timestamp"], errors="coerce")
+        df_decay["memory_score"] = pd.to_numeric(df_decay["memory_score"], errors="coerce")
+        fig_decay = px.line(df_decay, x="timestamp", y="memory_score", color="concept", markers=True,
+                            title="Memory Decay Per Concept", labels={"timestamp":"Time","memory_score":"Recall"})
+        fig_decay.update_layout(yaxis=dict(range=[0,1]))
+        st.plotly_chart(fig_decay, use_container_width=True)
+
+    st.subheader("🧠 Individual Concept Viewer")
+    concepts = list(G.nodes)
+    selected = st.multiselect("Select concepts", concepts, default=concepts[:3])
+    if selected:
+        fig_ind = go.Figure()
+        for c in selected:
+            df_c = fetch_decay(c)
+            if not df_c.empty:
+                df_c["timestamp"] = pd.to_datetime(df_c["timestamp"], errors="coerce")
+                df_c["memory_score"] = pd.to_numeric(df_c["memory_score"], errors="coerce")
+                fig_ind.add_trace(go.Scatter(x=df_c["timestamp"], y=df_c["memory_score"], mode="lines+markers", name=c))
+        fig_ind.update_layout(title="Individual Memory Decay", yaxis=dict(range=[0,1]), xaxis_title="Time", yaxis_title="Memory Score")
+        st.plotly_chart(fig_ind, use_container_width=True)
 
 # -----------------------------
-# Memory Decay & Forgetting Curves
+# Predicted Forgetting Tab
 # -----------------------------
-def fetch_memory_decay(concept, limit=50):
-    conn = sqlite3.connect(DB_PATH)
-    query = """
-    SELECT keyword AS concept, last_seen_ts AS timestamp, predicted_recall AS memory_score
-    FROM memory_decay
-    WHERE keyword=?
-    ORDER BY last_seen_ts DESC
-    LIMIT ?
-    """
-    params = (concept, limit)
-    df = pd.read_sql(query, conn, params=params)
-    conn.close()
-    return df
+with tabs[4]:
+    st.subheader("📈 Predicted Forgetting Overlay")
+    if concepts:
+        selected_pred = st.selectbox("Choose concept", concepts)
+        lambda_val = 0.1
+        hours = 24
+        if selected_pred:
+            df_last = fetch_decay(selected_pred)
+            last_score = df_last["memory_score"].iloc[-1] if not df_last.empty else 0.5
+            times = np.linspace(0, hours, 50)
+            predicted_scores = last_score * np.exp(-lambda_val * times)
 
-
-def predicted_forgetting_curve(lambda_val=0.1, hours=24, points=50):
-    times = np.linspace(0, hours, points)
-    scores = np.exp(-lambda_val * times)
-    return times, scores
-
-st.subheader("📉 Memory Decay Curves")
-concepts = list(G.nodes)
-selected_concepts = st.multiselect("Select concepts", concepts, default=concepts[:3])
-
-if selected_concepts:
-    fig_decay = go.Figure()
-    for concept in selected_concepts:
-        df_decay = fetch_memory_decay(concept)
-        if not df_decay.empty:
-            fig_decay.add_trace(go.Scatter(
-                x=df_decay['timestamp'],
-                y=df_decay['memory_score'],
-                mode='lines+markers',
-                name=concept
+            fig_pred = go.Figure()
+            fig_pred.add_trace(go.Scatter(
+                x=[datetime.now() + timedelta(hours=t) for t in times],
+                y=predicted_scores,
+                mode="lines",
+                name="Predicted Recall"
             ))
-    fig_decay.update_layout(title="Memory Decay Over Time", xaxis_title="Time", yaxis_title="Memory Score", yaxis=dict(range=[0, 1]))
-    st.plotly_chart(fig_decay, use_container_width=True)
+            fig_pred.update_layout(yaxis=dict(range=[0,1]), xaxis_title="Time", yaxis_title="Memory Score",
+                                   title=f"Predicted Forgetting Curve for {selected_pred}")
+            st.plotly_chart(fig_pred, use_container_width=True)
 
-st.subheader("📈 Predicted Forgetting Curve Overlay")
-concept = st.selectbox("Choose concept", concepts)
+# -----------------------------
+# Multi-Modal Logs Tab
+# -----------------------------
+with tabs[5]:
+    st.subheader("🎤 Multi-Modal Logs")
+    if not df_logs.empty:
+        st.dataframe(df_logs.head(100))
+    else:
+        st.info("No multi-modal logs available.")
 
-if concept:
-    times, scores = predicted_forgetting_curve()
-    fig_pred = go.Figure()
-    fig_pred.add_trace(go.Scatter(
-        x=[datetime.now() + timedelta(hours=t) for t in times],
-        y=scores,
-        mode='lines',
-        name=f"Predicted {concept}"
-    ))
-    st.plotly_chart(fig_pred, use_container_width=True)
+# -----------------------------
+# Upcoming Reminders Tab
+# -----------------------------
+with tabs[6]:
+    st.subheader("⏰ Upcoming Reminders")
+    now = datetime.now()
+    upcoming = df_metrics[df_metrics["next_review_time"] > now].sort_values("next_review_time").head(20)
+    if not upcoming.empty:
+        st.dataframe(upcoming[["concept","next_review_time","memory_score"]])
+    else:
+        st.info("No upcoming reminders.")
+

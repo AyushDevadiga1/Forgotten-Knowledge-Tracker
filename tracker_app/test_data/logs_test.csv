@@ -1,0 +1,51 @@
+timestamp,ocr_keywords,audio_label,intent_label
+2025-10-03T21:41:48.553243,[],Neutral,Idle
+2025-10-04T12:01:48.553243,"['Python', 'Streamlit']",Distracted,Reading
+2025-10-02T13:13:48.553243,['Data'],Focused,Reading
+2025-10-04T12:07:48.553243,"['Algorithm', 'Data']",Distracted,Coding
+2025-10-03T08:58:48.553243,"['Algorithm', 'Memory']",Neutral,Idle
+2025-10-04T12:51:48.553243,[],Distracted,Idle
+2025-10-05T03:36:48.553243,"['Memory', 'Python', 'Streamlit']",Neutral,Coding
+2025-10-04T22:22:48.553243,"['Graph', 'Memory']",Distracted,Coding
+2025-10-02T08:21:48.553243,"['Python', 'Algorithm', 'Data']",Focused,Coding
+2025-10-03T11:43:48.553243,"['Data', 'Memory', 'Streamlit']",Focused,Coding
+2025-10-04T01:30:48.553243,"['Data', 'Loops', 'Graph']",Distracted,Reading
+2025-10-03T16:14:48.553243,['Python'],Distracted,Reading
+2025-10-04T12:56:48.553243,"['Loops', 'Streamlit', 'Algorithm']",Focused,Coding
+2025-10-04T16:25:48.553243,"['Python', 'Memory']",Focused,Reading
+2025-10-02T13:13:48.553243,['Memory'],Distracted,Idle
+2025-10-03T17:42:48.553243,"['Python', 'Memory', 'Functions']",Distracted,Reading
+2025-10-03T17:32:48.553243,"['Python', 'Data', 'Memory']",Neutral,Idle
+2025-10-04T21:04:48.553243,"['Algorithm', 'Loops']",Focused,Reading
+2025-10-04T12:46:48.553243,[],Neutral,Reading
+2025-10-03T16:52:48.553243,"['Python', 'Memory']",Focused,Reading
+2025-10-04T13:38:48.553243,[],Neutral,Reading
+2025-10-02T09:13:48.553243,[],Neutral,Reading
+2025-10-05T00:37:48.553243,['Streamlit'],Distracted,Coding
+2025-10-02T13:14:48.553243,[],Distracted,Idle
+2025-10-04T07:41:48.553243,[],Neutral,Reading
+2025-10-04T12:33:48.553243,[],Distracted,Idle
+2025-10-03T02:19:48.553243,"['Loops', 'Functions']",Neutral,Idle
+2025-10-02T09:45:48.553243,['Loops'],Distracted,Idle
+2025-10-03T00:40:48.553243,[],Distracted,Idle
+2025-10-02T10:54:48.553243,[],Distracted,Reading
+2025-10-04T06:35:48.553243,['Python'],Neutral,Coding
+2025-10-04T18:12:48.553243,[],Distracted,Idle
+2025-10-03T02:50:48.553243,['Streamlit'],Focused,Coding
+2025-10-03T15:39:48.553243,[],Focused,Idle
+2025-10-03T04:01:48.553243,"['Graph', 'Memory', 'Data']",Focused,Coding
+2025-10-03T23:19:48.553243,"['Memory', 'Data', 'Algorithm']",Neutral,Coding
+2025-10-02T17:30:48.553243,"['Algorithm', 'Functions', 'Streamlit']",Neutral,Coding
+2025-10-04T20:41:48.553243,"['Data', 'Loops']",Neutral,Idle
+2025-10-03T07:35:48.553243,['Streamlit'],Distracted,Idle
+2025-10-03T02:13:48.553243,"['Functions', 'Loops', 'Data']",Neutral,Coding
+2025-10-03T11:19:48.553243,"['Streamlit', 'Python', 'Graph']",Focused,Idle
+2025-10-04T12:28:48.553243,[],Focused,Idle
+2025-10-03T20:20:48.553243,[],Neutral,Coding
+2025-10-04T05:32:48.553243,['Graph'],Focused,Idle
+2025-10-03T21:32:48.553243,"['Data', 'Python']",Distracted,Reading
+2025-10-02T05:42:48.553243,"['Streamlit', 'Loops', 'Algorithm']",Distracted,Coding
+2025-10-02T14:33:48.553243,"['Loops', 'Data']",Distracted,Idle
+2025-10-02T03:38:48.553243,"['Algorithm', 'Streamlit']",Distracted,Idle
+2025-10-04T14:43:48.553243,[],Distracted,Coding
+2025-10-02T10:56:48.553243,"['Functions', 'Data', 'Memory']",Focused,Coding

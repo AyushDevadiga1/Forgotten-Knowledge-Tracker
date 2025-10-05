@@ -1,0 +1,2 @@
+id,timestamp,window_title,ocr_keywords,audio_label,attention_score,interaction_rate,intent_label,intent_confidence,memory_score
+9,2025-10-02 04:00:00,Test Window,"[""photosynthesis"", ""chlorophyll""]",speech,b'\x02\x00\x00\x00\x00\x00\x00\x00',b'\x01\x00\x00\x00\x00\x00\x00\x00',studying,0.85,0.0

@@ -1,4 +1,8 @@
-# core/ocr_module.py
+# ==========================================================
+# core/ocr_module.py | IEEE Upgrade Layer
+# Non-destructive enhancement: v2 concept extraction + caching
+# ==========================================================
+
 import cv2
 import numpy as np
 import pytesseract
@@ -9,6 +13,7 @@ from sentence_transformers import SentenceTransformer
 import spacy
 from core.knowledge_graph import get_graph
 import re
+from functools import lru_cache
 
 # -----------------------------
 # Set tesseract executable path
@@ -49,7 +54,7 @@ def extract_text(img):
     return text
 
 # -----------------------------
-# Keyword extraction
+# OLD keyword extraction (kept intact)
 # -----------------------------
 def extract_keywords(text, top_n=15, boost_repeats=True):
     """Combine KeyBERT + NLP + repetition + KG boosts"""
@@ -107,33 +112,65 @@ def extract_keywords(text, top_n=15, boost_repeats=True):
 def get_embeddings(text):
     return embedding_model.encode([text])[0]
 
+# ==========================================================
+# NEW IEEE-Ready Concept Extraction Layer (v2)
+# ==========================================================
+@lru_cache(maxsize=64)
+def extract_concepts_v2(text, top_n=5):
+    """Extract high-level semantic concepts for topic headings / revision topics"""
+    if not text:
+        return []
+
+    try:
+        # Use KeyBERT to get candidate concepts
+        kw_list = kw_model.extract_keywords(text, keyphrase_ngram_range=(1,3),
+                                            stop_words='english', top_n=top_n*3)
+        unique_concepts = []
+        for k, _ in kw_list:
+            key = k.lower()
+            if key not in unique_concepts:
+                unique_concepts.append(key)
+        return unique_concepts[:top_n]
+    except Exception as e:
+        print("⚠️ extract_concepts_v2 fallback:", e)
+        return []
+
+def get_text_embedding_v2(text):
+    """Compute sentence embeddings for semantic search / graph"""
+    if not text:
+        return np.zeros(384)
+    try:
+        return embedding_model.encode([text])[0]
+    except Exception as e:
+        print("⚠️ get_text_embedding_v2 fallback:", e)
+        return np.zeros(384)
+
 # -----------------------------
-# OCR pipeline
-# -----------------------------
-# -----------------------------
-# Main OCR pipeline
+# v2 OCR pipeline
 # -----------------------------
 def ocr_pipeline():
+    """IEEE-ready OCR + concept extraction pipeline"""
     img = capture_screenshot()
     processed = preprocess_image(img)
     text = extract_text(processed)
 
-    # Extract keywords with scores
-    keywords_with_scores = extract_keywords(text, top_n=15)
+    # Extract v2 concepts + embeddings
+    concepts = extract_concepts_v2(text)
+    emb = get_text_embedding_v2(text)
 
-    # Count occurrences and ensure native types
+    # OLD pipeline keywords for backward compatibility
+    keywords_with_scores = extract_keywords(text, top_n=15)
     text_lower = text.lower()
     keywords_with_counts = {}
     for kw, score in keywords_with_scores.items():
         count = text_lower.split().count(kw.lower())
         keywords_with_counts[str(kw)] = {"score": float(score), "count": int(count)}
 
-    embedding = get_embeddings(text)
-
     return {
         "raw_text": str(text),
-        "keywords": keywords_with_counts,  # dict {keyword: {"score": float, "count": int}}
-        "embedding": embedding
+        "keywords": keywords_with_counts,
+        "concepts_v2": concepts,
+        "embedding_v2": emb.tolist()
     }
 
 # -----------------------------
@@ -141,5 +178,6 @@ def ocr_pipeline():
 # -----------------------------
 if __name__ == "__main__":
     result = ocr_pipeline()
-    print("Keywords:", result['keywords'])
+    print("Concepts v2:", result.get('concepts_v2'))
+    print("Keywords (old):", result['keywords'])
     print("Text snippet:", result['raw_text'][:300])
