@@ -13,6 +13,18 @@ numpy
 scipy
 sounddevice
 mediapipe
-networkx
 sentence-transformers
-sqlalchemy cryptography mss librosa keybert spacy streamlit plotly matplotlib xgboost && python -m spacy download en_core_web_sm
+sqlalchemy
+cryptography
+mss
+librosa
+keybert
+spacy
+streamlit
+plotly
+xgboost
+dlib
+imutils
+pynput
+mss
+plyer

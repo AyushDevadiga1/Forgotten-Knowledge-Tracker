@@ -2,6 +2,7 @@
 import cv2
 import dlib
 import time
+import numpy as np
 
 class FaceDetector:
     def __init__(self):
@@ -19,13 +20,23 @@ class FaceDetector:
         """
         if frame is None or self.detector is None:
             return [], 0
-        # Ensure frame is RGB and uint8
-        if frame.dtype != 'uint8':
-            frame = frame.astype('uint8')
+        
+        # Ensure frame is proper type and format
+        if not isinstance(frame, (np.ndarray,)):
+            return [], 0
+            
+        if frame.dtype != np.uint8:
+            frame = frame.astype(np.uint8)
+            
         if len(frame.shape) == 3 and frame.shape[2] == 3:
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            try:
+                rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            except (cv2.error, AttributeError) as e:
+                print(f"Error converting color space: {e}")
+                rgb_frame = frame
         else:
             rgb_frame = frame
+            
         try:
             faces = self.detector(rgb_frame, 0)
             return faces, len(faces)
@@ -35,6 +46,10 @@ class FaceDetector:
 
 def webcam_test(duration_sec=10, display=True):
     cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        print("Error: Could not open webcam")
+        return 0.0
+        
     detector = FaceDetector()
     start_time = time.time()
     frame_count = 0
@@ -44,6 +59,7 @@ def webcam_test(duration_sec=10, display=True):
         ret, frame = cap.read()
         if not ret:
             continue
+            
         frame_count += 1
         faces, num_faces = detector.detect_faces(frame)
         if num_faces > 0:

@@ -1,0 +1,353 @@
+{
+  "timestamp": "2026-01-20T06:12:30.065343",
+  "session_stats": {},
+  "due_concepts": [
+    {
+      "id": "Python_1768868263",
+      "concept": "Python",
+      "encounter_count": 6,
+      "interval": 1.0,
+      "relevance": 0.9
+    },
+    {
+      "id": "Machine Learning_1768868263",
+      "concept": "Machine Learning",
+      "encounter_count": 3,
+      "interval": 1.0,
+      "relevance": 0.8
+    },
+    {
+      "id": "adutew_1768869440",
+      "concept": "adutew",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.5412
+    },
+    {
+      "id": "bagglomerstretlusteningipynts_1768869440",
+      "concept": "bagglomerstretlusteningipynts",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.5412
+    },
+    {
+      "id": "baggingtmembkirchniqueipynbxtowtebsrketat_1768869440",
+      "concept": "baggingtmembkirchniqueipynbxtowtebsrketat",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.5351
+    },
+    {
+      "id": "cancerdutanwetow_1768869440",
+      "concept": "cancerdutanwetow",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4933
+    },
+    {
+      "id": "catesahsdeanedcow_1768869440",
+      "concept": "catesahsdeanedcow",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4933
+    },
+    {
+      "id": "tecaaetcceylat_1768869395",
+      "concept": "tecaaetcceylat",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.49169999999999997
+    },
+    {
+      "id": "freeatsret_1768869395",
+      "concept": "freeatsret",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.489
+    },
+    {
+      "id": "sweaosuadetraneobep_1768869395",
+      "concept": "sweaosuadetraneobep",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.489
+    },
+    {
+      "id": "projectaeviewanocatiquefort_1768869395",
+      "concept": "projectaeviewanocatiquefort",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.489
+    },
+    {
+      "id": "oceadinprparicscrntteesdctt_1768869395",
+      "concept": "oceadinprparicscrntteesdctt",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.489
+    },
+    {
+      "id": "barumaldatadutyliw_1768869440",
+      "concept": "barumaldatadutyliw",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4731
+    },
+    {
+      "id": "baptetchinguungrapapiipynts_1768869440",
+      "concept": "baptetchinguungrapapiipynts",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4731
+    },
+    {
+      "id": "waeoatetpe_1768869705",
+      "concept": "waeoatetpe",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4718
+    },
+    {
+      "id": "trackingactiv_1768869705",
+      "concept": "trackingactiv",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4718
+    },
+    {
+      "id": "eekagsesecesticst_1768869705",
+      "concept": "eekagsesecesticst",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.464
+    },
+    {
+      "id": "uoitfapisiateataloealyheipsl_1768869705",
+      "concept": "uoitfapisiateataloealyheipsl",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.464
+    },
+    {
+      "id": "trackingactive_1768869705",
+      "concept": "trackingactive",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4618
+    },
+    {
+      "id": "bclssiicationontiabetesdatasctipynb_1768869440",
+      "concept": "bclssiicationontiabetesdatasctipynb",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.458
+    },
+    {
+      "id": "cieanedmessyemployredataset_1768869440",
+      "concept": "cieanedmessyemployredataset",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.458
+    },
+    {
+      "id": "barbabopendatsclranedcw_1768869440",
+      "concept": "barbabopendatsclranedcw",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4579
+    },
+    {
+      "id": "banbabopendatacw_1768869440",
+      "concept": "banbabopendatacw",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4579
+    },
+    {
+      "id": "eee_1768869395",
+      "concept": "eee",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4562
+    },
+    {
+      "id": "tasedeteucsmoxdoes_1768869395",
+      "concept": "tasedeteucsmoxdoes",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4562
+    },
+    {
+      "id": "bclssiicationmeteesipynts_1768869440",
+      "concept": "bclssiicationmeteesipynts",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4543
+    },
+    {
+      "id": "pertormanceimprovements_1768869705",
+      "concept": "pertormanceimprovements",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4529
+    },
+    {
+      "id": "ormotbe_1768869705",
+      "concept": "ormotbe",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4482
+    },
+    {
+      "id": "bcandydatacw_1768869440",
+      "concept": "bcandydatacw",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4419
+    },
+    {
+      "id": "eraayvteeqecdests_1768869395",
+      "concept": "eraayvteeqecdests",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4417
+    },
+    {
+      "id": "apepedtiissserrdmrkedis_1768869395",
+      "concept": "apepedtiissserrdmrkedis",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4381
+    },
+    {
+      "id": "thceateetenketee_1768869395",
+      "concept": "thceateetenketee",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4381
+    },
+    {
+      "id": "drasatho_1768869395",
+      "concept": "drasatho",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4377
+    },
+    {
+      "id": "activitytrackerdashboard_1768869705",
+      "concept": "activitytrackerdashboard",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4375
+    },
+    {
+      "id": "sabena_1768869705",
+      "concept": "sabena",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4375
+    },
+    {
+      "id": "beteflocadbontso_1768869395",
+      "concept": "beteflocadbontso",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4351
+    },
+    {
+      "id": "ercadedaegorvk_1768869395",
+      "concept": "ercadedaegorvk",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4351
+    },
+    {
+      "id": "explorer_1768869440",
+      "concept": "explorer",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4335
+    },
+    {
+      "id": "graruteandmultvaruteanalyseipynts_1768869440",
+      "concept": "graruteandmultvaruteanalyseipynts",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.43
+    },
+    {
+      "id": "dbwrden_1768869705",
+      "concept": "dbwrden",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4198
+    },
+    {
+      "id": "eonckecbitsoapasieon_1768869705",
+      "concept": "eonckecbitsoapasieon",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4198
+    },
+    {
+      "id": "seapemacegistabacte_1768869705",
+      "concept": "seapemacegistabacte",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.411
+    },
+    {
+      "id": "ees_1768869705",
+      "concept": "ees",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4107
+    },
+    {
+      "id": "any_1768869395",
+      "concept": "any",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4097
+    },
+    {
+      "id": "eeeoecdet_1768869395",
+      "concept": "eeeoecdet",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4097
+    },
+    {
+      "id": "tsedfapnseatcecemecaticyhepellx_1768869705",
+      "concept": "tsedfapnseatcecemecaticyhepellx",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4085
+    },
+    {
+      "id": "eruayseveoestiat_1768869705",
+      "concept": "eruayseveoestiat",
+      "encounter_count": 1,
+      "interval": 1.0,
+      "relevance": 0.4051
+    }
+  ],
+  "intent_accuracy": {
+    "average_accuracy": 0.5,
+    "intents_tracked": 0,
+    "best_accuracy": 0,
+    "worst_accuracy": 0
+  },
+  "daily_summary": {
+    "date": "2026-01-20",
+    "total_minutes": 6.0272336,
+    "concepts": 33,
+    "avg_attention": 0.30000000000000004
+  },
+  "trend_analysis": {
+    "tracking_days": 1,
+    "avg_session_minutes": 0.7534042,
+    "total_concepts_encountered": 33,
+    "avg_attention_score": 0.30000000000000004
+  }
+}
