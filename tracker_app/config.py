@@ -20,7 +20,29 @@ USER_ALLOW_WEBCAM = True   # Webcam permission toggle
 DB_PATH = str(DATA_DIR / "sessions.db")
 
 # Tesseract OCR path (update based on your installation)
-TESSERACT_PATH = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# Tesseract OCR path (update based on your installation)
+def find_tesseract():
+    """Find Tesseract executable"""
+    import shutil
+    
+    # Check PATH first
+    if shutil.which("tesseract"):
+        return "tesseract"
+        
+    # Check common Windows paths
+    common_paths = [
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+        r"C:\Users\hp\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
+    ]
+    
+    for path in common_paths:
+        if os.path.exists(path):
+            return path
+            
+    return r"C:\Program Files\Tesseract-OCR\tesseract.exe"  # Default fallback
+
+TESSERACT_PATH = find_tesseract()
 
 # Model paths
 INTENT_CLASSIFIER_PATH = str(PROJECT_ROOT / "core" / "intent_classifier.pkl")
@@ -59,7 +81,14 @@ def validate_config():
         issues.append(f"Data directory does not exist: {DATA_DIR}")
     
     # Check Tesseract
-    if not os.path.exists(TESSERACT_PATH):
+    # Check Tesseract
+    is_in_path = TESSERACT_PATH.lower() == "tesseract"
+    if is_in_path:
+        import shutil
+        if not shutil.which("tesseract"):
+             issues.append(f"⚠️  WARNING: Tesseract not found in PATH")
+             issues.append("   OCR features will not work. Install from: https://github.com/UB-Mannheim/tesseract/wiki")
+    elif not os.path.exists(TESSERACT_PATH):
         issues.append(f"⚠️  WARNING: Tesseract not found at: {TESSERACT_PATH}")
         issues.append("   OCR features will not work. Install from: https://github.com/UB-Mannheim/tesseract/wiki")
     

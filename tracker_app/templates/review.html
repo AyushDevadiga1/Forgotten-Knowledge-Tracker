@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Review Session - Learning Tracker{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto" x-data="{ showedAnswer: false }">
+    <div class="mb-6 flex justify-between items-center">
+        <h2 class="text-2xl font-bold text-gray-900">Review Session</h2>
+        <span class="text-sm text-gray-500">Item {{ current_index + 1 }} of {{ total_count }}</span>
+    </div>
+
+    {% if item %}
+    <div class="bg-white shadow-xl rounded-xl overflow-hidden min-h-[400px] flex flex-col relative animate-fade-in">
+        <!-- Question Side -->
+        <div class="p-8 flex-grow flex flex-col items-center justify-center text-center border-b border-gray-100">
+            <span
+                class="absolute top-4 right-4 px-2 py-1 bg-gray-100 text-xs font-semibold text-gray-600 rounded uppercase tracking-wide">
+                {{ item.item_type }}
+            </span>
+            <h3 class="text-xl text-gray-500 font-medium mb-4">Question</h3>
+            <div class="text-2xl font-semibold text-gray-900 leading-relaxed">
+                {{ item.question }}
+            </div>
+        </div>
+
+        <!-- Answer Side (Hidden Initially) -->
+        <div id="answer-section"
+            class="hidden bg-indigo-50 p-8 border-t border-indigo-100 flex-grow flex flex-col items-center justify-center text-center animate-fade-in">
+            <h3 class="text-xl text-indigo-500 font-medium mb-4">Answer</h3>
+            <div class="text-xl text-gray-800 leading-relaxed prose">
+                {{ item.answer }}
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="bg-gray-50 p-6 flex justify-center">
+            <button id="show-btn" onclick="showAnswer()"
+                class="w-full sm:w-auto px-8 py-3 bg-primary text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-colors">
+                Show Answer
+            </button>
+
+            <div id="rating-btns" class="hidden w-full grid grid-cols-4 gap-4">
+                <form action="/review/{{ item.id }}" method="POST" class="contents">
+                    <button name="quality" value="0"
+                        class="flex flex-col items-center justify-center p-3 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition">
+                        <span class="font-bold">Again</span>
+                        <span class="text-xs opacity-75">&lt; 10m</span>
+                    </button>
+                </form>
+                <form action="/review/{{ item.id }}" method="POST" class="contents">
+                    <button name="quality" value="3"
+                        class="flex flex-col items-center justify-center p-3 bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition">
+                        <span class="font-bold">Hard</span>
+                        <span class="text-xs opacity-75">2d</span>
+                    </button>
+                </form>
+                <form action="/review/{{ item.id }}" method="POST" class="contents">
+                    <button name="quality" value="4"
+                        class="flex flex-col items-center justify-center p-3 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition">
+                        <span class="font-bold">Good</span>
+                        <span class="text-xs opacity-75">4d</span>
+                    </button>
+                </form>
+                <form action="/review/{{ item.id }}" method="POST" class="contents">
+                    <button name="quality" value="5"
+                        class="flex flex-col items-center justify-center p-3 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition">
+                        <span class="font-bold">Easy</span>
+                        <span class="text-xs opacity-75">7d</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="bg-white shadow rounded-lg p-10 text-center animate-fade-in">
+        <div class="mx-auto h-24 w-24 bg-green-100 rounded-full flex items-center justify-center mb-6">
+            <i data-lucide="check" class="h-12 w-12 text-green-600"></i>
+        </div>
+        <h3 class="text-2xl font-bold text-gray-900 mb-2">All caught up!</h3>
+        <p class="text-gray-500 mb-8">You've successfully reviewed all items due for today.</p>
+        <a href="/"
+            class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-primary bg-indigo-100 hover:bg-indigo-200">
+            Back to Dashboard
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    function showAnswer() {
+        document.getElementById('answer-section').classList.remove('hidden');
+        document.getElementById('show-btn').classList.add('hidden');
+        document.getElementById('rating-btns').classList.remove('hidden');
+        document.getElementById('rating-btns').classList.add('grid');
+    }
+</script>
+{% endblock %}

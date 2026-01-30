@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Learning Tracker{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="mb-10 animate-fade-in">
+    <h1 class="text-3xl font-bold text-gray-900">Welcome back!</h1>
+    <p class="mt-2 text-sm text-gray-600">Here's your learning progress for today.</p>
+</div>
+
+<!-- Stats Grid -->
+<div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-10 animate-fade-in" style="animation-delay: 0.1s;">
+    <!-- Card 1: Due Now -->
+    <div class="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow duration-300">
+        <div class="p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-indigo-100 rounded-md p-3">
+                    <i data-lucide="clock" class="h-6 w-6 text-primary"></i>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Items Due Now</dt>
+                        <dd class="text-3xl font-semibold text-gray-900">{{ stats.due_now }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gray-50 px-5 py-3">
+            <div class="text-sm">
+                <a href="/review" class="font-medium text-primary hover:text-indigo-900">Start Review Session &rarr;</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 2: Active Items -->
+    <div class="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow duration-300">
+        <div class="p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-green-100 rounded-md p-3">
+                    <i data-lucide="book-open" class="h-6 w-6 text-green-600"></i>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Active Items</dt>
+                        <dd class="text-3xl font-semibold text-gray-900">{{ stats.active_items }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gray-50 px-5 py-3">
+            <div class="text-sm">
+                <a href="/add" class="font-medium text-green-600 hover:text-green-900">Add New Item &rarr;</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 3: Mastered -->
+    <div class="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow duration-300">
+        <div class="p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-yellow-100 rounded-md p-3">
+                    <i data-lucide="award" class="h-6 w-6 text-yellow-600"></i>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Mastered Items</dt>
+                        <dd class="text-3xl font-semibold text-gray-900">{{ stats.mastered_items }}</dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gray-50 px-5 py-3">
+            <div class="text-sm">
+                <span class="text-gray-500">Long-term retention</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card 4: Success Rate -->
+    <div class="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow duration-300">
+        <div class="p-5">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-pink-100 rounded-md p-3">
+                    <i data-lucide="activity" class="h-6 w-6 text-secondary"></i>
+                </div>
+                <div class="ml-5 w-0 flex-1">
+                    <dl>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Avg Success Rate</dt>
+                        <dd class="text-3xl font-semibold text-gray-900">{{ (stats.average_success_rate * 100)|int }}%
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+        <div class="bg-gray-50 px-5 py-3">
+            <div class="text-sm">
+                <span class="text-gray-500">Based on {{ stats.total_reviews_ever }} reviews</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Actions & Recent Items -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fade-in" style="animation-delay: 0.2s;">
+    <!-- Recent Items List -->
+    <div class="lg:col-span-2">
+        <div class="bg-white shadow rounded-lg">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Recent Items</h3>
+                <a href="#" class="text-sm text-primary hover:text-indigo-900">View all</a>
+            </div>
+            <ul class="divide-y divide-gray-200">
+                {% for item in recent_items %}
+                <li class="px-4 py-4 sm:px-6 hover:bg-gray-50 transition duration-150 ease-in-out">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1 min-w-0 pr-4">
+                            <p class="text-sm font-medium text-primary truncate">{{ item.question }}</p>
+                            <div class="mt-2 flex items-center text-sm text-gray-500">
+                                <i data-lucide="tag" class="flex-shrink-0 mr-1.5 h-4 w-4 text-gray-400"></i>
+                                <span class="truncate">{{ item.item_type|title }}</span>
+                                <span class="mx-2">&bull;</span>
+                                <span>{% if item.status == 'mastered' %}Mastered{% elif item.total_reviews > 5
+                                    %}Learning{% else %}New{% endif %}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <a href="/item/{{ item.id }}"
+                                class="inline-flex items-center px-3 py-1 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+                                Edit
+                            </a>
+                        </div>
+                    </div>
+                </li>
+                {% else %}
+                <li class="px-4 py-10 text-center text-gray-500">
+                    No items added yet. <a href="/add" class="text-primary hover:underline">Add your first item!</a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Quick Actions / Context -->
+    <div class="col-span-1">
+        <div class="bg-white shadow rounded-lg mb-8">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Context Scanner</h3>
+            </div>
+            <div class="p-6 border-b border-gray-100">
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-sm text-gray-500">Status</span>
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Active
+                    </span>
+                </div>
+                <button
+                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <i data-lucide="scan" class="mr-2 h-5 w-5"></i>
+                    Scan Now
+                </button>
+            </div>
+
+            <div class="px-4 py-4">
+                <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Recently Discovered</h4>
+                {% if discovered_concepts %}
+                <ul class="space-y-3">
+                    {% for concept in discovered_concepts %}
+                    <li class="flex items-center justify-between p-2 hover:bg-gray-50 rounded-md transition">
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">{{ concept.concept|truncate(25) }}</p>
+                            <p class="text-xs text-gray-500">Relevance: {{ (concept.relevance * 100)|int }}%</p>
+                        </div>
+                        <a href="/add?question=What is {{ concept.concept }}?&tags=discovered"
+                            class="text-indigo-600 hover:text-indigo-900" title="Create Flashcard">
+                            <i data-lucide="plus-circle" class="h-5 w-5"></i>
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-sm text-gray-400 text-center py-4">No concepts found yet.<br>Start the tracker to find
+                    items!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

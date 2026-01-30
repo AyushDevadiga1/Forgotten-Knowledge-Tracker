@@ -7,13 +7,14 @@ Users control what they learn, and the system manages spaced repetition.
 
 import sqlite3
 import json
+import os
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 from enum import Enum
 import uuid
 
 from core.sm2_memory_model import SM2Item, SM2Scheduler, LeitnerSystem
-
+from config import DATA_DIR
 
 class DifficultyLevel(Enum):
     """Content difficulty assessment"""
@@ -41,14 +42,19 @@ class LearningTracker:
     Users explicitly log what they want to learn.
     """
     
-    def __init__(self, db_path: str = "data/learning_tracker.db"):
+    def __init__(self, db_path: str = None):
         """Initialize learning tracker with database"""
-        self.db_path = db_path
+        self.db_path = db_path or str(DATA_DIR / "learning_tracker.db")
         self._init_database()
     
     def _init_database(self):
         """Create database tables if they don't exist"""
-        conn = sqlite3.connect(self.db_path)
+        # Ensure directory exists
+        db_dir = os.path.dirname(self.db_path)
+        if db_dir:
+            os.makedirs(db_dir, exist_ok=True)
+
+        conn = sqlite3.connect(self.db_path, timeout=30)
         c = conn.cursor()
         
         # Learning items table
@@ -141,7 +147,7 @@ class LearningTracker:
         item_id = str(uuid.uuid4())[:8]
         now = datetime.now().isoformat()
         
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30)
         c = conn.cursor()
         
         c.execute('''
@@ -169,7 +175,7 @@ class LearningTracker:
         """Get items that are due for review now"""
         now = datetime.now().isoformat()
         
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30)
         c = conn.cursor()
         
         c.execute('''
@@ -185,7 +191,7 @@ class LearningTracker:
     
     def get_item(self, item_id: str) -> Optional[Dict[str, Any]]:
         """Get a single learning item by ID"""
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30)
         c = conn.cursor()
         
         c.execute('SELECT * FROM learning_items WHERE id = ?', (item_id,))
@@ -228,7 +234,7 @@ class LearningTracker:
             result = LeitnerSystem.advance_card(item, was_correct)
         
         # Record review
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30)
         c = conn.cursor()
         
         review_date = datetime.now().isoformat()
@@ -297,7 +303,7 @@ class LearningTracker:
     
     def get_learning_stats(self) -> Dict[str, Any]:
         """Get overall learning statistics"""
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30)
         c = conn.cursor()
         
         c.execute('SELECT COUNT(*) FROM learning_items WHERE status = "active"')
@@ -337,7 +343,7 @@ class LearningTracker:
         today_start = datetime.now().replace(hour=0, minute=0, second=0).isoformat()
         today_end = datetime.now().isoformat()
         
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30)
         c = conn.cursor()
         
         c.execute('''
@@ -359,7 +365,7 @@ class LearningTracker:
     
     def search_items(self, query: str) -> List[Dict[str, Any]]:
         """Search learning items by question"""
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30)
         c = conn.cursor()
         
         search_term = f"%{query}%"
@@ -376,7 +382,7 @@ class LearningTracker:
     
     def archive_item(self, item_id: str):
         """Archive (hide) an item from active review"""
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30)
         c = conn.cursor()
         
         c.execute('''
@@ -389,7 +395,7 @@ class LearningTracker:
     
     def unarchive_item(self, item_id: str):
         """Restore an archived item"""
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=30)
         c = conn.cursor()
         
         c.execute('''
