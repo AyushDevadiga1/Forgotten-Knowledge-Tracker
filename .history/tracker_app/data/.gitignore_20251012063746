@@ -1,0 +1,21 @@
+# Python virtual environment
+venv/
+
+# Python cache and bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE/editor settings
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+.hos

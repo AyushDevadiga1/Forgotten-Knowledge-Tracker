@@ -5,9 +5,12 @@ from pathlib import Path
 # Get project root directory
 PROJECT_ROOT = Path(__file__).parent.absolute()
 
-# Create data directory if it doesn't exist
+# Base directory for all data files
 DATA_DIR = PROJECT_ROOT / "data"
 DATA_DIR.mkdir(exist_ok=True)
+
+# Model directory
+MODELS_DIR = PROJECT_ROOT / "models"
 
 # Tracker intervals (in seconds)
 TRACK_INTERVAL = 5          # Main tracking loop interval
@@ -44,10 +47,12 @@ def find_tesseract():
 
 TESSERACT_PATH = find_tesseract()
 
-# Model paths
-INTENT_CLASSIFIER_PATH = str(PROJECT_ROOT / "core" / "intent_classifier.pkl")
-INTENT_LABEL_MAP_PATH = str(PROJECT_ROOT / "core" / "intent_label_map.pkl")
-AUDIO_CLASSIFIER_PATH = str(PROJECT_ROOT / "core" / "audio_classifier.pkl")
+# Model paths (updated to use MODELS_DIR)
+INTENT_CLASSIFIER_PATH = str(MODELS_DIR / "intent_classifier.pkl")
+INTENT_LABEL_MAP_PATH = str(MODELS_DIR / "intent_label_map.pkl")
+AUDIO_CLASSIFIER_PATH = str(MODELS_DIR / "audio_classifier.pkl")
+AUDIO_LABEL_ENCODER_PATH = str(MODELS_DIR / "audio_label_encoder.pkl")
+AUDIO_SCALER_PATH = str(MODELS_DIR / "audio_scaler.pkl")
 KNOWLEDGE_GRAPH_PATH = str(DATA_DIR / "knowledge_graph.pkl")
 
 # Memory model parameters

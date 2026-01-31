@@ -2,17 +2,22 @@
 import sounddevice as sd
 import numpy as np
 import librosa
+import sounddevice as sd
 import pickle
 import os
+import warnings
+warnings.filterwarnings('ignore', category=FutureWarning)
 
-# ----------------------------
-# Audio settings (enhanced)
-# ----------------------------
-SAMPLE_RATE = 22050  # Higher quality
-DURATION = 3         # Shorter duration for faster processing
+from config import AUDIO_CLASSIFIER_PATH, AUDIO_LABEL_ENCODER_PATH, AUDIO_SCALER_PATH
 
-# Load audio classifier
-clf_path = "core/audio_classifier.pkl"
+# Duration for audio recording (seconds)
+DURATION = 5
+SAMPLE_RATE = 22050  # librosa default
+
+# Model paths - Updated to use config
+clf_path = AUDIO_CLASSIFIER_PATH
+encoder_path = AUDIO_LABEL_ENCODER_PATH
+scaler_path = AUDIO_SCALER_PATH
 clf = None
 if os.path.exists(clf_path):
     try:
