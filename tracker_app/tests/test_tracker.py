@@ -9,11 +9,11 @@ import tempfile
 import os
 from datetime import datetime, timedelta
 
-from core.tracker_enhanced import (
+from tracker_app.core.tracker import (
     ConceptScheduler,
     IntentValidator,
     TrackingAnalytics,
-    EnhancedActivityTracker
+    Tracker # Assuming EnhancedActivityTracker is renamed to Tracker
 )
 
 

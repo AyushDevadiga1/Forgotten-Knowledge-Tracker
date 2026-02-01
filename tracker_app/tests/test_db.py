@@ -1,7 +1,7 @@
 # patch_sessions_iso.py
 import sqlite3
 from datetime import datetime, timedelta
-from config import DB_PATH
+from tracker_app.config import DB_PATH
 
 def fix_zero_duration_sessions():
     conn = sqlite3.connect(DB_PATH)

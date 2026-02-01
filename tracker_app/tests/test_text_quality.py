@@ -7,7 +7,7 @@ Tests extraction cleaning and garbage detection at source
 import sys
 sys.path.append(r"C:\Users\hp\Desktop\FKT\tracker_app")
 
-from core.text_quality_validator import (
+from tracker_app.core.text_quality_validator import (
     validate_and_clean_extraction,
     validate_batch_extraction,
     preprocess_ocr_text,
@@ -186,7 +186,7 @@ Key capabilities:
   ✓ Batch processes results
 
 Use in OCR pipeline:
-  from core.text_quality_validator import validate_and_clean_extraction
+  from tracker_app.core.text_quality_validator import validate_and_clean_extraction
   
   result = validate_and_clean_extraction(ocr_text, ocr_confidence=0.8)
   if result['is_useful']:

@@ -4,7 +4,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import pickle
 import os
 from typing import Union, List, Dict
-from config import INTENT_CLASSIFIER_PATH, INTENT_LABEL_MAP_PATH
+from tracker_app.config import INTENT_CLASSIFIER_PATH, INTENT_LABEL_MAP_PATH
 
 # Load trained intent classifier
 clf_path = INTENT_CLASSIFIER_PATH

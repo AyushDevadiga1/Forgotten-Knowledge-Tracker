@@ -1,27 +1,32 @@
-# train_all_models.py
+# train_models.py
 import numpy as np
 import pandas as pd
 import pickle
-import os
 import warnings
+import os
 warnings.filterwarnings('ignore')
 
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import accuracy_score, classification_report
 from xgboost import XGBClassifier
 import librosa
 
+from tracker_app.config import MODELS_DIR
+
 print("[START] Starting Model Training...")
 
 # Ensure directories exist
-os.makedirs("core", exist_ok=True)
-os.makedirs("training_data", exist_ok=True)
+MODELS_DIR.mkdir(exist_ok=True, parents=True)
 
 # ---------------------------
 # Audio Data & Features
 # ---------------------------
+# (No changes to AudioDataGenerator and AudioFeatureExtractor classes)
+
 class AudioDataGenerator:
     def __init__(self, sr=22050, dur=3):
         self.sr = sr
@@ -106,12 +111,11 @@ def train_audio():
     clf.fit(X_train,y_train)
     y_pred = clf.predict(X_test)
     print(f"[OK] Audio Accuracy: {accuracy_score(y_test,y_pred):.4f}")
-    print(classification_report(y_test,y_pred,target_names=le.classes_))
-
-    # Save
-    pickle.dump(clf,open("core/audio_classifier.pkl","wb"))
-    pickle.dump(scaler,open("core/audio_scaler.pkl","wb"))
-    pickle.dump(le,open("core/audio_label_encoder.pkl","wb"))
+    
+    # Save to MODELS_DIR
+    pickle.dump(clf, open(MODELS_DIR / "audio_classifier.pkl", "wb"))
+    pickle.dump(scaler, open(MODELS_DIR / "audio_scaler.pkl", "wb"))
+    pickle.dump(le, open(MODELS_DIR / "audio_label_encoder.pkl", "wb"))
 
     return clf, scaler, le
 
@@ -143,13 +147,14 @@ def train_intent():
     y = LabelEncoder().fit_transform(df['intent_label'])
     clf = XGBClassifier(n_estimators=300,max_depth=8,learning_rate=0.1,subsample=0.8,colsample_bytree=0.8,eval_metric='mlogloss',use_label_encoder=False,random_state=42)
     clf.fit(X,y)
-    # Save
-    pickle.dump(clf,open("core/intent_classifier.pkl","wb"))
-    print("[OK] Intent Classifier Saved")
+    
+    # Save to MODELS_DIR
+    pickle.dump(clf, open(MODELS_DIR / "intent_classifier.pkl", "wb"))
+    print("[OK] Intent Classifier Saved to models/")
     return clf
 
 def main():
-    print("\n[SETUP] Training All Models")
+    print(f"\n[SETUP] Training All Models and saving to {MODELS_DIR}")
     train_audio()
     train_intent()
     print("\n[COMPLETE] All models trained successfully!")

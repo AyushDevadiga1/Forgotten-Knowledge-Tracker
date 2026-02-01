@@ -1,4 +1,4 @@
-from core.tracker import track_loop, ask_user_permissions
+from tracker_app.core.tracker import track_loop, ask_user_permissions
 
 if __name__ == "__main__":
     print("Forgotten Knowledge Tracker initializing...")

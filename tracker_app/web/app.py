@@ -5,14 +5,14 @@ Lightweight dashboard using Flask for viewing progress and managing items
 """
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for
-from core.learning_tracker import LearningTracker
-from core.sm2_memory_model import SM2Scheduler, format_next_review
+from tracker_app.core.learning_tracker import LearningTracker
+from tracker_app.core.sm2_memory_model import SM2Scheduler, format_next_review
 from datetime import datetime, timedelta
 import sqlite3
 import json
 import os
 
-from config import DATA_DIR
+from tracker_app.config import DATA_DIR
 
 app = Flask(__name__)
 tracker = LearningTracker()

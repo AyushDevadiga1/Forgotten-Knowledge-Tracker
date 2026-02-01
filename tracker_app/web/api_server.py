@@ -10,11 +10,11 @@ import os
 import sys
 
 # Import core modules
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from core.learning_tracker import LearningTracker
-from core.advanced_analytics import AdvancedAnalytics
-from core.notification_center import NotificationCenter
-from core.batch_operations import BatchOperations, DataExporter, DataImporter, BackupManager
+from tracker_app.core.learning_tracker import LearningTracker
+from tracker_app.core.advanced_analytics import AdvancedAnalytics
+from tracker_app.core.notification_center import NotificationCenter
+from tracker_app.core.batch_operations import BatchOperations, DataExporter, DataImporter, BackupManager
+from tracker_app.config import DATA_DIR
 
 
 class LearningTrackerAPI:
@@ -70,7 +70,8 @@ class LearningTrackerAPI:
             """Get specific item"""
             # Query database
             import sqlite3
-            with sqlite3.connect('learning_tracker.db') as conn:
+            db_path = str(DATA_DIR / 'learning_tracker.db')
+            with sqlite3.connect(db_path) as conn:
                 conn.row_factory = sqlite3.Row
                 cursor = conn.cursor()
                 cursor.execute('SELECT * FROM learning_items WHERE item_id = ?', (item_id,))

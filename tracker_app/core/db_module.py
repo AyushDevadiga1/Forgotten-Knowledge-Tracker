@@ -2,7 +2,7 @@
 import sqlite3
 import os
 from contextlib import contextmanager
-from config import DB_PATH
+from tracker_app.config import DB_PATH
 
 @contextmanager
 def get_db_connection():

@@ -12,8 +12,8 @@ import sys
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(__file__))
 
-from core.sm2_memory_model import SM2Item, SM2Scheduler, LeitnerSystem, format_next_review
-from core.learning_tracker import LearningTracker
+from tracker_app.core.sm2_memory_model import SM2Item, SM2Scheduler, LeitnerSystem, format_next_review
+from tracker_app.core.learning_tracker import LearningTracker
 
 
 class TestSM2Algorithm(unittest.TestCase):

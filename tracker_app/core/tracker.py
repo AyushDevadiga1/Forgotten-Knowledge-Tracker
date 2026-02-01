@@ -27,10 +27,10 @@ import numpy as np
 from pynput import keyboard, mouse
 import win32gui
 
-from core.db_module import init_all_databases, get_db_connection
-from config import DB_PATH, TRACK_INTERVAL, SCREENSHOT_INTERVAL, AUDIO_INTERVAL, WEBCAM_INTERVAL, validate_config, DATA_DIR
-from core.intent_module import predict_intent
-from core.knowledge_graph import add_concepts, get_graph, add_edges
+from tracker_app.core.db_module import init_all_databases, get_db_connection
+from tracker_app.config import DB_PATH, TRACK_INTERVAL, SCREENSHOT_INTERVAL, AUDIO_INTERVAL, WEBCAM_INTERVAL, validate_config, DATA_DIR
+from tracker_app.core.intent_module import predict_intent
+from tracker_app.core.knowledge_graph import add_concepts, get_graph, add_edges
 
 # Lazy-loaded modules (loaded on first use to optimize startup time)
 _ocr_pipeline = None

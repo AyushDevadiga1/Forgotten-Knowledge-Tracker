@@ -1,5 +1,5 @@
 import sqlite3
-from config import DB_PATH
+from tracker_app.config import DB_PATH
 DB_PATH  # change if your DB file has another name
 
 def print_all_tables():

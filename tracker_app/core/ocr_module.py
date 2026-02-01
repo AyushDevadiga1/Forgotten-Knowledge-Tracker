@@ -3,11 +3,11 @@ import cv2
 import numpy as np
 import pytesseract
 from mss import mss
-from config import TESSERACT_PATH
+from tracker_app.config import TESSERACT_PATH
 from keybert import KeyBERT
 from sentence_transformers import SentenceTransformer
 import spacy
-from core.knowledge_graph import get_graph
+from tracker_app.core.knowledge_graph import get_graph
 import re
 from functools import lru_cache
 

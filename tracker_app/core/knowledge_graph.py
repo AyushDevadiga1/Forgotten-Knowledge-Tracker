@@ -6,7 +6,7 @@ import sqlite3
 import json
 import threading
 from datetime import datetime, timedelta
-from config import DB_PATH
+from tracker_app.config import DB_PATH
 
 # Consistent datetime format across all modules
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"

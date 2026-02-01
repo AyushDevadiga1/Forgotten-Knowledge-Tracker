@@ -8,7 +8,7 @@ import os
 import warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 
-from config import AUDIO_CLASSIFIER_PATH, AUDIO_LABEL_ENCODER_PATH, AUDIO_SCALER_PATH
+from tracker_app.config import AUDIO_CLASSIFIER_PATH, AUDIO_LABEL_ENCODER_PATH, AUDIO_SCALER_PATH
 
 # Duration for audio recording (seconds)
 DURATION = 5

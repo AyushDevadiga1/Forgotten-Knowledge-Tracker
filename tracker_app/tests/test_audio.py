@@ -1,7 +1,7 @@
 # tests/test_modules_simple.py
 
-from core.audio_module import audio_pipeline
-from core.intent_module import predict_intent
+from tracker_app.core.audio_module import audio_pipeline
+from tracker_app.core.intent_module import predict_intent
 
 # -----------------------------
 # 1️⃣ Test Audio Module

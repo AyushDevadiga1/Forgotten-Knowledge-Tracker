@@ -13,8 +13,8 @@ from typing import Dict, List, Optional, Any
 from enum import Enum
 import uuid
 
-from core.sm2_memory_model import SM2Item, SM2Scheduler, LeitnerSystem
-from config import DATA_DIR
+from tracker_app.core.sm2_memory_model import SM2Item, SM2Scheduler, LeitnerSystem
+from tracker_app.config import DATA_DIR
 
 class DifficultyLevel(Enum):
     """Content difficulty assessment"""

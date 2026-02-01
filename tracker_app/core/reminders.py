@@ -1,7 +1,7 @@
 # core/reminders.py
 from datetime import datetime, timedelta
 from plyer import notification
-from core.knowledge_graph import get_graph
+from tracker_app.core.knowledge_graph import get_graph
 
 # Configurable thresholds
 MEMORY_THRESHOLD = 0.6       # Below this, trigger reminder
