@@ -24,22 +24,15 @@ htmlcov/
 *.swo
 *~
 
-# Data files (keep private)
+# Data files (Runtime)
 tracker_app/data/*.db
 tracker_app/data/*.csv
 tracker_app/data/*.pkl
-
-# Models (optional - commit initial, ignore retrained)
-# Uncomment if models are too large:
-# tracker_app/models/*.pkl
+tracker_app/data/*.json
 
 # Logs
 *.log
-tracker_app/logs/*.log
-
-# OS files
-.DS_Store
-Thumbs.db
+tracker_app/logs/
 
 # Build
 build/
@@ -49,7 +42,9 @@ dist/
 # Jupyter
 .ipynb_checkpoints/
 
-# Temporary files
-*.tmp
-*.bak
-*.swp
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Documentation artifacts (optional, but good to ignore if large)
+# Docs/archive/  <-- Already deleted
