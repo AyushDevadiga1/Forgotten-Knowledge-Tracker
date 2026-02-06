@@ -163,7 +163,7 @@ def search():
 
 def run_dashboard(debug=False, port=5000):
     """Run the Flask dashboard"""
-    print(f"\n🚀 Dashboard running at: http://localhost:{port}")
+    print(f"\n[INFO] Dashboard running at: http://localhost:{port}")
     print(f"   Add items: http://localhost:{port}/add")
     print(f"   Stats API: http://localhost:{port}/stats\n")
     app.run(debug=debug, port=port)
