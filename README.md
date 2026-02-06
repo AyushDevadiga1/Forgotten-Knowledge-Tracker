@@ -1,231 +1,104 @@
 # 🧠 Forgotten Knowledge Tracker (FKT)
 
-**AI-powered spaced repetition learning system with automated knowledge discovery**
+> **A "Second Brain" that manages itself.**  
+> *Automated knowledge discovery paired with scientific spaced repetition.*
 
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
----
-
-## Overview
-
-FKT combines automated knowledge discovery with scientifically-validated spaced repetition (SM-2 algorithm) to help you learn and retain information effortlessly.
-
-### Key Features
-
-- ✅ **SM-2 Spaced Repetition** - Science-backed optimal review intervals
-- 🤖 **Automated Discovery** - Extracts concepts from screen, audio, attention state
-- 📊 **Premium Dashboard** - Modern web interface built with Tailwind CSS
-- 🔗 **Seamless Integration** - One-click conversion: discovered concepts → flashcards
-- 📈 **Knowledge Graph** - Visualize connections between concepts
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 ---
 
-## Quick Start
+## ⚡ Quick Start
 
-### Prerequisites
-- Python 3.11+
-- (Optional) Tesseract OCR for screen text extraction
-
-### Installation
-
+### 1. Run the Dashboard
+Access your premium learning interface:
 ```bash
-# 1. Clone repository
-git clone https://github.com/yourusername/FKT.git
-cd FKT
-
-# 2. Install dependencies
-pip install -r requirements.txt
-python -m spacy download en_core_web_sm
-
-# 3. Run the web dashboard
 python -m tracker_app.web.app
-# Open http://localhost:5000
+```
+👉 **Open**: http://localhost:5000
 
-# 4. (Optional) Run automated tracker
+### 2. Run the Tracker
+Start the background discovery engine in a **new terminal**:
+```bash
 python -m tracker_app.main
 ```
 
-📖 **See [QUICK_START.md](QUICK_START.md) for detailed setup instructions.**
+---
+
+## 📖 Overview
+
+FKT is a hybrid learning system that solves the "collecting but forgetting" problem. It combines **automated context awareness** (tracking what you read/watch) with **active recall** (SM-2 spaced repetition).
+
+### ✨ Key Features
+- **🤖 Context Scanner**: Uses OCR and Intent Recognition to auto-discover concepts from your screen.
+- **🎤 Multi-Modal Input**: Captures audio and webcam attention metrics to gauge learning intensity.
+- **🧠 Automated Knowledge Graph**: Builds a network of related concepts without manual data entry.
+- **📊 Premium Web Dashboard**: A Flask-based UI to review flashcards, visualize progress, and manage your knowledge base.
+- **📅 Scientific Scheduling**: Built-in SuperMemo-2 (SM-2) algorithm ensures you review items at the optimal time.
 
 ---
 
-## Architecture
+## 🛠️ Project Structure
 
-```
-┌─────────────────┐
-│  Screen (OCR)   │────┐
-│ Audio Analysis │────┤
-│ Webcam Tracking│────┤
-└─────────────────┘    │
-                       ▼
-                ┌──────────────┐
-                │   Tracker    │
-                │ (Discovers   │
-                │  Concepts)   │
-                └──────┬───────┘
-                       │
-                       ▼
-              ┌────────────────┐
-              │ Knowledge Graph│
-              └────────┬───────┘
-                       │
-                       ▼
-            ┌──────────────────────┐
-            │   Web Dashboard      │
-            │ - View concepts      │
-            │ - Create flashcards  │
-            │ - SM-2 reviews       │
-            └──────────────────────┘
-```
-
----
-
-## Tech Stack
-
-| Component | Technology |
-|-----------|------------|
-| **Backend** | Python 3.11, Flask, SQLite |
-| **ML/NLP** | spaCy, KeyBERT, SentenceTransformers |
-| **Computer Vision** | OpenCV, MediaPipe (attention tracking) |
-| **Audio** | librosa, sounddevice |
-| **Frontend** | Tailwind CSS, Lucide Icons |
-| **Algorithm** | SM-2 (SuperMemo-2) |
-
----
-
-## Project Structure
+The project follows a modern, modular Python package structure:
 
 ```
 FKT/
 ├── tracker_app/
-│   ├── core/              # Business logic
-│   ├── models/            # ML models (.pkl files)
-│   ├── web/               # Flask dashboard
-│   ├── scripts/           # Utility scripts
-│   ├── data/              # Runtime data (SQLite DBs)
-│   └── main.py            # Automated tracker entry point
-├── requirements.txt
-├── README.md
-└── QUICK_START.md
+│   ├── core/              # Brain: OCR, NLP, SM-2, Metrics
+│   ├── web/               # UI: Flask Dashboard & API
+│   ├── models/            # AI: Pre-trained classifiers
+│   ├── scripts/           # Utils: Training & Maintenance
+│   ├── tests/             # Quality Assurance
+│   └── data/              # Storage: Local SQLite Databases
+├── setup.py               # Package Configuration
+├── requirements.txt       # Dependencies
+└── README.md              # Documentation
 ```
 
 ---
 
-## Usage Examples
+## 🚀 Detailed Usage
 
-### 1. Manual Flashcard Creation
-```python
-# Via web interface: http://localhost:5000/add
-Question: "What is the time complexity of binary search?"
-Answer: "O(log n)"
-Tags: "algorithms, cs"
-```
+### 1. Dashboard (`tracker_app.web.app`)
+The command center for your knowledge.
+- **Home**: View stats and recently discovered concepts.
+- **Add**: Create flashcards (manual or auto-filled from discovery).
+- **Review**: Active recall session with SM-2 grading (0-5 scale).
 
-### 2. Automated Discovery
+### 2. Tracker (`tracker_app.main`)
+The background agent.
+- **OCR**: Scans screen text every 20s.
+- **NLP**: Extracts keywords using KeyBERT/spaCy.
+- **Intent**: Classifies activity (Studying vs Passive).
+- **Audio**: Detects speech/music environment.
+
+### 3. Model Retraining (`tracker_app.scripts.train_models`)
+If you encounter model version warnings:
 ```bash
-# Start tracker
-python -m tracker_app.main
-
-# Browse content (Wikipedia, tutorials, docs)
-# → Tracker discovers concepts
-# → Dashboard shows "Recently Discovered"
-# → Click "+" to create flashcard
+python -m tracker_app.scripts.train_models
 ```
 
-### 3. Spaced Repetition Review
+---
+
+## 🧪 Testing
+
+Run the full test suite to ensure system integrity:
 ```bash
-# Go to http://localhost:5000/review
-# Rate each card (0-5)
-# → SM-2 calculates optimal next review date
+python -m unittest discover tracker_app/tests
 ```
+*(Requires Python 3.11)*
 
 ---
 
-## SM-2 Algorithm
+## 🔧 Configuration
 
-The SuperMemo-2 algorithm optimizes review intervals based on recall quality:
-
-- **Quality 0-1** (Again): Next review in 1 day
-- **Quality 2** (Hard): Next review in 2-3 days  
-- **Quality 3-4** (Good): Next review in 5-10 days
-- **Quality 5** (Easy): Next review in 10+ days
-
-Intervals automatically adjust for long-term retention.
+All settings are managed in `tracker_app/config.py`.
+- **Database Paths**: Auto-configured in `tracker_app/data/`
+- **Tesseract Path**: Set via `TESSERACT_PATH`
+- **Intervals**: Adjustable tracking frequency
 
 ---
 
-## Configuration
-
-Key settings in [`tracker_app/config.py`](tracker_app/config.py):
-
-```python
-TRACK_INTERVAL = 5          # Tracking cycle (seconds)
-SCREENSHOT_INTERVAL = 20     # OCR frequency
-AUDIO_INTERVAL = 15          # Audio analysis frequency
-WEBCAM_INTERVAL = 45         # Attention check frequency
-```
-
----
-
-## Privacy & Data
-
-- **100% Local** - All data stored in local SQLite databases
-- **No Cloud Sync** - Nothing leaves your machine
-- **Optional Components** - Disable webcam/audio if preferred
-- **Transparent** - Inspect databases anytime
-
----
-
-## Development
-
-### Running Tests
-```bash
-pytest tracker_app/tests/
-```
-
-### Retraining Models
-```bash
-python tracker_app/scripts/train_models.py
-```
-
-### Contributing
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feature/amazing-feature`)
-5. Open Pull Request
-
----
-
-## Known Limitations
-
-- Single-user only (no authentication)
-- Windows-optimized (cross-platform support planned)
-- Requires Tesseract for OCR features
-- Some ML models need retraining for optimal accuracy
-
----
-
-## Acknowledgments
-
-- **SM-2 Algorithm** - Piotr Woźniak (SuperMemo)
-- **MediaPipe** - Google's ML solutions
-- **Flask** - Pallets Projects
-- **Tailwind CSS** - Tailwind Labs
-
----
-
-## License
-
-This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
-
----
-
-## Contact
-
-**Project Link**: [https://github.com/yourusername/FKT](https://github.com/yourusername/FKT)
-
----
-
-**Built with ❤️ for better learning**
+**Built for the ambitious learner.**
