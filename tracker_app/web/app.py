@@ -5,16 +5,30 @@ Lightweight dashboard using Flask for viewing progress and managing items
 """
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask_wtf.csrf import CSRFProtect
 from tracker_app.core.learning_tracker import LearningTracker
 from tracker_app.core.sm2_memory_model import SM2Scheduler, format_next_review
 from datetime import datetime, timedelta
 import sqlite3
 import json
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 from tracker_app.config import DATA_DIR
 
 app = Flask(__name__)
+
+# Security Configuration
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+app.config['WTF_CSRF_ENABLED'] = True
+app.config['WTF_CSRF_TIME_LIMIT'] = None  # No time limit for CSRF tokens
+
+# Initialize CSRF protection
+csrf = CSRFProtect(app)
+
 tracker = LearningTracker()
 
 def get_discovered_concepts(limit=5):
@@ -161,13 +175,19 @@ def search():
     } for item in items])
 
 
-def run_dashboard(debug=False, port=5000):
+def run_dashboard(debug=None, port=5000):
     """Run the Flask dashboard"""
+    # Use environment variable if debug not explicitly set
+    if debug is None:
+        debug = os.getenv('DEBUG', 'False').lower() == 'true'
+    
     print(f"\n[INFO] Dashboard running at: http://localhost:{port}")
     print(f"   Add items: http://localhost:{port}/add")
     print(f"   Stats API: http://localhost:{port}/stats\n")
-    app.run(debug=debug, port=port)
+    app.run(debug=debug, port=port, host='127.0.0.1')
 
 
 if __name__ == "__main__":
-    run_dashboard(debug=True, port=5000)
+    # In development, you can override with debug=True
+    # In production, set DEBUG=False in .env
+    run_dashboard()

@@ -1,4 +1,6 @@
 flask
+flask-wtf
+python-dotenv
 psutil
 pywin32
 pytesseract
