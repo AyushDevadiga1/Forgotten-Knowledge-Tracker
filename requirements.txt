@@ -13,12 +13,16 @@ numpy
 scipy
 sounddevice
 mediapipe
+
+# Heavy dependencies (2GB+) - Consider optimization in Phase 12
 sentence-transformers
+keybert
+
 sqlalchemy
+alembic
 cryptography
 mss
 librosa
-keybert
 spacy
 streamlit
 plotly
