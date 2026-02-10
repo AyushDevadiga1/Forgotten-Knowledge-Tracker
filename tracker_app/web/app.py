@@ -29,6 +29,11 @@ app.config['WTF_CSRF_TIME_LIMIT'] = None  # No time limit for CSRF tokens
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
 
+# Register API blueprint (exempt from CSRF for API endpoints)
+from tracker_app.web.api import api_bp
+csrf.exempt(api_bp)
+app.register_blueprint(api_bp)
+
 tracker = LearningTracker()
 
 def get_discovered_concepts(limit=5):
