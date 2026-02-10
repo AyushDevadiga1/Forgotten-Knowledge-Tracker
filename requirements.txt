@@ -14,9 +14,9 @@ scipy
 sounddevice
 mediapipe
 
-# Heavy dependencies (2GB+) - Consider optimization in Phase 12
-sentence-transformers
-keybert
+# Heavy dependencies (2GB+) - REMOVED in Phase 12 optimization
+# sentence-transformers  # Replaced with TF-IDF
+# keybert  # Replaced with lightweight keyword_extractor.py
 
 sqlalchemy
 alembic

@@ -4,10 +4,9 @@ import numpy as np
 import pytesseract
 from mss import mss
 from tracker_app.config import TESSERACT_PATH
-from keybert import KeyBERT
-from sentence_transformers import SentenceTransformer
 import spacy
 from tracker_app.core.knowledge_graph import get_graph
+from tracker_app.core.keyword_extractor import get_keyword_extractor
 import re
 from functools import lru_cache
 
@@ -15,21 +14,14 @@ from functools import lru_cache
 pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
 
 # Initialize models with error handling
-kw_model = None
-embedding_model = None
+kw_extractor = None
 nlp = None
 
 try:
-    kw_model = KeyBERT()
-    print("KeyBERT loaded successfully.")
+    kw_extractor = get_keyword_extractor()
+    print("Lightweight keyword extractor loaded successfully.")
 except Exception as e:
-    print(f"Error loading KeyBERT: {e}")
-
-try:
-    embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-    print("SentenceTransformer loaded successfully.")
-except Exception as e:
-    print(f"Error loading SentenceTransformer: {e}")
+    print(f"Error loading keyword extractor: {e}")
 
 try:
     nlp = spacy.load("en_core_web_sm")
@@ -116,24 +108,20 @@ def extract_text(img):
         return ""
 
 def extract_keywords(text, top_n=15, boost_repeats=True):
-    """Combine KeyBERT + NLP + repetition + KG boosts"""
-    if not text or not text.strip():
-        return {}
+    """Combine TF-IDF + NLP + repetition + KG boosts"""
+    concepts = {}
     
-    kw_dict = {}
-
+    if not text or len(text.strip()) < 10:
+        return concepts
+    
     try:
-        # 1️⃣ KeyBERT extraction (if available)
-        if kw_model is not None:
-            kw_list = kw_model.extract_keywords(
-                text, 
-                keyphrase_ngram_range=(1, 2),
-                stop_words='english', 
-                top_n=top_n * 2
-            )
-            kw_dict = {kw[0].lower(): float(kw[1]) for kw in kw_list if kw[0].strip()}
+        # 1️⃣ TF-IDF extraction (lightweight replacement for KeyBERT)
+        if kw_extractor:
+            keywords = kw_extractor.extract_keywords(text, top_n=10)
+            for kw, score in keywords:
+                concepts[kw] = score * 0.8  # Base score from TF-IDF
     except Exception as e:
-        print(f"KeyBERT extraction failed: {e}")
+        print(f"Keyword extraction failed: {e}")
 
     try:
         # 2️⃣ NLP nouns/proper nouns & entities (if available)
@@ -211,33 +199,20 @@ def extract_keywords(text, top_n=15, boost_repeats=True):
 
 @lru_cache(maxsize=32)
 def extract_concepts_v2(text, top_n=5):
-    """Extract high-level semantic concepts for topic headings"""
-    if not text or not text.strip():
+    """Extract concepts from OCR text using lightweight keyword extraction"""
+    if not text or len(text.strip()) < 5:
+        return []
+    
+    try:
+        # Use TF-IDF for concept extraction with broader range
+        if kw_extractor:
+            keywords = kw_extractor.extract_keywords(text, top_n=20)
+            return [kw for kw, score in keywords if score > 0.1][:top_n]
+        return []
+    except Exception as e:
+        print(f"[WARN] extract_concepts_v2 failed: {e}")
         return []
 
-    try:
-        if kw_model is None:
-            return []
-            
-        # Use KeyBERT for concept extraction with broader range
-        kw_list = kw_model.extract_keywords(
-            text, 
-            keyphrase_ngram_range=(1, 3),
-            stop_words='english', 
-            top_n=top_n * 3
-        )
-        
-        unique_concepts = []
-        for k, score in kw_list:
-            key = k.lower().strip()
-            if key and key not in unique_concepts and len(key) > 3:
-                unique_concepts.append(key)
-                
-        return unique_concepts[:top_n]
-        
-    except Exception as e:
-        print("[WARN] extract_concepts_v2 failed:", e)
-        return []
 
 def get_text_embedding_v2(text):
     """Compute sentence embeddings for semantic search"""
