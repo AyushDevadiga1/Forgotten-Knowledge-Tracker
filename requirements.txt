@@ -1,5 +1,6 @@
 flask
 flask-wtf
+flask-socketio
 python-dotenv
 gunicorn
 psutil

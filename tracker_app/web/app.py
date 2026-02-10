@@ -34,6 +34,10 @@ from tracker_app.web.api import api_bp
 csrf.exempt(api_bp)
 app.register_blueprint(api_bp)
 
+# Initialize Socket.IO for real-time updates
+from tracker_app.web.realtime import init_socketio
+socketio = init_socketio(app)
+
 tracker = LearningTracker()
 
 def get_discovered_concepts(limit=5):
@@ -181,15 +185,18 @@ def search():
 
 
 def run_dashboard(debug=None, port=5000):
-    """Run the Flask dashboard"""
+    """Run the Flask dashboard with Socket.IO support"""
     # Use environment variable if debug not explicitly set
     if debug is None:
         debug = os.getenv('DEBUG', 'False').lower() == 'true'
     
     print(f"\n[INFO] Dashboard running at: http://localhost:{port}")
     print(f"   Add items: http://localhost:{port}/add")
-    print(f"   Stats API: http://localhost:{port}/stats\n")
-    app.run(debug=debug, port=port, host='127.0.0.1')
+    print(f"   Stats API: http://localhost:{port}/stats")
+    print(f"   Real-time updates: Socket.IO enabled\n")
+    
+    # Use socketio.run instead of app.run for WebSocket support
+    socketio.run(app, debug=debug, port=port, host='127.0.0.1', allow_unsafe_werkzeug=True)
 
 
 if __name__ == "__main__":
