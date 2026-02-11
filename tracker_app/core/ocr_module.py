@@ -34,13 +34,41 @@ except Exception as e:
 # Screenshot deduplication
 _last_screenshot_hash = None
 
-def capture_screenshot():
-    """Capture screenshot with deduplication"""
+def capture_screenshot(use_roi=True):
+    """
+    Capture screenshot with deduplication and optional ROI detection.
+    
+    Args:
+        use_roi: If True, capture only active window (faster, more private)
+    """
     global _last_screenshot_hash
     
     try:
+        # Try ROI capture first (active window only)
+        if use_roi:
+            try:
+                from tracker_app.core.roi_detector import capture_active_window, should_skip_window
+                img, window_info = capture_active_window()
+                
+                if img is not None and window_info:
+                    # Privacy check
+                    if should_skip_window(window_info['title']):
+                        print(f"[PRIVACY] Skipped sensitive window: {window_info['title']}")
+                        return None
+                    
+                    # Deduplication check
+                    img_hash = hashlib.md5(img.tobytes()).hexdigest()
+                    if img_hash == _last_screenshot_hash:
+                        return None
+                    
+                    _last_screenshot_hash = img_hash
+                    return img
+            except ImportError:
+                pass  # Fall back to full screen
+        
+        # Fallback: Full screen capture
         with mss() as sct:
-            monitor = sct.monitors[1]  # Primary monitor
+            monitor = sct.monitors[1]
             img = np.array(sct.grab(monitor))
             
             # Calculate hash for deduplication
@@ -107,11 +135,28 @@ def extract_text(img):
         return ""
 
 def extract_keywords(text, top_n=15, boost_repeats=True):
-    """Extract keywords with quality validation to prevent garbage"""
+    """Extract keywords with quality validation and privacy filtering"""
     if not text or len(text.strip()) < 10:
         return {}
     
-    # CRITICAL FIX: Validate text quality FIRST
+    # Privacy filter FIRST
+    try:
+        from tracker_app.core.privacy_filter import sanitize_text_for_storage
+        sanitized = sanitize_text_for_storage(text)
+        
+        if not sanitized['safe_to_store']:
+            print("[PRIVACY] Text rejected due to sensitive content")
+            return {}
+        
+        # Use sanitized text
+        text = sanitized['text']
+        
+        if sanitized['is_sanitized']:
+            print(f"[PRIVACY] Redacted {sanitized['num_redactions']} sensitive items")
+    except ImportError:
+        pass  # Privacy filter not available
+    
+    # Quality validation
     validation = validate_and_clean_extraction(text)
     
     # Reject garbage immediately
@@ -124,7 +169,7 @@ def extract_keywords(text, top_n=15, boost_repeats=True):
     concepts = {}
     
     try:
-        # 1️⃣ TF-IDF extraction on VALIDATED text
+        # TF-IDF extraction on VALIDATED and SANITIZED text
         if kw_extractor:
             keywords = kw_extractor.extract_keywords(clean_text, top_n=10)
             for kw, score in keywords:
