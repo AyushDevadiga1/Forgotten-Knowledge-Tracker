@@ -42,7 +42,7 @@ def get_ocr_pipeline():
     global _ocr_pipeline
     if _ocr_pipeline is None:
         logger.info("Loading OCR pipeline...")
-        from core.ocr_module import ocr_pipeline
+        from tracker_app.core.ocr_module import ocr_pipeline
         _ocr_pipeline = ocr_pipeline
     return _ocr_pipeline
 
@@ -51,7 +51,7 @@ def get_audio_pipeline():
     global _audio_pipeline
     if _audio_pipeline is None:
         logger.info("Loading audio pipeline...")
-        from core.audio_module import audio_pipeline
+        from tracker_app.core.audio_module import audio_pipeline
         _audio_pipeline = audio_pipeline
     return _audio_pipeline
 
@@ -60,7 +60,7 @@ def get_webcam_pipeline():
     global _webcam_pipeline
     if _webcam_pipeline is None:
         logger.info("Loading webcam pipeline...")
-        from core.webcam_module import webcam_pipeline
+        from tracker_app.core.webcam_module import webcam_pipeline
         _webcam_pipeline = webcam_pipeline
     return _webcam_pipeline
 

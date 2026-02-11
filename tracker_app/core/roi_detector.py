@@ -35,15 +35,23 @@ def capture_active_window():
     try:
         window_info = get_active_window_rect()
         if not window_info:
-            return None
+            return None, None
         
         hwnd = window_info['hwnd']
         width = window_info['width']
         height = window_info['height']
         
+        # Validate window still exists
+        if not win32gui.IsWindow(hwnd):
+            return None, None
+        
         # Skip if window is too small (likely a popup or notification)
-        if width < 200 or height < 100:
-            return None
+        if width < 100 or height < 50:
+            return None, None
+        
+        # Skip if window is minimized
+        if win32gui.IsIconic(hwnd):
+            return None, None
         
         # Get window DC
         hwndDC = win32gui.GetWindowDC(hwnd)

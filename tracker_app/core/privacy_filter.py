@@ -7,8 +7,8 @@ Detects and redacts sensitive information from OCR text.
 import re
 from typing import Tuple, List
 
-# Sensitive data patterns
-SENSITIVE_PATTERNS = {
+# Sensitive data patterns (raw strings)
+SENSITIVE_PATTERNS_RAW = {
     'credit_card': r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b',
     'ssn': r'\b\d{3}-\d{2}-\d{4}\b',
     'email': r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
@@ -16,6 +16,12 @@ SENSITIVE_PATTERNS = {
     'password_field': r'password[:=\s]+\S+',
     'api_key': r'(api[_-]?key|token)[:=\s]+[A-Za-z0-9_\-]{20,}',
     'ip_address': r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b',
+}
+
+# Pre-compile patterns for performance
+SENSITIVE_PATTERNS = {
+    name: re.compile(pattern, re.IGNORECASE)
+    for name, pattern in SENSITIVE_PATTERNS_RAW.items()
 }
 
 # Privacy-sensitive window titles
@@ -28,14 +34,14 @@ SENSITIVE_WINDOW_KEYWORDS = [
 
 def detect_sensitive_data(text: str) -> List[dict]:
     """
-    Detect sensitive data in text.
+    Detect sensitive data in text using pre-compiled patterns.
     
     Returns list of detected patterns with type and position.
     """
     detections = []
     
-    for pattern_name, pattern in SENSITIVE_PATTERNS.items():
-        matches = re.finditer(pattern, text, re.IGNORECASE)
+    for pattern_name, compiled_pattern in SENSITIVE_PATTERNS.items():
+        matches = compiled_pattern.finditer(text)
         for match in matches:
             detections.append({
                 'type': pattern_name,
@@ -48,7 +54,7 @@ def detect_sensitive_data(text: str) -> List[dict]:
 
 def redact_sensitive_data(text: str, redaction_char: str = '*') -> Tuple[str, int]:
     """
-    Redact sensitive data from text.
+    Redact sensitive data from text using pre-compiled patterns.
     
     Returns:
         (redacted_text, num_redactions)
@@ -56,8 +62,8 @@ def redact_sensitive_data(text: str, redaction_char: str = '*') -> Tuple[str, in
     redacted_text = text
     num_redactions = 0
     
-    for pattern_name, pattern in SENSITIVE_PATTERNS.items():
-        matches = list(re.finditer(pattern, redacted_text, re.IGNORECASE))
+    for pattern_name, compiled_pattern in SENSITIVE_PATTERNS.items():
+        matches = list(compiled_pattern.finditer(redacted_text))
         for match in reversed(matches):  # Reverse to maintain indices
             # Replace with [REDACTED: type]
             replacement = f'[REDACTED:{pattern_name.upper()}]'

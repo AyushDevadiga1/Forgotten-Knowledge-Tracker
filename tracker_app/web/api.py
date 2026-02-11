@@ -12,14 +12,60 @@ tracker = LearningTracker()
 
 @api_bp.route('/items', methods=['GET'])
 def get_items():
-    """Get all learning items"""
+    """Get all learning items with filtering"""
     try:
         # Get query parameters
         status = request.args.get('status', 'active')
         limit = int(request.args.get('limit', 50))
         
-        # TODO: Implement filtering in LearningTracker
-        items = []  # Placeholder
+        # Get all items from database
+        conn = tracker.get_connection()
+        cursor = conn.cursor()
+        
+        # Query based on status
+        if status == 'all':
+            cursor.execute("""
+                SELECT id, question, answer, difficulty, item_type, tags,
+                       interval, ease_factor, repetitions, next_review_date,
+                       total_reviews, correct_count, success_rate, status
+                FROM learning_items
+                ORDER BY created_at DESC
+                LIMIT ?
+            """, (limit,))
+        else:
+            cursor.execute("""
+                SELECT id, question, answer, difficulty, item_type, tags,
+                       interval, ease_factor, repetitions, next_review_date,
+                       total_reviews, correct_count, success_rate, status
+                FROM learning_items
+                WHERE status = ?
+                ORDER BY created_at DESC
+                LIMIT ?
+            """, (status, limit))
+        
+        rows = cursor.fetchall()
+        
+        # Convert to dict
+        items = []
+        for row in rows:
+            items.append({
+                'id': row[0],
+                'question': row[1],
+                'answer': row[2],
+                'difficulty': row[3],
+                'item_type': row[4],
+                'tags': row[5],
+                'interval': row[6],
+                'ease_factor': row[7],
+                'repetitions': row[8],
+                'next_review_date': row[9],
+                'total_reviews': row[10],
+                'correct_count': row[11],
+                'success_rate': row[12],
+                'status': row[13]
+            })
+        
+        conn.close()
         
         return jsonify({
             'success': True,
