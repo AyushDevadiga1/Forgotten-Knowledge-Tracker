@@ -2,11 +2,13 @@
 import cv2
 import numpy as np
 import pytesseract
+import hashlib
 from mss import mss
 from tracker_app.config import TESSERACT_PATH
 import spacy
 from tracker_app.core.knowledge_graph import get_graph
 from tracker_app.core.keyword_extractor import get_keyword_extractor
+from tracker_app.core.text_quality_validator import validate_and_clean_extraction
 import re
 from functools import lru_cache
 
@@ -29,13 +31,26 @@ try:
 except Exception as e:
     print(f"Error loading spaCy model: {e}")
 
+# Screenshot deduplication
+_last_screenshot_hash = None
+
 def capture_screenshot():
-    """Capture screenshot safely"""
+    """Capture screenshot with deduplication"""
+    global _last_screenshot_hash
+    
     try:
         with mss() as sct:
             monitor = sct.monitors[1]  # Primary monitor
-            screenshot = sct.grab(monitor)
-            img = np.array(screenshot)
+            img = np.array(sct.grab(monitor))
+            
+            # Calculate hash for deduplication
+            img_hash = hashlib.md5(img.tobytes()).hexdigest()
+            
+            # Skip if same as last screenshot
+            if img_hash == _last_screenshot_hash:
+                return None
+            
+            _last_screenshot_hash = img_hash
             
             # Convert BGRA to BGR if needed
             if img.shape[2] == 4:
@@ -76,50 +91,46 @@ def preprocess_image(img):
         return gray if 'gray' in locals() else img
 
 def extract_text(img):
-    """Extract text from image with multiple OCR strategies"""
+    """Extract text from image using optimized OCR strategy"""
     if img is None:
         return ""
         
     try:
-        # Strategy 1: Default OCR
+        # Use ONLY PSM 6 (default) - removed PSM 7 and 8 for performance
         custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,!?;:()[]{}@#$%&*+-/=<> '
-        text1 = pytesseract.image_to_string(img, config=custom_config)
+        text = pytesseract.image_to_string(img, config=custom_config)
         
-        # Strategy 2: Single text line mode (for titles/headings)
-        custom_config2 = r'--oem 3 --psm 7'
-        text2 = pytesseract.image_to_string(img, config=custom_config2)
-        
-        # Strategy 3: Single word mode
-        custom_config3 = r'--oem 3 --psm 8'
-        text3 = pytesseract.image_to_string(img, config=custom_config3)
-        
-        # Combine strategies, preferring longer, cleaner text
-        texts = [text1, text2, text3]
-        texts = [t.strip() for t in texts if t and t.strip()]
-        
-        if not texts:
-            return ""
-            
-        # Return the longest non-empty text
-        return max(texts, key=len)
+        return text.strip() if text else ""
         
     except Exception as e:
         print(f"Error extracting text with OCR: {e}")
         return ""
 
 def extract_keywords(text, top_n=15, boost_repeats=True):
-    """Combine TF-IDF + NLP + repetition + KG boosts"""
+    """Extract keywords with quality validation to prevent garbage"""
+    if not text or len(text.strip()) < 10:
+        return {}
+    
+    # CRITICAL FIX: Validate text quality FIRST
+    validation = validate_and_clean_extraction(text)
+    
+    # Reject garbage immediately
+    if not validation['is_useful']:
+        print(f"[FILTERED] Rejected text: {validation['reason']}")
+        return {}
+    
+    # Use cleaned text for extraction
+    clean_text = validation['cleaned_text']
     concepts = {}
     
-    if not text or len(text.strip()) < 10:
-        return concepts
-    
     try:
-        # 1️⃣ TF-IDF extraction (lightweight replacement for KeyBERT)
+        # 1️⃣ TF-IDF extraction on VALIDATED text
         if kw_extractor:
-            keywords = kw_extractor.extract_keywords(text, top_n=10)
+            keywords = kw_extractor.extract_keywords(clean_text, top_n=10)
             for kw, score in keywords:
-                concepts[kw] = score * 0.8  # Base score from TF-IDF
+                # Additional filter: skip single-char and UI garbage
+                if len(kw) > 2 and kw.lower() not in {'the', 'and', 'for', 'with'}:
+                    concepts[kw] = score * 0.8
     except Exception as e:
         print(f"Keyword extraction failed: {e}")
 
