@@ -17,7 +17,8 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-from tracker_app.config import DATA_DIR
+from tracker_app.config import DATA_DIR, setup_directories
+setup_directories()  # Ensure data/ and models/ dirs exist before app starts
 
 app = Flask(__name__)
 
@@ -46,17 +47,16 @@ def get_discovered_concepts(limit=5):
         db_path = str(DATA_DIR / "tracking_concepts.db")
         if not os.path.exists(db_path):
             return []
-            
-        conn = sqlite3.connect(db_path, timeout=5)
-        c = conn.cursor()
-        c.execute('''
-            SELECT concept, relevance_score, last_seen 
-            FROM tracked_concepts 
-            ORDER BY last_seen DESC 
-            LIMIT ?
-        ''', (limit,))
-        rows = c.fetchall()
-        conn.close()
+
+        with sqlite3.connect(db_path, timeout=5) as conn:
+            c = conn.cursor()
+            c.execute('''
+                SELECT concept, relevance_score, last_seen
+                FROM tracked_concepts
+                ORDER BY last_seen DESC
+                LIMIT ?
+            ''', (limit,))
+            rows = c.fetchall()
         return [{'concept': r[0], 'relevance': round(r[1], 2), 'last_seen': r[2]} for r in rows]
     except Exception as e:
         print(f"Error fetching discovered concepts: {e}")
@@ -68,17 +68,16 @@ def index():
     """Dashboard home"""
     stats = tracker.get_learning_stats()
     due_items = tracker.get_items_due()
-    
-    # Get recent items
-    conn = sqlite3.connect(tracker.db_path)
-    c = conn.cursor()
-    c.execute('SELECT * FROM learning_items WHERE status = "active" ORDER BY created_at DESC LIMIT 5')
-    recent_rows = c.fetchall()
-    conn.close()
-    
+
+    # Get recent items — use context manager to ensure connection always closes
+    with sqlite3.connect(tracker.db_path, timeout=10) as conn:
+        c = conn.cursor()
+        c.execute('SELECT * FROM learning_items WHERE status = "active" ORDER BY created_at DESC LIMIT 5')
+        recent_rows = c.fetchall()
+
     recent_items = [tracker._row_to_dict(row) for row in recent_rows]
     discovered_concepts = get_discovered_concepts()
-    
+
     return render_template(
         "index.html",
         stats=stats,
@@ -92,13 +91,20 @@ def index():
 def add_item_page():
     """Add item page"""
     if request.method == 'POST':
-        question = request.form.get('question')
-        answer = request.form.get('answer')
+        question = request.form.get('question', '').strip()
+        answer = request.form.get('answer', '').strip()
         difficulty = request.form.get('difficulty', 'medium')
         item_type = request.form.get('item_type', 'concept')
         tags_str = request.form.get('tags', '')
         tags = [t.strip() for t in tags_str.split(',') if t.strip()]
-        
+
+        if not question:
+            return "Error: question is required", 400
+        if not answer:
+            return "Error: answer is required", 400
+        if difficulty not in {'easy', 'medium', 'hard'}:
+            return "Error: difficulty must be easy, medium, or hard", 400
+
         try:
             tracker.add_learning_item(
                 question=question,
@@ -131,9 +137,15 @@ def review_session():
 def review_item(item_id):
     """Review single item"""
     if request.method == 'POST':
-        quality = int(request.form.get('quality', 3))
+        quality_raw = request.form.get('quality', '3')
         try:
-            tracker.record_review(item_id, quality)
+            quality = int(quality_raw)
+            if not (0 <= quality <= 5):
+                return "Error: quality must be 0-5", 400
+        except (ValueError, TypeError):
+            return "Error: quality must be an integer", 400
+        try:
+            tracker.record_review(item_id, quality_rating=quality)
             # Find next due item
             items = tracker.get_items_due()
             if items:
