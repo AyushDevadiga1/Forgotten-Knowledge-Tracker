@@ -7,10 +7,16 @@ PROJECT_ROOT = Path(__file__).parent.absolute()
 
 # Base directory for all data files
 DATA_DIR = PROJECT_ROOT / "data"
-DATA_DIR.mkdir(exist_ok=True)
 
 # Model directory
 MODELS_DIR = PROJECT_ROOT / "models"
+
+
+def setup_directories():
+    """Create required directories. Call this from main entry points only.
+    NOT called at import time — keeps imports side-effect-free for testing."""
+    DATA_DIR.mkdir(exist_ok=True)
+    MODELS_DIR.mkdir(exist_ok=True)
 
 # Tracker intervals (in seconds)
 TRACK_INTERVAL = 5          # Main tracking loop interval
