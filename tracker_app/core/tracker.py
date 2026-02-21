@@ -32,6 +32,10 @@ from tracker_app.config import DB_PATH, TRACK_INTERVAL, SCREENSHOT_INTERVAL, AUD
 from tracker_app.core.intent_module import predict_intent
 from tracker_app.core.knowledge_graph import add_concepts, get_graph, add_edges
 
+# Configure logging FIRST — must be before any function that calls logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("Tracker")
+
 # Lazy-loaded modules (loaded on first use to optimize startup time)
 _ocr_pipeline = None
 _audio_pipeline = None
