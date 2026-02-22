@@ -26,7 +26,8 @@ WEBCAM_INTERVAL = 45         # Webcam attention check interval
 USER_ALLOW_WEBCAM = True   # Webcam permission toggle
 
 # Database path
-DB_PATH = str(DATA_DIR / "sessions.db")
+# In test mode, use the temporary database dictated by the test runner
+DB_PATH = os.environ.get('FKT_TEST_DB', str(DATA_DIR / "sessions.db"))
 
 # Tesseract OCR path (update based on your installation)
 # Tesseract OCR path (update based on your installation)

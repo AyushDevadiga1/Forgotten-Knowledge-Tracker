@@ -21,17 +21,30 @@ class TestAPIGetItems(unittest.TestCase):
         self.tmp = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
         self.tmp.close()
 
-        os.environ['FKT_TEST_DB'] = self.tmp.name  # app/api should read this in test mode
-
-        # Import app AFTER setting env var
-        from tracker_app.web.app import app
+        # Import app and both tracker instances
+        from tracker_app.web.app import app, tracker
+        from tracker_app.web.api import tracker as api_tracker
         app.config['TESTING'] = True
         app.config['WTF_CSRF_ENABLED'] = False  # Disable CSRF for tests
+        
+        self.old_db_path = tracker.db_path
+        tracker.db_path = self.tmp.name
+        api_tracker.db_path = self.tmp.name
+        tracker._init_database()
+
         self.client = app.test_client()
 
     def tearDown(self):
-        os.unlink(self.tmp.name)
-        del os.environ['FKT_TEST_DB']
+        import gc
+        from tracker_app.web.app import tracker
+        from tracker_app.web.api import tracker as api_tracker
+        tracker.db_path = self.old_db_path
+        api_tracker.db_path = self.old_db_path
+        gc.collect()
+        try:
+            os.unlink(self.tmp.name)
+        except OSError:
+            pass
 
     def test_get_items_returns_200(self):
         resp = self.client.get('/api/v1/items')
@@ -82,15 +95,29 @@ class TestAPICreateItem(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
         self.tmp.close()
-        os.environ['FKT_TEST_DB'] = self.tmp.name
-        from tracker_app.web.app import app
+        from tracker_app.web.app import app, tracker
+        from tracker_app.web.api import tracker as api_tracker
         app.config['TESTING'] = True
         app.config['WTF_CSRF_ENABLED'] = False
+        
+        self.old_db_path = tracker.db_path
+        tracker.db_path = self.tmp.name
+        api_tracker.db_path = self.tmp.name
+        tracker._init_database()
+
         self.client = app.test_client()
 
     def tearDown(self):
-        os.unlink(self.tmp.name)
-        del os.environ['FKT_TEST_DB']
+        import gc
+        from tracker_app.web.app import tracker
+        from tracker_app.web.api import tracker as api_tracker
+        tracker.db_path = self.old_db_path
+        api_tracker.db_path = self.old_db_path
+        gc.collect()
+        try:
+            os.unlink(self.tmp.name)
+        except Exception:
+            pass
 
     def test_create_valid_item_returns_201(self):
         resp = self.client.post('/api/v1/items',
@@ -146,15 +173,29 @@ class TestAPIRecordReview(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
         self.tmp.close()
-        os.environ['FKT_TEST_DB'] = self.tmp.name
-        from tracker_app.web.app import app
+        from tracker_app.web.app import app, tracker
+        from tracker_app.web.api import tracker as api_tracker
         app.config['TESTING'] = True
         app.config['WTF_CSRF_ENABLED'] = False
+        
+        self.old_db_path = tracker.db_path
+        tracker.db_path = self.tmp.name
+        api_tracker.db_path = self.tmp.name
+        tracker._init_database()
+        
         self.client = app.test_client()
 
     def tearDown(self):
-        os.unlink(self.tmp.name)
-        del os.environ['FKT_TEST_DB']
+        import gc
+        from tracker_app.web.app import tracker
+        from tracker_app.web.api import tracker as api_tracker
+        tracker.db_path = self.old_db_path
+        api_tracker.db_path = self.old_db_path
+        gc.collect()
+        try:
+            os.unlink(self.tmp.name)
+        except OSError:
+            pass
 
     def test_record_review_valid(self):
         # Create an item first
