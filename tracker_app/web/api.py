@@ -5,8 +5,9 @@ RESTful API endpoints for managing learning items and reviews.
 """
 
 import sqlite3
+from contextlib import closing
 from flask import Blueprint, request, jsonify
-from tracker_app.core.learning_tracker import LearningTracker
+from tracker_app.core.learning_tracker import LearningTracker, DifficultyLevel, LearningItemType
 
 api_bp = Blueprint('api', __name__, url_prefix='/api/v1')
 tracker = LearningTracker()
@@ -31,7 +32,7 @@ def get_items():
         return jsonify({'success': False, 'error': f'status must be one of: {sorted(VALID_STATUSES)}'}), 400
 
     try:
-        with sqlite3.connect(tracker.db_path, timeout=10) as conn:
+        with closing(sqlite3.connect(tracker.db_path, timeout=10)) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
 
@@ -84,16 +85,22 @@ def create_item():
         return jsonify({'success': False, 'error': 'difficulty must be easy, medium, or hard'}), 400
 
     try:
+        difficulty_enum = DifficultyLevel(difficulty)
+        item_type_enum = LearningItemType(data.get('item_type', 'concept'))
+    except ValueError:
+        return jsonify({'success': False, 'error': 'Invalid difficulty or item_type'}), 400
+
+    try:
         item_id = tracker.add_learning_item(
             question=question,
             answer=answer,
-            difficulty=difficulty,
-            item_type=data.get('item_type', 'concept'),
+            difficulty=difficulty_enum.value,
+            item_type=item_type_enum.value,
             tags=data.get('tags', [])
         )
         return jsonify({'success': True, 'data': {'id': item_id}}), 201
     except Exception as e:
-        return jsonify({'success': False, 'error': 'Failed to create item'}), 500
+        return jsonify({'success': False, 'error': f"Failed to create item: {str(e)}"}), 500
 
 @api_bp.route('/items/<item_id>', methods=['GET'])
 def get_item(item_id):

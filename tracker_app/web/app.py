@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 import sqlite3
 import json
 import os
+from contextlib import closing
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -48,7 +49,7 @@ def get_discovered_concepts(limit=5):
         if not os.path.exists(db_path):
             return []
 
-        with sqlite3.connect(db_path, timeout=5) as conn:
+        with closing(sqlite3.connect(db_path, timeout=5)) as conn:
             c = conn.cursor()
             c.execute('''
                 SELECT concept, relevance_score, last_seen
@@ -70,7 +71,7 @@ def index():
     due_items = tracker.get_items_due()
 
     # Get recent items — use context manager to ensure connection always closes
-    with sqlite3.connect(tracker.db_path, timeout=10) as conn:
+    with closing(sqlite3.connect(tracker.db_path, timeout=10)) as conn:
         c = conn.cursor()
         c.execute('SELECT * FROM learning_items WHERE status = "active" ORDER BY created_at DESC LIMIT 5')
         recent_rows = c.fetchall()
