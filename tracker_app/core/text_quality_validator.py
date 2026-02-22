@@ -51,7 +51,6 @@ UI_GARBAGE = {
 OCR_CORRECTIONS = {
     'l0': '10',      # Letter l and zero
     '0l': '01',      # Zero and letter l
-    'rn': 'm',       # rn looks like m
     '1l': 'il',      # 1 and l
     'lI': 'li',      # l and capital I
     'O0': '00',      # O and 0

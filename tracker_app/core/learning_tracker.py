@@ -144,6 +144,15 @@ class LearningTracker:
         Returns:
             Item ID for future reference
         """
+        if not question or not str(question).strip():
+            raise ValueError("question cannot be empty")
+        if not answer or not str(answer).strip():
+            raise ValueError("answer cannot be empty")
+        if len(str(question)) > 1000:
+            raise ValueError("question must be under 1000 characters")
+        if difficulty not in {"easy", "medium", "hard"}:
+            raise ValueError("difficulty must be easy, medium, or hard")
+            
         item_id = str(uuid.uuid4())[:8]
         now = datetime.now().isoformat()
         
