@@ -46,5 +46,14 @@ dist/
 .DS_Store
 Thumbs.db
 
+# Secrets and sensitive data
+.env
+.env.*
+*.key
+*.pem
+*.db
+*.sqlite
+!tracker_app/data/.gitignore
+
 # Documentation artifacts (optional, but good to ignore if large)
 # Docs/archive/  <-- Already deleted
