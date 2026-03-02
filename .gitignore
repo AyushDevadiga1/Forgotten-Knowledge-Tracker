@@ -11,6 +11,9 @@ venv/
 ENV/
 env/
 
+#Node js 
+tracker_app/web/frontend/node_modules
+
 # Testing
 .pytest_cache/
 .coverage

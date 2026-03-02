@@ -6,6 +6,7 @@ Lightweight dashboard using Flask for viewing progress and managing items
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_wtf.csrf import CSRFProtect
+from flask_cors import CORS
 from tracker_app.core.learning_tracker import LearningTracker
 from tracker_app.core.sm2_memory_model import SM2Scheduler, format_next_review
 from datetime import datetime, timedelta
@@ -37,6 +38,9 @@ csrf = CSRFProtect(app)
 from tracker_app.web.api import api_bp
 csrf.exempt(api_bp)
 app.register_blueprint(api_bp)
+
+# Allow Vite dev server (localhost:5173) to reach the API
+CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173", "http://127.0.0.1:5173"]}})
 
 # Initialize Socket.IO for real-time updates
 from tracker_app.web.realtime import init_socketio
