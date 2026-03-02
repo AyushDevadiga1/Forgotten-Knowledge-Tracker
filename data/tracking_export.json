@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-02-28T14:04:11.720104",
+  "session_stats": {
+    "session_duration_minutes": 10.637221899999998,
+    "concepts_encountered": 0,
+    "avg_attention": 33.333333333333336,
+    "is_active": true
+  },
+  "due_concepts": [],
+  "intent_accuracy": {
+    "average_accuracy": 0.5,
+    "intents_tracked": 0,
+    "best_accuracy": 0,
+    "worst_accuracy": 0
+  },
+  "daily_summary": {
+    "date": "2026-02-28",
+    "total_minutes": 0,
+    "concepts": 0,
+    "avg_attention": 0
+  },
+  "trend_analysis": {
+    "tracking_days": 0,
+    "avg_session_minutes": 0,
+    "total_concepts_encountered": 0,
+    "avg_attention_score": 0
+  }
+}

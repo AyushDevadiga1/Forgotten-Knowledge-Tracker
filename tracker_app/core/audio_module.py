@@ -2,33 +2,13 @@
 import sounddevice as sd
 import numpy as np
 import librosa
-import sounddevice as sd
-import pickle
 import os
 import warnings
 warnings.filterwarnings('ignore', category=FutureWarning)
 
-from tracker_app.config import AUDIO_CLASSIFIER_PATH, AUDIO_LABEL_ENCODER_PATH, AUDIO_SCALER_PATH
-
 # Duration for audio recording (seconds)
 DURATION = 5
 SAMPLE_RATE = 22050  # librosa default
-
-# Model paths - Updated to use config
-clf_path = AUDIO_CLASSIFIER_PATH
-encoder_path = AUDIO_LABEL_ENCODER_PATH
-scaler_path = AUDIO_SCALER_PATH
-clf = None
-if os.path.exists(clf_path):
-    try:
-        with open(clf_path, "rb") as f:
-            clf = pickle.load(f)
-        print("[OK] Audio classifier loaded successfully.")
-    except Exception as e:
-        print(f"[FAIL] Failed to load audio classifier: {e}")
-        clf = None
-else:
-    print("[WARN] Audio classifier not found. Using energy-based fallback.")
 
 # ----------------------------
 # Audio recording
@@ -46,61 +26,12 @@ def record_audio(duration=DURATION):
         return np.zeros(int(duration * SAMPLE_RATE))
 
 # ----------------------------
-# Feature extraction (enhanced)
-# ----------------------------
-def extract_features(audio):
-    """Compute robust audio features"""
-    try:
-        if not isinstance(audio, np.ndarray) or len(audio) == 0 or np.max(np.abs(audio)) < 1e-6:
-            return np.zeros(20)
-
-        # Pre-emphasis filter
-        audio = librosa.effects.preemphasis(audio)
-
-        # MFCCs
-        mfccs = librosa.feature.mfcc(y=audio, sr=SAMPLE_RATE, n_mfcc=13, n_fft=2048, hop_length=512)
-        mfcc_mean = np.mean(mfccs, axis=1)
-        mfcc_std = np.std(mfccs, axis=1)
-
-        # Spectral features
-        spectral_centroid = np.mean(librosa.feature.spectral_centroid(y=audio, sr=SAMPLE_RATE))
-        spectral_rolloff = np.mean(librosa.feature.spectral_rolloff(y=audio, sr=SAMPLE_RATE))
-        zero_crossing_rate = np.mean(librosa.feature.zero_crossing_rate(audio))
-
-        # Energy features
-        rms = np.sqrt(np.mean(audio**2))
-        energy = np.sum(audio**2)
-
-        # Combine features (20 features)
-        features = np.concatenate([
-            mfcc_mean,          # 13
-            mfcc_std[:2],       # 2
-            [spectral_centroid, spectral_rolloff, zero_crossing_rate, rms, energy]  # 5
-        ])
-        return features[:20]
-    except Exception as e:
-        print(f"[FAIL] Feature extraction failed: {e}")
-        return np.zeros(20)
-
-# ----------------------------
 # Audio classification
 # ----------------------------
 def classify_audio(audio):
-    """Predict label with classifier or fallback"""
+    """Predict label with fallback threshold logic"""
     try:
-        if clf is not None:
-            features = extract_features(audio).reshape(1, -1)
-            if np.max(np.abs(features)) < 1e-6:
-                return "silence", 0.95
-            # Check feature shape
-            if features.shape[1] != 20:
-                return energy_based_classification(audio)
-            # Predict
-            label = clf.predict(features)[0]
-            confidence = float(np.max(clf.predict_proba(features)[0])) if hasattr(clf, 'predict_proba') else 0.7
-            return label, confidence
-        else:
-            return energy_based_classification(audio)
+        return energy_based_classification(audio)
     except Exception as e:
         print(f"[FAIL] Audio classification failed: {e}")
         return energy_based_classification(audio)

@@ -1,31 +1,7 @@
 # core/intent_module.py
 import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
-import pickle
 import os
 from typing import Union, List, Dict
-from tracker_app.config import INTENT_CLASSIFIER_PATH, INTENT_LABEL_MAP_PATH
-
-# Load trained intent classifier
-clf_path = INTENT_CLASSIFIER_PATH
-map_path = INTENT_LABEL_MAP_PATH
-
-intent_clf = None
-intent_label_map = None
-
-if os.path.exists(clf_path) and os.path.exists(map_path):
-    try:
-        with open(clf_path, "rb") as f:
-            intent_clf = pickle.load(f)
-        with open(map_path, "rb") as f:
-            intent_label_map = pickle.load(f)
-        print("Intent classifier and label map loaded successfully.")
-    except Exception as e:
-        print(f"[IntentModule] Failed to load classifier: {e}")
-        intent_clf = None
-        intent_label_map = None
-else:
-    print("[IntentModule] Classifier files not found, using fallback rules.")
 
 def safe_convert_to_float(value, default=0.0):
     """Safely convert value to float"""
@@ -84,45 +60,6 @@ def predict_intent(
     try:
         # Extract features with validation
         features = extract_features(ocr_keywords, audio_label, attention_score, interaction_rate, use_webcam)
-
-        # Use classifier if available and properly loaded
-        if intent_clf is not None and intent_label_map is not None:
-            try:
-                pred = intent_clf.predict(features)[0]
-                
-                # Convert numeric label to string - handle different label_map types
-                label = None
-                if isinstance(intent_label_map, dict):
-                    # Label map is a dictionary: {0: 'studying', 1: 'idle', ...}
-                    label = intent_label_map.get(int(pred), str(pred))
-                elif hasattr(intent_label_map, 'inverse_transform'):
-                    # Label map is a LabelEncoder
-                    try:
-                        label = intent_label_map.inverse_transform([int(pred)])[0]
-                    except (TypeError, ValueError, IndexError) as e:
-                        print(f"Error in inverse_transform: {e}, using fallback")
-                        label = str(pred)
-                else:
-                    label = str(pred)
-                
-                # Ensure label is string
-                if label is None:
-                    label = "unknown"
-                label = str(label).strip()
-                
-                # Get confidence from classifier probabilities
-                if hasattr(intent_clf, 'predict_proba'):
-                    try:
-                        confidence = float(np.max(intent_clf.predict_proba(features)[0]))
-                    except (IndexError, ValueError):
-                        confidence = 0.5
-                else:
-                    confidence = 0.7
-                
-                return {"intent_label": label, "confidence": confidence}
-                
-            except Exception as e:
-                print(f"[IntentModule] Classifier prediction failed: {e}, using fallback")
 
         # -------------------------------
         # Fallback rules with improved logic

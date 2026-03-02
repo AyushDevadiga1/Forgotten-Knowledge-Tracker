@@ -54,12 +54,8 @@ def find_tesseract():
 
 TESSERACT_PATH = find_tesseract()
 
-# Model paths (updated to use MODELS_DIR)
-INTENT_CLASSIFIER_PATH = str(MODELS_DIR / "intent_classifier.pkl")
-INTENT_LABEL_MAP_PATH = str(MODELS_DIR / "intent_label_map.pkl")
-AUDIO_CLASSIFIER_PATH = str(MODELS_DIR / "audio_classifier.pkl")
-AUDIO_LABEL_ENCODER_PATH = str(MODELS_DIR / "audio_label_encoder.pkl")
-AUDIO_SCALER_PATH = str(MODELS_DIR / "audio_scaler.pkl")
+# Model paths
+KNOWLEDGE_GRAPH_PATH = str(DATA_DIR / "knowledge_graph.pkl")
 KNOWLEDGE_GRAPH_PATH = str(DATA_DIR / "knowledge_graph.pkl")
 
 # Memory model parameters
@@ -104,18 +100,7 @@ def validate_config():
         issues.append(f"⚠️  WARNING: Tesseract not found at: {TESSERACT_PATH}")
         issues.append("   OCR features will not work. Install from: https://github.com/UB-Mannheim/tesseract/wiki")
     
-    # Check model files
-    model_files = [
-        (INTENT_CLASSIFIER_PATH, "Intent classifier"),
-        (INTENT_LABEL_MAP_PATH, "Intent label map"), 
-        (AUDIO_CLASSIFIER_PATH, "Audio classifier")
-    ]
-    
-    for path, description in model_files:
-        if not os.path.exists(path):
-            issues.append(f"⚠️  WARNING: {description} not found: {path}")
-            issues.append("   Train models using: python train_all_models.py")
-    
+
     # Validate intervals
     intervals = [
         (TRACK_INTERVAL, "TRACK_INTERVAL"),
@@ -144,8 +129,7 @@ def print_config_summary():
     print(f"Webcam Enabled: {USER_ALLOW_WEBCAM}")
     print("\nPaths:")
     print(f"  Tesseract: {TESSERACT_PATH}")
-    print(f"  Intent Model: {INTENT_CLASSIFIER_PATH}")
-    print(f"  Audio Model: {AUDIO_CLASSIFIER_PATH}")
+
     
     # Validate and show any issues
     issues = validate_config()

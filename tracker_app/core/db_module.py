@@ -1,8 +1,11 @@
 # core/db_module.py
 import sqlite3
 import os
+import logging
 from contextlib import contextmanager
 from tracker_app.config import DB_PATH
+
+logger = logging.getLogger("Database")
 
 @contextmanager
 def get_db_connection():
@@ -14,7 +17,7 @@ def get_db_connection():
         try:
             conn.close()
         except Exception as e:
-            print(f"Error closing database connection: {e}")
+            logger.error(f"Error closing database connection: {e}")
 
 def ensure_db_directory():
     """Ensure the database directory exists"""
@@ -49,9 +52,9 @@ def init_db():
         
         conn.commit()
         conn.close()
-        print("Sessions table initialized successfully.")
+        logger.info("Sessions table initialized successfully.")
     except Exception as e:
-        print(f"Error initializing sessions table: {e}")
+        logger.error(f"Error initializing sessions table: {e}")
 
 def init_multi_modal_db():
     """Initialize multi-modal logs table"""
@@ -79,9 +82,9 @@ def init_multi_modal_db():
         
         conn.commit()
         conn.close()
-        print("Multi-modal logs table initialized successfully.")
+        logger.info("Multi-modal logs table initialized successfully.")
     except Exception as e:
-        print(f"Error initializing multi-modal logs table: {e}")
+        logger.error(f"Error initializing multi-modal logs table: {e}")
 
 def init_memory_decay_db():
     """Initialize memory decay table"""
@@ -106,9 +109,9 @@ def init_memory_decay_db():
         
         conn.commit()
         conn.close()
-        print("Memory decay table initialized successfully.")
+        logger.info("Memory decay table initialized successfully.")
     except Exception as e:
-        print(f"Error initializing memory decay table: {e}")
+        logger.error(f"Error initializing memory decay table: {e}")
 
 def init_metrics_db():
     """Initialize metrics table for reminders"""
@@ -129,9 +132,9 @@ def init_metrics_db():
         
         conn.commit()
         conn.close()
-        print("Metrics table initialized successfully.")
+        logger.info("Metrics table initialized successfully.")
     except Exception as e:
-        print(f"Error initializing metrics table: {e}")
+        logger.error(f"Error initializing metrics table: {e}")
 
 def init_all_databases():
     """Initialize all database tables"""
@@ -139,7 +142,7 @@ def init_all_databases():
     init_multi_modal_db()
     init_memory_decay_db()
     init_metrics_db()
-    print("All database tables initialized.")
+    logger.info("All database tables initialized.")
 
 if __name__ == "__main__":
     init_all_databases()

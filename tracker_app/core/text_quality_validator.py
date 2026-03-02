@@ -34,11 +34,12 @@ UI_GARBAGE = {
     # Common notifications/system
     'notification', 'alert', 'warning', 'error', 'success', 'info', 'message',
     'do not show again', 'remind me later', 'never show again', 'click here',
-    'learn more', 'read more', 'show more', 'see all', 'view all', 'all items',
+    'learn more', 'read more', 'show more', 'see all', 'view all', 'all items', 
+    'unknown error occurred',
     
     # Ads/Spam
     'advertisement', 'ad', 'sponsored', 'promoted', 'special offer', 'limited time',
-    'click now', 'shop now', 'buy now', 'order now', 'sign up now', 'subscribe',
+    'click now', 'click here now', 'shop now', 'buy now', 'order now', 'sign up now', 'subscribe',
     'upgrade', 'premium', 'pro', 'plus', 'elite', 'vip', 'exclusive',
     
     # Empty/placeholder
@@ -414,7 +415,10 @@ def validate_and_clean_extraction(
     
     # Decision
     is_useful = quality_score >= 0.4 and len(keywords) > 0
-    status = 'ACCEPTED' if is_useful else 'QUESTIONABLE'
+    if quality_score <= 0.1:
+        status = 'REJECTED'
+    else:
+        status = 'ACCEPTED' if is_useful else 'QUESTIONABLE'
     
     return {
         'status': status,

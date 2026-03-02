@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 import sqlite3
 import json
 import os
+import logging
 from contextlib import closing
 from dotenv import load_dotenv
 
@@ -22,6 +23,7 @@ from tracker_app.config import DATA_DIR, setup_directories
 setup_directories()  # Ensure data/ and models/ dirs exist before app starts
 
 app = Flask(__name__)
+app.logger = logging.getLogger("Dashboard")
 
 # Security Configuration
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
@@ -60,7 +62,7 @@ def get_discovered_concepts(limit=5):
             rows = c.fetchall()
         return [{'concept': r[0], 'relevance': round(r[1], 2), 'last_seen': r[2]} for r in rows]
     except Exception as e:
-        print(f"Error fetching discovered concepts: {e}")
+        app.logger.error(f"Error fetching discovered concepts: {e}")
         return []
 
 # Routes
