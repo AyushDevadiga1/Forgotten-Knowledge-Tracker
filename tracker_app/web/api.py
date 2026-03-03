@@ -8,6 +8,8 @@ import sqlite3
 from contextlib import closing
 from flask import Blueprint, request, jsonify
 from tracker_app.core.learning_tracker import LearningTracker, DifficultyLevel, LearningItemType
+from tracker_app.core.activity_monitor import IntentValidator
+from tracker_app.config import DATA_DIR
 
 api_bp = Blueprint('api', __name__, url_prefix='/api/v1')
 tracker = LearningTracker()
@@ -169,5 +171,61 @@ def get_stats():
                 'today': today
             }
         })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@api_bp.route('/intent/recent', methods=['GET'])
+def get_recent_intent():
+    """Get the most recent intent prediction"""
+    try:
+        db_path = str(DATA_DIR / "intent_validation.db")
+        with closing(sqlite3.connect(db_path, timeout=10)) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT id, timestamp, predicted_intent, confidence, user_feedback 
+                FROM intent_predictions 
+                ORDER BY timestamp DESC LIMIT 1
+            ''')
+            row = cursor.fetchone()
+            if not row:
+                return jsonify({'success': True, 'data': None})
+            return jsonify({'success': True, 'data': dict(row)})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@api_bp.route('/intent/feedback', methods=['POST'])
+def send_intent_feedback():
+    """Record user feedback for a prediction (for future ML training)"""
+    data = request.get_json(silent=True)
+    if not data or 'prediction_id' not in data or 'is_correct' not in data:
+        return jsonify({'success': False, 'error': 'prediction_id and is_correct are required'}), 400
+    
+    try:
+        validator = IntentValidator()
+        validator.log_feedback(
+            prediction_id=int(data['prediction_id']),
+            correct=bool(data['is_correct'])
+        )
+        
+        # If user says the prediction is incorrect, and provides the "actual_intent", we should ideally save it.
+        # But IntentValidator.log_feedback currently only saves binary `user_feedback` = 1 or 0
+        # Let's do a hard modification of the DB to save the actual string if provided!
+        if 'actual_intent' in data:
+            db_path = str(DATA_DIR / "intent_validation.db")
+            with closing(sqlite3.connect(db_path, timeout=10)) as conn:
+                # Add column dynamically if it doesn't exist to store string labels
+                try:
+                    conn.execute('ALTER TABLE intent_predictions ADD COLUMN actual_intent TEXT')
+                except sqlite3.OperationalError:
+                    pass # Column exists
+                
+                conn.execute(
+                    'UPDATE intent_predictions SET actual_intent = ? WHERE id = ?', 
+                    (str(data['actual_intent']), int(data['prediction_id']))
+                )
+                conn.commit()
+
+        return jsonify({'success': True, 'message': 'Feedback recorded'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

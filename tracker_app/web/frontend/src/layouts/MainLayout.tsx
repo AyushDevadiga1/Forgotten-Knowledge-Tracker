@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { Home, Activity, Database, PlusCircle, Search } from 'lucide-react'
+import IntentFeedbackToast from '../components/IntentFeedbackToast'
 
 const navItems = [
     { id: '', icon: Home, label: 'Overview' },
@@ -68,6 +69,9 @@ export default function MainLayout() {
                     <Outlet />
                 </div>
             </main>
+
+            {/* Global floating feedback prompt */}
+            <IntentFeedbackToast />
         </div>
     )
 }

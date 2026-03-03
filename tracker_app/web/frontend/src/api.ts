@@ -59,6 +59,14 @@ export interface DueResponse {
     count: number
 }
 
+export interface IntentPrediction {
+    id: number
+    timestamp: string
+    predicted_intent: string
+    confidence: number
+    user_feedback: number | null
+}
+
 // ── API Functions ────────────────────────────────────────
 export const api = {
     /** GET /api/v1/stats */
@@ -92,5 +100,15 @@ export const api = {
         apiFetch<{ success: boolean; data: { id: string } }>('/items', {
             method: 'POST',
             body: JSON.stringify(payload),
+        }),
+
+    /** GET /api/v1/intent/recent */
+    getRecentIntent: () => apiFetch<{ success: boolean; data: IntentPrediction | null }>('/intent/recent'),
+
+    /** POST /api/v1/intent/feedback */
+    sendIntentFeedback: (prediction_id: number, is_correct: boolean, actual_intent?: string) =>
+        apiFetch<{ success: boolean }>('/intent/feedback', {
+            method: 'POST',
+            body: JSON.stringify({ prediction_id, is_correct, actual_intent }),
         }),
 }
