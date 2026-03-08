@@ -34,6 +34,8 @@ csrf = CSRFProtect(app)
 
 # Register API blueprint (exempt from CSRF for API endpoints)
 from tracker_app.web.api import api_bp
+from tracker_app.web.auth import apply_auth_to_blueprint
+apply_auth_to_blueprint(api_bp)   # API key check (disabled in dev by default)
 csrf.exempt(api_bp)
 app.register_blueprint(api_bp)
 
