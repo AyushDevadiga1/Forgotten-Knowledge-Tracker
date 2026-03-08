@@ -13,7 +13,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from tracker_app.core.learning_tracker import LearningTracker
+from tracker_app.learning.learning_tracker import LearningTracker
 
 
 class TestLearningTrackerSetup(unittest.TestCase):

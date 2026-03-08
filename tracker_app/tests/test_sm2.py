@@ -11,7 +11,7 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from tracker_app.core.sm2_memory_model import SM2Item, SM2Scheduler, DEFAULT_EASE_FACTOR, MIN_EASE_FACTOR, MAX_EASE_FACTOR
+from tracker_app.learning.sm2_memory_model import SM2Item, SM2Scheduler, DEFAULT_EASE_FACTOR, MIN_EASE_FACTOR, MAX_EASE_FACTOR
 
 
 def make_item(item_id="test-001", question="Q?", answer="A.", difficulty="medium"):

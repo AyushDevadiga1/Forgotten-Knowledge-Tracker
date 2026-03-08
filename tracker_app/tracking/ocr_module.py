@@ -6,9 +6,9 @@ import hashlib
 from mss import mss
 from tracker_app.config import TESSERACT_PATH
 import spacy
-from tracker_app.core.knowledge_graph import get_graph
-from tracker_app.core.keyword_extractor import get_keyword_extractor
-from tracker_app.core.text_quality_validator import validate_and_clean_extraction
+from tracker_app.tracking.knowledge_graph import get_graph
+from tracker_app.tracking.keyword_extractor import get_keyword_extractor
+from tracker_app.learning.text_quality_validator import validate_and_clean_extraction
 import re
 from functools import lru_cache
 
@@ -47,7 +47,8 @@ def capture_screenshot(use_roi=True):
         # Try ROI capture first (active window only)
         if use_roi:
             try:
-                from tracker_app.core.roi_detector import capture_active_window, should_skip_window
+                # Roi detector was removed as redundant legacy code
+                pass
                 img, window_info = capture_active_window()
                 
                 if img is not None and window_info:
@@ -141,7 +142,7 @@ def extract_keywords(text, top_n=15, boost_repeats=True):
     
     # Privacy filter FIRST
     try:
-        from tracker_app.core.privacy_filter import sanitize_text_for_storage
+        from tracker_app.tracking.privacy_filter import sanitize_text_for_storage
         sanitized = sanitize_text_for_storage(text)
         
         if not sanitized['safe_to_store']:

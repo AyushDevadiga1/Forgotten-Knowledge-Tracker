@@ -4,7 +4,7 @@ import os
 import logging
 from contextlib import contextmanager
 from tracker_app.config import DB_PATH
-from tracker_app.core.models import engine, Base, get_db
+from tracker_app.db.models import engine, Base, get_db
 
 logger = logging.getLogger("Database")
 

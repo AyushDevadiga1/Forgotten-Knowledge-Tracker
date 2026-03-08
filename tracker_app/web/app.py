@@ -7,7 +7,7 @@ Lightweight dashboard using Flask for viewing progress and managing items
 from flask import Flask, send_from_directory, request, jsonify
 from flask_wtf.csrf import CSRFProtect
 from flask_cors import CORS
-from tracker_app.core.learning_tracker import LearningTracker
+from tracker_app.learning.learning_tracker import LearningTracker
 import os
 import logging
 from contextlib import closing

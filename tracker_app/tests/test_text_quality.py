@@ -1,5 +1,5 @@
 import pytest
-from tracker_app.core.text_quality_validator import (
+from tracker_app.learning.text_quality_validator import (
     validate_and_clean_extraction,
     preprocess_ocr_text,
     is_coherent_text,

@@ -8,7 +8,7 @@ from typing import Dict, Any, List, Optional
 import logging
 
 from tracker_app.config import DATA_DIR
-from tracker_app.core.concept_scheduler import ConceptScheduler
+from tracker_app.learning.concept_scheduler import ConceptScheduler
 
 logger = logging.getLogger("ActivityMonitor")
 

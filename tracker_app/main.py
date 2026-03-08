@@ -1,4 +1,4 @@
-from tracker_app.core.tracker import track_loop, ask_user_permissions
+from tracker_app.tracking.loop import track_loop, ask_user_permissions
 from tracker_app.config import setup_directories
 
 if __name__ == "__main__":

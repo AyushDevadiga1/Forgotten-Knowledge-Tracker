@@ -30,7 +30,7 @@ def init_socketio(app):
     @socketio.on('request_stats')
     def handle_stats_request():
         """Send current statistics to client"""
-        from tracker_app.core.learning_tracker import LearningTracker
+        from tracker_app.learning.learning_tracker import LearningTracker
         tracker = LearningTracker()
         stats = tracker.get_learning_stats()
         emit('stats_update', stats)
@@ -59,7 +59,7 @@ def background_stats_updater(app):
         while True:
             time.sleep(30)  # Update every 30 seconds
             try:
-                from tracker_app.core.learning_tracker import LearningTracker
+                from tracker_app.learning.learning_tracker import LearningTracker
                 tracker = LearningTracker()
                 stats = tracker.get_learning_stats()
                 if socketio:

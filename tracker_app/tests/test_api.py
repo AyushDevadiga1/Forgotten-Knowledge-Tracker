@@ -21,7 +21,7 @@ class TestAPIGetItems(unittest.TestCase):
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
         from tracker_app.core import models
-        from tracker_app.core.models import Base
+        from tracker_app.db.models import Base
         
         # Override SQLAlchemy to use in-memory db for testing
         self.test_engine = create_engine('sqlite:///:memory:')
@@ -36,7 +36,7 @@ class TestAPIGetItems(unittest.TestCase):
         self.client = app.test_client()
 
     def tearDown(self):
-        from tracker_app.core.models import Base
+        from tracker_app.db.models import Base
         Base.metadata.drop_all(bind=self.test_engine)
 
     def test_get_items_returns_200(self):
@@ -90,7 +90,7 @@ class TestAPICreateItem(unittest.TestCase):
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
         from tracker_app.core import models
-        from tracker_app.core.models import Base
+        from tracker_app.db.models import Base
         
         self.test_engine = create_engine('sqlite:///:memory:')
         self.TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.test_engine)
@@ -104,7 +104,7 @@ class TestAPICreateItem(unittest.TestCase):
         self.client = app.test_client()
 
     def tearDown(self):
-        from tracker_app.core.models import Base
+        from tracker_app.db.models import Base
         Base.metadata.drop_all(bind=self.test_engine)
 
     def test_create_valid_item_returns_201(self):
@@ -163,7 +163,7 @@ class TestAPIRecordReview(unittest.TestCase):
         from sqlalchemy import create_engine
         from sqlalchemy.orm import sessionmaker
         from tracker_app.core import models
-        from tracker_app.core.models import Base
+        from tracker_app.db.models import Base
         
         self.test_engine = create_engine('sqlite:///:memory:')
         self.TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.test_engine)
@@ -177,7 +177,7 @@ class TestAPIRecordReview(unittest.TestCase):
         self.client = app.test_client()
 
     def tearDown(self):
-        from tracker_app.core.models import Base
+        from tracker_app.db.models import Base
         Base.metadata.drop_all(bind=self.test_engine)
 
     def test_record_review_valid(self):

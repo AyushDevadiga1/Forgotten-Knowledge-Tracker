@@ -3,7 +3,7 @@ import sqlite3
 import random
 from datetime import datetime, timedelta
 import itertools
-from tracker_app.core.db_module import init_all_databases
+from tracker_app.db.db_module import init_all_databases
 from tracker_app.config import DB_PATH
 
 # ----------------------------

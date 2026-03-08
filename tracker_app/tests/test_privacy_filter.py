@@ -10,7 +10,7 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from tracker_app.core.privacy_filter import (
+from tracker_app.tracking.privacy_filter import (
     detect_sensitive_data,
     redact_sensitive_data,
     sanitize_text_for_storage,

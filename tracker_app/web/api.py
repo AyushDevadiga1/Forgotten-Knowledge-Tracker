@@ -8,8 +8,8 @@ import sqlite3
 from contextlib import closing
 from flask import Blueprint, request, jsonify
 from datetime import datetime
-from tracker_app.core.learning_tracker import LearningTracker, DifficultyLevel, LearningItemType
-from tracker_app.core.activity_monitor import IntentValidator
+from tracker_app.learning.learning_tracker import LearningTracker, DifficultyLevel, LearningItemType
+from tracker_app.tracking.activity_monitor import IntentValidator
 from tracker_app.config import DATA_DIR
 
 api_bp = Blueprint('api', __name__, url_prefix='/api/v1')
@@ -152,7 +152,7 @@ def get_stats():
 @api_bp.route('/intent/recent', methods=['GET'])
 def get_recent_intent():
     """Get the most recent intent prediction"""
-    from tracker_app.core.models import SessionLocal, IntentPrediction
+    from tracker_app.db.models import SessionLocal, IntentPrediction
     try:
         with SessionLocal() as db:
             row = db.query(IntentPrediction).order_by(IntentPrediction.timestamp.desc()).first()
@@ -184,7 +184,7 @@ def send_intent_feedback():
         
         # If user says the prediction is incorrect, and provides the "actual_intent", we should ideally save it.
         if 'actual_intent' in data:
-            from tracker_app.core.models import SessionLocal, IntentPrediction
+            from tracker_app.db.models import SessionLocal, IntentPrediction
             with SessionLocal() as db:
                 pred = db.query(IntentPrediction).filter(IntentPrediction.id == int(data['prediction_id'])).first()
                 if pred:

@@ -1,7 +1,7 @@
 # preflight_strict_stress_test.py
 import numpy as np
-from tracker_app.core import intent_module
-from tracker_app.core.db_module import init_db, init_multi_modal_db
+from tracker_app.tracking import intent_module
+from tracker_app.db.db_module import init_db, init_multi_modal_db
 import sqlite3
 from tracker_app.config import DB_PATH
 

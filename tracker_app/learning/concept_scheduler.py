@@ -5,7 +5,7 @@ from typing import Dict, Any, List
 import uuid
 
 from tracker_app.config import DATA_DIR
-from tracker_app.core.models import TrackedConcept, ConceptEncounter, SessionLocal
+from tracker_app.db.models import TrackedConcept, ConceptEncounter, SessionLocal
 from sqlalchemy.orm import Session
 
 class ConceptScheduler:
@@ -136,7 +136,7 @@ class ConceptScheduler:
             ]
 
 if __name__ == "__main__":
-    from tracker_app.core.db_module import init_all_databases
+    from tracker_app.db.db_module import init_all_databases
     init_all_databases()
     scheduler = ConceptScheduler()
     c_id = scheduler.add_concept("Docker Compose", 0.9, "Learned about multi-stage builds")

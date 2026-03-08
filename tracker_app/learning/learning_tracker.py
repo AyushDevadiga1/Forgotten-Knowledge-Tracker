@@ -5,9 +5,9 @@ from typing import Dict, List, Optional, Any
 from enum import Enum
 import uuid
 
-from tracker_app.core.sm2_memory_model import SM2Item, SM2Scheduler, LeitnerSystem
+from tracker_app.learning.sm2_memory_model import SM2Item, SM2Scheduler, LeitnerSystem
 from tracker_app.config import DATA_DIR
-from tracker_app.core.models import LearningItem, ReviewHistory, SessionLocal
+from tracker_app.db.models import LearningItem, ReviewHistory, SessionLocal
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
@@ -308,7 +308,7 @@ class LearningTracker:
         return item
 
 if __name__ == "__main__":
-    from tracker_app.core.db_module import init_all_databases
+    from tracker_app.db.db_module import init_all_databases
     init_all_databases()
     tracker = LearningTracker()
     print("=== Learning Tracker ORM Example ===\n")
