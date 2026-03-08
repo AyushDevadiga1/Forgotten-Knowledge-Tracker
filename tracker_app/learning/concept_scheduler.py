@@ -5,7 +5,8 @@ from typing import Dict, Any, List
 import uuid
 
 from tracker_app.config import DATA_DIR
-from tracker_app.db.models import TrackedConcept, ConceptEncounter, SessionLocal
+from tracker_app.db import models
+from tracker_app.db.models import TrackedConcept, ConceptEncounter
 from sqlalchemy.orm import Session
 
 class ConceptScheduler:
@@ -58,7 +59,7 @@ class ConceptScheduler:
         Schedule next review using SM-2 algorithm
         quality: 0-5 (0=fail, 5=perfect)
         """
-        with SessionLocal() as db:
+        with models.SessionLocal() as db:
             tracked = db.query(TrackedConcept).filter(TrackedConcept.id == concept_id).first()
             
             if not tracked:
@@ -94,7 +95,7 @@ class ConceptScheduler:
         """Get concepts due for review"""
         now = datetime.now().isoformat() 
         
-        with SessionLocal() as db:
+        with models.SessionLocal() as db:
             concepts = db.query(TrackedConcept).filter(
                 TrackedConcept.next_review <= now
             ).order_by(TrackedConcept.relevance_score.desc(), TrackedConcept.next_review.asc()).limit(limit).all()
@@ -114,7 +115,7 @@ class ConceptScheduler:
         """Get encounter history for a concept"""
         start_date = (datetime.now() - timedelta(days=days)).isoformat()
         
-        with SessionLocal() as db:
+        with models.SessionLocal() as db:
             # Fetch TC ID first
             tc = db.query(TrackedConcept).filter(TrackedConcept.concept == concept).first()
             if not tc:

@@ -7,7 +7,8 @@ import uuid
 
 from tracker_app.learning.sm2_memory_model import SM2Item, SM2Scheduler, LeitnerSystem
 from tracker_app.config import DATA_DIR
-from tracker_app.db.models import LearningItem, ReviewHistory, SessionLocal
+from tracker_app.db import models
+from tracker_app.db.models import LearningItem, ReviewHistory
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
@@ -64,7 +65,7 @@ class LearningTracker:
         item_id = str(uuid.uuid4())[:8]
         now = datetime.now().isoformat()
         
-        with SessionLocal() as db:
+        with models.SessionLocal() as db:
             new_item = LearningItem(
                 id=item_id,
                 created_at=now,
@@ -85,7 +86,7 @@ class LearningTracker:
         """Get items that are due for review now"""
         now = datetime.now().isoformat()
         
-        with SessionLocal() as db:
+        with models.SessionLocal() as db:
             items = db.query(LearningItem).filter(
                 LearningItem.status == 'active',
                 LearningItem.next_review_date <= now
@@ -95,7 +96,7 @@ class LearningTracker:
     
     def get_item(self, item_id: str) -> Optional[Dict[str, Any]]:
         """Get a single learning item by ID"""
-        with SessionLocal() as db:
+        with models.SessionLocal() as db:
             item = db.query(LearningItem).filter(LearningItem.id == item_id).first()
             return self._row_to_dict(item) if item else None
     
@@ -110,7 +111,7 @@ class LearningTracker:
         if not item_dict:
             raise ValueError(f"Item {item_id} not found")
         
-        with SessionLocal() as db:
+        with models.SessionLocal() as db:
             item_record = db.query(LearningItem).filter(LearningItem.id == item_id).first()
             
             # Reconstruct SM2Item
@@ -167,7 +168,7 @@ class LearningTracker:
         }
     
     def get_learning_stats(self) -> Dict[str, Any]:
-        with SessionLocal() as db:
+        with models.SessionLocal() as db:
             active_count = db.query(LearningItem).filter(LearningItem.status == "active").count()
             mastered_count = db.query(LearningItem).filter(LearningItem.status == "mastered").count()
             total_count = db.query(LearningItem).count()
@@ -194,7 +195,7 @@ class LearningTracker:
         today_start = datetime.now().replace(hour=0, minute=0, second=0).isoformat()
         today_end = datetime.now().isoformat()
         
-        with SessionLocal() as db:
+        with models.SessionLocal() as db:
             reviews_today = db.query(ReviewHistory).filter(
                 ReviewHistory.timestamp >= today_start,
                 ReviewHistory.timestamp <= today_end
@@ -211,7 +212,7 @@ class LearningTracker:
             
     def search_items(self, query: str) -> List[Dict[str, Any]]:
         search_term = f"%{query}%"
-        with SessionLocal() as db:
+        with models.SessionLocal() as db:
             items = db.query(LearningItem).filter(
                 LearningItem.status == "active",
                 or_(
@@ -222,7 +223,7 @@ class LearningTracker:
             return [self._row_to_dict(item) for item in items]
 
     def get_items(self, status: str = 'active', limit: int = 50) -> List[Dict[str, Any]]:
-        with SessionLocal() as db:
+        with models.SessionLocal() as db:
             query = db.query(LearningItem)
             if status != 'all':
                 query = query.filter(LearningItem.status == status)
@@ -230,7 +231,7 @@ class LearningTracker:
             return [self._row_to_dict(item) for item in items]
             
     def archive_item(self, item_id: str):
-        with SessionLocal() as db:
+        with models.SessionLocal() as db:
             item = db.query(LearningItem).filter(LearningItem.id == item_id).first()
             if item:
                 item.status = "archived"
@@ -238,7 +239,7 @@ class LearningTracker:
                 db.commit()
                 
     def unarchive_item(self, item_id: str):
-        with SessionLocal() as db:
+        with models.SessionLocal() as db:
             item = db.query(LearningItem).filter(LearningItem.id == item_id).first()
             if item:
                 item.status = "active"
@@ -246,7 +247,7 @@ class LearningTracker:
                 db.commit()
                 
     def export_items(self, format: str = "json") -> str:
-        with SessionLocal() as db:
+        with models.SessionLocal() as db:
             items = db.query(LearningItem).order_by(LearningItem.created_at.desc()).all()
             items_dict = [self._row_to_dict(item) for item in items]
             
