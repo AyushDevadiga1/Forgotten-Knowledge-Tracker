@@ -118,6 +118,11 @@ class TrackedConcept(Base):
     relevance_score = Column(Float, default=0.5)
     context_tags = Column(String, default="")
     status = Column(String, default="discovered")
+    
+    # SM2 scheduling logic
+    interval = Column(Integer, default=1)
+    memory_strength = Column(Float, default=2.5)
+    next_review = Column(String)
 
 class ConceptEncounter(Base):
     __tablename__ = "concept_encounters"
