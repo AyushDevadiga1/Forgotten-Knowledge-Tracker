@@ -4,12 +4,13 @@ import os
 import logging
 from contextlib import contextmanager
 from tracker_app.config import DB_PATH
+from tracker_app.core.models import engine, Base, get_db
 
 logger = logging.getLogger("Database")
 
 @contextmanager
 def get_db_connection():
-    """Context manager for database connections - ensures proper cleanup"""
+    """Legacy context manager for database connections - mapping everything to single DB_PATH for unified ORM migration"""
     conn = sqlite3.connect(DB_PATH)
     try:
         yield conn
@@ -26,123 +27,23 @@ def ensure_db_directory():
         os.makedirs(db_dir, exist_ok=True)
 
 def init_db():
-    """Initialize sessions table"""
     ensure_db_directory()
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS sessions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                start_ts TEXT NOT NULL,
-                end_ts TEXT NOT NULL,
-                app_name TEXT,
-                window_title TEXT,
-                interaction_rate REAL DEFAULT 0,
-                interaction_count INTEGER DEFAULT 0,
-                audio_label TEXT,
-                intent_label TEXT,
-                intent_confidence REAL DEFAULT 0.0
-            )
-        ''')
-        
-        # Create index for better performance
-        c.execute('CREATE INDEX IF NOT EXISTS idx_sessions_ts ON sessions(start_ts)')
-        
-        conn.commit()
-        conn.close()
-        logger.info("Sessions table initialized successfully.")
-    except Exception as e:
-        logger.error(f"Error initializing sessions table: {e}")
+    Base.metadata.create_all(bind=engine)
+    logger.info("SQLAlchemy tables constructed: sessions, multi_modal_logs, memory_decay, etc.")
 
 def init_multi_modal_db():
-    """Initialize multi-modal logs table"""
-    ensure_db_directory()
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-
-        c.execute(''' 
-            CREATE TABLE IF NOT EXISTS multi_modal_logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp TEXT NOT NULL,
-                window_title TEXT,
-                ocr_keywords TEXT,
-                audio_label TEXT,
-                attention_score REAL DEFAULT 0,
-                interaction_rate REAL DEFAULT 0,
-                intent_label TEXT,
-                intent_confidence REAL DEFAULT 0.0,
-                memory_score REAL DEFAULT 0.0
-            )
-        ''')
-        
-        c.execute('CREATE INDEX IF NOT EXISTS idx_mm_timestamp ON multi_modal_logs(timestamp)')
-        
-        conn.commit()
-        conn.close()
-        logger.info("Multi-modal logs table initialized successfully.")
-    except Exception as e:
-        logger.error(f"Error initializing multi-modal logs table: {e}")
+    pass
 
 def init_memory_decay_db():
-    """Initialize memory decay table"""
-    ensure_db_directory()
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS memory_decay (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                keyword TEXT NOT NULL,
-                last_seen_ts TEXT NOT NULL,
-                predicted_recall REAL DEFAULT 0.0,
-                observed_usage INTEGER DEFAULT 1,
-                updated_at TEXT NOT NULL
-            )
-        ''')
-        
-        c.execute('CREATE INDEX IF NOT EXISTS idx_memory_keyword ON memory_decay(keyword)')
-        c.execute('CREATE INDEX IF NOT EXISTS idx_memory_ts ON memory_decay(last_seen_ts)')
-        
-        conn.commit()
-        conn.close()
-        logger.info("Memory decay table initialized successfully.")
-    except Exception as e:
-        logger.error(f"Error initializing memory decay table: {e}")
+    pass
 
 def init_metrics_db():
-    """Initialize metrics table for reminders"""
-    ensure_db_directory()
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS metrics (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                concept TEXT NOT NULL,
-                next_review_time TEXT,
-                memory_score REAL DEFAULT 0.0,
-                last_updated TEXT NOT NULL
-            )
-        ''')
-        
-        conn.commit()
-        conn.close()
-        logger.info("Metrics table initialized successfully.")
-    except Exception as e:
-        logger.error(f"Error initializing metrics table: {e}")
+    pass
 
 def init_all_databases():
-    """Initialize all database tables"""
+    """Initialize all database tables using SQLAlchemy ORM"""
     init_db()
-    init_multi_modal_db()
-    init_memory_decay_db()
-    init_metrics_db()
-    logger.info("All database tables initialized.")
+    logger.info("All database tables initialized via SQLAlchemy.")
 
 if __name__ == "__main__":
     init_all_databases()

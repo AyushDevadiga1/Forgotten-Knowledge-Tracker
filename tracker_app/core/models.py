@@ -1,76 +1,143 @@
-"""
-SQLAlchemy ORM Models for FKT Database
-
-This module defines the database schema using SQLAlchemy ORM,
-replacing raw SQL queries for better security and maintainability.
-"""
-
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text, JSON
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from datetime import datetime
 import os
-from pathlib import Path
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text, JSON
+from sqlalchemy.orm import declarative_base, sessionmaker
+from datetime import datetime
+from tracker_app.config import DB_PATH
 
 Base = declarative_base()
 
+# Unified Database Engine
+engine = create_engine(
+    f"sqlite:///{DB_PATH}", 
+    connect_args={"check_same_thread": False},
+    echo=False
+)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# ==========================================
+# Learning Tracker Models
+# ==========================================
 class LearningItem(Base):
-    """Learning items (flashcards) with SM-2 spaced repetition data"""
-    __tablename__ = 'learning_items'
+    __tablename__ = "learning_items"
     
     id = Column(String, primary_key=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    question = Column(Text, nullable=False)
-    answer = Column(Text, nullable=False)
-    difficulty = Column(String, default='medium')
-    item_type = Column(String, default='concept')
-    tags = Column(JSON, default=list)
-    interval = Column(Integer, default=1)
+    question = Column(String, nullable=False)
+    answer = Column(String, nullable=False)
+    difficulty = Column(String, default="medium")
+    item_type = Column(String, default="concept")
+    tags = Column(String, default="")
+    
+    # SM-2 fields
+    interval = Column(Integer, default=0)
     ease_factor = Column(Float, default=2.5)
     repetitions = Column(Integer, default=0)
-    next_review_date = Column(DateTime)
-    last_review_date = Column(DateTime)
+    next_review_date = Column(String)
+    
+    # Stats
     total_reviews = Column(Integer, default=0)
     correct_count = Column(Integer, default=0)
     success_rate = Column(Float, default=0.0)
-    status = Column(String, default='active')
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    status = Column(String, default="active")
+    
+    created_at = Column(String, default=lambda: datetime.now().isoformat())
+    updated_at = Column(String, default=lambda: datetime.now().isoformat())
 
 class ReviewHistory(Base):
-    """History of all review sessions"""
-    __tablename__ = 'review_history'
+    __tablename__ = "review_history"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    item_id = Column(String, nullable=False)
-    review_date = Column(DateTime, default=datetime.utcnow)
-    quality_rating = Column(Integer, nullable=False)
-    correct = Column(Integer, default=0)
-    ease_factor = Column(Float)
-    interval_days = Column(Integer)
-    time_spent_seconds = Column(Float)
+    item_id = Column(String, index=True)
+    timestamp = Column(String, default=lambda: datetime.now().isoformat())
+    quality_rating = Column(Integer)
+    old_interval = Column(Integer)
+    new_interval = Column(Integer)
+    old_ease = Column(Float)
+    new_ease = Column(Float)
 
+# ==========================================
+# Intent & Activity Models
+# ==========================================
+class IntentPrediction(Base):
+    __tablename__ = "intent_predictions"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(String, default=lambda: datetime.now().isoformat(), index=True)
+    predicted_intent = Column(String)
+    confidence = Column(Float)
+    context_keywords = Column(String)
+    user_feedback = Column(Integer, nullable=True) # 1 or 0
+    actual_intent = Column(String, nullable=True)
+    feedback_timestamp = Column(String, nullable=True)
+
+class IntentAccuracy(Base):
+    __tablename__ = "intent_accuracy"
+    
+    intent = Column(String, primary_key=True)
+    total_predictions = Column(Integer, default=0)
+    correct_predictions = Column(Integer, default=0)
+    accuracy = Column(Float, default=0.0)
+    last_updated = Column(String, default=lambda: datetime.now().isoformat())
+
+class TrackingSession(Base):
+    __tablename__ = "tracking_sessions"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    start_time = Column(String)
+    end_time = Column(String)
+    duration_minutes = Column(Float)
+    concepts_encountered = Column(Integer)
+    avg_attention = Column(Float)
+    primary_activity = Column(String)
+
+class DailySummary(Base):
+    __tablename__ = "daily_summary"
+    
+    date = Column(String, primary_key=True)
+    total_tracking_minutes = Column(Float)
+    concepts_encountered = Column(Integer)
+    avg_attention = Column(Float)
+    primary_intents = Column(String)
+
+# ==========================================
+# Concept Tracking Models
+# ==========================================
 class TrackedConcept(Base):
-    """Concepts discovered by the automated tracker"""
-    __tablename__ = 'tracked_concepts'
+    __tablename__ = "tracked_concepts"
     
-    id = Column(String, primary_key=True)
-    concept = Column(String, nullable=False, unique=True)
-    first_seen = Column(DateTime, default=datetime.utcnow)
-    last_seen = Column(DateTime, default=datetime.utcnow)
-    encounter_count = Column(Integer, default=1)
+    concept = Column(String, primary_key=True)
+    first_seen = Column(String, default=lambda: datetime.now().isoformat())
+    last_seen = Column(String, default=lambda: datetime.now().isoformat())
+    frequency_count = Column(Integer, default=1)
     relevance_score = Column(Float, default=0.5)
-    memory_strength = Column(Float, default=2.5)
-    next_review = Column(DateTime)
-    context = Column(String)
-    related_concepts = Column(JSON, default=list)
+    context_tags = Column(String, default="")
+    status = Column(String, default="discovered")
 
-class Session(Base):
-    """Tracking sessions with intent classification"""
-    __tablename__ = 'sessions'
+class ConceptEncounter(Base):
+    __tablename__ = "concept_encounters"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    start_ts = Column(DateTime, nullable=False)
-    end_ts = Column(DateTime, nullable=False)
+    concept = Column(String, index=True)
+    timestamp = Column(String, default=lambda: datetime.now().isoformat())
+    source = Column(String)
+    confidence = Column(Float, default=1.0)
+    context_snippet = Column(String)
+
+# ==========================================
+# System Sessions Models
+# ==========================================
+class SystemSession(Base):
+    __tablename__ = "sessions"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    start_ts = Column(String, index=True)
+    end_ts = Column(String)
     app_name = Column(String)
     window_title = Column(String)
     interaction_rate = Column(Float, default=0)
@@ -79,25 +146,35 @@ class Session(Base):
     intent_label = Column(String)
     intent_confidence = Column(Float, default=0.0)
 
-# Database connection factory
-def get_engine(db_path=None):
-    """Create SQLAlchemy engine"""
-    if db_path is None:
-        from tracker_app.config import DATA_DIR
-        db_path = DATA_DIR / "learning_tracker.db"
+class MultiModalLog(Base):
+    __tablename__ = "multi_modal_logs"
     
-    return create_engine(f'sqlite:///{db_path}', echo=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(String, index=True)
+    window_title = Column(String)
+    ocr_keywords = Column(String)
+    audio_label = Column(String)
+    attention_score = Column(Float, default=0)
+    interaction_rate = Column(Float, default=0)
+    intent_label = Column(String)
+    intent_confidence = Column(Float, default=0.0)
+    memory_score = Column(Float, default=0.0)
 
-def get_session(engine=None):
-    """Get database session"""
-    if engine is None:
-        engine = get_engine()
-    Session = sessionmaker(bind=engine)
-    return Session()
+class MemoryDecay(Base):
+    __tablename__ = "memory_decay"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    keyword = Column(String, index=True)
+    last_seen_ts = Column(String, index=True)
+    predicted_recall = Column(Float, default=0.0)
+    observed_usage = Column(Integer, default=1)
+    updated_at = Column(String)
 
-def init_db(engine=None):
-    """Initialize all tables"""
-    if engine is None:
-        engine = get_engine()
-    Base.metadata.create_all(engine)
-    print("Database tables initialized with SQLAlchemy ORM")
+class Metric(Base):
+    __tablename__ = "metrics"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    concept = Column(String)
+    next_review_time = Column(String)
+    memory_score = Column(Float, default=0.0)
+    last_updated = Column(String)
