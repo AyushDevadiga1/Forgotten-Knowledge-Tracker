@@ -17,34 +17,27 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 class TestAPIGetItems(unittest.TestCase):
 
     def setUp(self):
-        # Point tracker to a temp DB so tests don't affect real data
-        self.tmp = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
-        self.tmp.close()
+        from tracker_app.web.app import app
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        from tracker_app.core import models
+        from tracker_app.core.models import Base
+        
+        # Override SQLAlchemy to use in-memory db for testing
+        self.test_engine = create_engine('sqlite:///:memory:')
+        self.TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.test_engine)
+        models.engine = self.test_engine
+        models.SessionLocal = self.TestingSessionLocal
+        
+        Base.metadata.create_all(bind=self.test_engine)
 
-        # Import app and both tracker instances
-        from tracker_app.web.app import app, tracker
-        from tracker_app.web.api import tracker as api_tracker
         app.config['TESTING'] = True
         app.config['WTF_CSRF_ENABLED'] = False  # Disable CSRF for tests
-        
-        self.old_db_path = tracker.db_path
-        tracker.db_path = self.tmp.name
-        api_tracker.db_path = self.tmp.name
-        tracker._init_database()
-
         self.client = app.test_client()
 
     def tearDown(self):
-        import gc
-        from tracker_app.web.app import tracker
-        from tracker_app.web.api import tracker as api_tracker
-        tracker.db_path = self.old_db_path
-        api_tracker.db_path = self.old_db_path
-        gc.collect()
-        try:
-            os.unlink(self.tmp.name)
-        except OSError:
-            pass
+        from tracker_app.core.models import Base
+        Base.metadata.drop_all(bind=self.test_engine)
 
     def test_get_items_returns_200(self):
         resp = self.client.get('/api/v1/items')
@@ -93,31 +86,26 @@ class TestAPIGetItems(unittest.TestCase):
 class TestAPICreateItem(unittest.TestCase):
 
     def setUp(self):
-        self.tmp = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
-        self.tmp.close()
-        from tracker_app.web.app import app, tracker
-        from tracker_app.web.api import tracker as api_tracker
+        from tracker_app.web.app import app
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        from tracker_app.core import models
+        from tracker_app.core.models import Base
+        
+        self.test_engine = create_engine('sqlite:///:memory:')
+        self.TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.test_engine)
+        models.engine = self.test_engine
+        models.SessionLocal = self.TestingSessionLocal
+        
+        Base.metadata.create_all(bind=self.test_engine)
+
         app.config['TESTING'] = True
         app.config['WTF_CSRF_ENABLED'] = False
-        
-        self.old_db_path = tracker.db_path
-        tracker.db_path = self.tmp.name
-        api_tracker.db_path = self.tmp.name
-        tracker._init_database()
-
         self.client = app.test_client()
 
     def tearDown(self):
-        import gc
-        from tracker_app.web.app import tracker
-        from tracker_app.web.api import tracker as api_tracker
-        tracker.db_path = self.old_db_path
-        api_tracker.db_path = self.old_db_path
-        gc.collect()
-        try:
-            os.unlink(self.tmp.name)
-        except Exception:
-            pass
+        from tracker_app.core.models import Base
+        Base.metadata.drop_all(bind=self.test_engine)
 
     def test_create_valid_item_returns_201(self):
         resp = self.client.post('/api/v1/items',
@@ -171,31 +159,26 @@ class TestAPICreateItem(unittest.TestCase):
 class TestAPIRecordReview(unittest.TestCase):
 
     def setUp(self):
-        self.tmp = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
-        self.tmp.close()
-        from tracker_app.web.app import app, tracker
-        from tracker_app.web.api import tracker as api_tracker
+        from tracker_app.web.app import app
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        from tracker_app.core import models
+        from tracker_app.core.models import Base
+        
+        self.test_engine = create_engine('sqlite:///:memory:')
+        self.TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.test_engine)
+        models.engine = self.test_engine
+        models.SessionLocal = self.TestingSessionLocal
+        
+        Base.metadata.create_all(bind=self.test_engine)
+
         app.config['TESTING'] = True
         app.config['WTF_CSRF_ENABLED'] = False
-        
-        self.old_db_path = tracker.db_path
-        tracker.db_path = self.tmp.name
-        api_tracker.db_path = self.tmp.name
-        tracker._init_database()
-        
         self.client = app.test_client()
 
     def tearDown(self):
-        import gc
-        from tracker_app.web.app import tracker
-        from tracker_app.web.api import tracker as api_tracker
-        tracker.db_path = self.old_db_path
-        api_tracker.db_path = self.old_db_path
-        gc.collect()
-        try:
-            os.unlink(self.tmp.name)
-        except OSError:
-            pass
+        from tracker_app.core.models import Base
+        Base.metadata.drop_all(bind=self.test_engine)
 
     def test_record_review_valid(self):
         # Create an item first

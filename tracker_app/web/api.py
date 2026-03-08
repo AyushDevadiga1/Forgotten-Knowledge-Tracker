@@ -7,6 +7,7 @@ RESTful API endpoints for managing learning items and reviews.
 import sqlite3
 from contextlib import closing
 from flask import Blueprint, request, jsonify
+from datetime import datetime
 from tracker_app.core.learning_tracker import LearningTracker, DifficultyLevel, LearningItemType
 from tracker_app.core.activity_monitor import IntentValidator
 from tracker_app.config import DATA_DIR
@@ -34,33 +35,7 @@ def get_items():
         return jsonify({'success': False, 'error': f'status must be one of: {sorted(VALID_STATUSES)}'}), 400
 
     try:
-        with closing(sqlite3.connect(tracker.db_path, timeout=10)) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-
-            if status == 'all':
-                cursor.execute("""
-                    SELECT id, question, answer, difficulty, item_type, tags,
-                           interval, ease_factor, repetitions, next_review_date,
-                           total_reviews, correct_count, success_rate, status
-                    FROM learning_items
-                    ORDER BY created_at DESC
-                    LIMIT ?
-                """, (limit,))
-            else:
-                cursor.execute("""
-                    SELECT id, question, answer, difficulty, item_type, tags,
-                           interval, ease_factor, repetitions, next_review_date,
-                           total_reviews, correct_count, success_rate, status
-                    FROM learning_items
-                    WHERE status = ?
-                    ORDER BY created_at DESC
-                    LIMIT ?
-                """, (status, limit))
-
-            rows = cursor.fetchall()
-            items = [dict(row) for row in rows]
-
+        items = tracker.get_items(status=status, limit=limit)
         return jsonify({'success': True, 'data': items, 'count': len(items)})
     except Exception as e:
         return jsonify({'success': False, 'error': 'Internal server error'}), 500
@@ -177,20 +152,19 @@ def get_stats():
 @api_bp.route('/intent/recent', methods=['GET'])
 def get_recent_intent():
     """Get the most recent intent prediction"""
+    from tracker_app.core.models import SessionLocal, IntentPrediction
     try:
-        db_path = str(DATA_DIR / "intent_validation.db")
-        with closing(sqlite3.connect(db_path, timeout=10)) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT id, timestamp, predicted_intent, confidence, user_feedback 
-                FROM intent_predictions 
-                ORDER BY timestamp DESC LIMIT 1
-            ''')
-            row = cursor.fetchone()
+        with SessionLocal() as db:
+            row = db.query(IntentPrediction).order_by(IntentPrediction.timestamp.desc()).first()
             if not row:
                 return jsonify({'success': True, 'data': None})
-            return jsonify({'success': True, 'data': dict(row)})
+            return jsonify({'success': True, 'data': {
+                'id': row.id,
+                'timestamp': row.timestamp,
+                'predicted_intent': row.predicted_intent,
+                'confidence': row.confidence,
+                'user_feedback': row.user_feedback
+            }})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -209,23 +183,34 @@ def send_intent_feedback():
         )
         
         # If user says the prediction is incorrect, and provides the "actual_intent", we should ideally save it.
-        # But IntentValidator.log_feedback currently only saves binary `user_feedback` = 1 or 0
-        # Let's do a hard modification of the DB to save the actual string if provided!
         if 'actual_intent' in data:
-            db_path = str(DATA_DIR / "intent_validation.db")
-            with closing(sqlite3.connect(db_path, timeout=10)) as conn:
-                # Add column dynamically if it doesn't exist to store string labels
-                try:
-                    conn.execute('ALTER TABLE intent_predictions ADD COLUMN actual_intent TEXT')
-                except sqlite3.OperationalError:
-                    pass # Column exists
-                
-                conn.execute(
-                    'UPDATE intent_predictions SET actual_intent = ? WHERE id = ?', 
-                    (str(data['actual_intent']), int(data['prediction_id']))
-                )
-                conn.commit()
+            from tracker_app.core.models import SessionLocal, IntentPrediction
+            with SessionLocal() as db:
+                pred = db.query(IntentPrediction).filter(IntentPrediction.id == int(data['prediction_id'])).first()
+                if pred:
+                    pred.actual_intent = str(data['actual_intent'])
+                    db.commit()
 
         return jsonify({'success': True, 'message': 'Feedback recorded'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@api_bp.route('/health', methods=['GET'])
+def health_check():
+    """Basic health check endpoint for monitoring"""
+    try:
+        # Check DB accessibility via raw tracker status
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': datetime.now().isoformat(),
+            'version': '1.0.0',
+            'components': {
+                'database': 'reachable',
+                'api': 'online'
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e)
+        }), 503

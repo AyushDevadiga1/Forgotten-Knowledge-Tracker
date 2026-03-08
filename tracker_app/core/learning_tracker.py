@@ -220,6 +220,14 @@ class LearningTracker:
                 )
             ).order_by(LearningItem.created_at.desc()).all()
             return [self._row_to_dict(item) for item in items]
+
+    def get_items(self, status: str = 'active', limit: int = 50) -> List[Dict[str, Any]]:
+        with SessionLocal() as db:
+            query = db.query(LearningItem)
+            if status != 'all':
+                query = query.filter(LearningItem.status == status)
+            items = query.order_by(LearningItem.created_at.desc()).limit(limit).all()
+            return [self._row_to_dict(item) for item in items]
             
     def archive_item(self, item_id: str):
         with SessionLocal() as db:
