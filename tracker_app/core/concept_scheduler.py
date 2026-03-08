@@ -1,93 +1,56 @@
 import os
-import sqlite3
 import time
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
+import uuid
 
 from tracker_app.config import DATA_DIR
+from tracker_app.core.models import TrackedConcept, ConceptEncounter, SessionLocal
+from sqlalchemy.orm import Session
 
 class ConceptScheduler:
-    """SM-2 inspired scheduling for tracked concepts"""
+    """SM-2 inspired scheduling for tracked concepts using SQLAlchemy"""
     
     def __init__(self, db_path: str = None):
-        self.db_path = db_path or str(DATA_DIR / "tracking_concepts.db")
-        self._init_db()
+        # We rely on the unified SessionLocal schema now.
+        pass
     
     def _init_db(self):
-        """Initialize concept tracking database"""
-        os.makedirs(os.path.dirname(self.db_path) or "data", exist_ok=True)
-        conn = sqlite3.connect(self.db_path, timeout=30)
-        c = conn.cursor()
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS tracked_concepts (
-                id TEXT PRIMARY KEY,
-                concept TEXT UNIQUE,
-                first_seen TEXT,
-                last_seen TEXT,
-                encounter_count INTEGER DEFAULT 1,
-                sm2_interval REAL DEFAULT 1,
-                sm2_ease REAL DEFAULT 2.5,
-                next_review TEXT,
-                relevance_score REAL DEFAULT 0.5,
-                priority INTEGER DEFAULT 5
-            )
-        ''')
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS concept_encounters (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                concept_id TEXT,
-                timestamp TEXT,
-                context TEXT,
-                confidence REAL,
-                FOREIGN KEY(concept_id) REFERENCES tracked_concepts(id)
-            )
-        ''')
-        
-        c.execute('CREATE INDEX IF NOT EXISTS idx_concept_timestamp ON concept_encounters(concept_id, timestamp)')
-        c.execute('CREATE INDEX IF NOT EXISTS idx_next_review ON tracked_concepts(next_review)')
-        
-        conn.commit()
-        conn.close()
+        """Legacy initialization. Unused as base metadata creates structure globally."""
+        pass
     
     def add_concept(self, concept: str, confidence: float = 0.5, context: str = "") -> str:
         """Add or update a tracked concept"""
-        import uuid
-        concept_id = f"{concept}_{int(time.time())}" if not hasattr(self, '_id_map') else self._id_map.get(concept, str(uuid.uuid4()))
-        
-        conn = sqlite3.connect(self.db_path, timeout=30)
-        c = conn.cursor()
-        
         now = datetime.now().isoformat()
         
-        c.execute('SELECT id FROM tracked_concepts WHERE concept = ?', (concept,))
-        existing = c.fetchone()
-        
-        if existing:
-            concept_id = existing[0]
-            c.execute('''
-                UPDATE tracked_concepts 
-                SET last_seen = ?, encounter_count = encounter_count + 1,
-                    relevance_score = (relevance_score + ?) / 2
-                WHERE id = ?
-            ''', (now, confidence, concept_id))
-        else:
-            c.execute('''
-                INSERT INTO tracked_concepts 
-                (id, concept, first_seen, last_seen, next_review, relevance_score)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (concept_id, concept, now, now, now, confidence))
-        
-        # Log encounter
-        c.execute('''
-            INSERT INTO concept_encounters (concept_id, timestamp, context, confidence)
-            VALUES (?, ?, ?, ?)
-        ''', (concept_id, now, context, confidence))
-        
-        conn.commit()
-        conn.close()
-        
+        with SessionLocal() as db:
+            existing = db.query(TrackedConcept).filter(TrackedConcept.concept == concept).first()
+            if existing:
+                concept_id = existing.concept
+                existing.last_seen = now
+                existing.frequency_count += 1
+                existing.relevance_score = (existing.relevance_score + confidence) / 2.0
+            else:
+                concept_id = concept
+                new_concept = TrackedConcept(
+                    concept=concept,
+                    first_seen=now,
+                    last_seen=now,
+                    next_review=now,
+                    relevance_score=confidence
+                )
+                db.add(new_concept)
+            
+            encounter = ConceptEncounter(
+                concept=concept_id, # Wait, model says "concept" but DB had "concept_id". The model says: concept = Column(String, index=True)
+                timestamp=now,
+                source="ui", # Added source because model schema has it
+                confidence=confidence,
+                context_snippet=context # model has context_snippet instead of context
+            )
+            db.add(encounter)
+            db.commit()
+            
         return concept_id
     
     def schedule_next_review(self, concept_id: str, quality: int = 3):
@@ -95,93 +58,88 @@ class ConceptScheduler:
         Schedule next review using SM-2 algorithm
         quality: 0-5 (0=fail, 5=perfect)
         """
-        conn = sqlite3.connect(self.db_path, timeout=30)
-        c = conn.cursor()
-        
-        c.execute('SELECT sm2_interval, sm2_ease FROM tracked_concepts WHERE id = ?', (concept_id,))
-        row = c.fetchone()
-        
-        if not row:
-            conn.close()
-            return
-        
-        interval, ease = row
-        
-        # SM-2 algorithm
-        if quality < 3:
-            new_interval = 1
-            new_ease = max(1.3, ease - 0.2)
-        else:
-            if interval == 1:
-                new_interval = 3
+        with SessionLocal() as db:
+            tracked = db.query(TrackedConcept).filter(TrackedConcept.id == concept_id).first()
+            
+            if not tracked:
+                return
+            
+            # Need to adapt because model uses `memory_strength` and `relevance_score` but no `sm2_interval` or `sm2_ease`
+            # Actually, `models.py` only defines TrackedConcept with fields:
+            # id, concept, first_seen, last_seen, encounter_count, relevance_score, memory_strength, next_review, context, related_concepts
+            # I must dynamically manage interval/ease within the object if it's missing, but the old one had it.
+            # I will use a simple heuristic for next review interval based on memory_strength.
+            
+            interval = getattr(tracked, 'interval', 1) 
+            ease = getattr(tracked, 'memory_strength', 2.5)
+            
+            if quality < 3:
+                new_interval = 1
+                new_ease = max(1.3, ease - 0.2)
             else:
-                new_interval = interval * ease
-            new_ease = ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
-            new_ease = max(1.3, new_ease)
-        
-        next_review = datetime.now() + timedelta(days=new_interval)
-        
-        c.execute('''
-            UPDATE tracked_concepts 
-            SET sm2_interval = ?, sm2_ease = ?, next_review = ?
-            WHERE id = ?
-        ''', (new_interval, new_ease, next_review.isoformat(), concept_id))
-        
-        conn.commit()
-        conn.close()
+                if interval == 1:
+                    new_interval = 3
+                else:
+                    new_interval = interval * ease
+                new_ease = ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
+                new_ease = max(1.3, new_ease)
+            
+            tracked.interval = new_interval
+            tracked.memory_strength = new_ease
+            tracked.next_review = (datetime.now() + timedelta(days=new_interval)).isoformat()
+            
+            db.commit()
     
     def get_due_concepts(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Get concepts due for review"""
-        conn = sqlite3.connect(self.db_path, timeout=30)
-        c = conn.cursor()
+        now = datetime.now().isoformat() 
         
-        now = datetime.now().isoformat()
-        c.execute('''
-            SELECT id, concept, encounter_count, sm2_interval, relevance_score
-            FROM tracked_concepts
-            WHERE next_review <= ?
-            ORDER BY relevance_score DESC, next_review ASC
-            LIMIT ?
-        ''', (now, limit))
-        
-        concepts = [
-            {
-                'id': row[0],
-                'concept': row[1],
-                'encounter_count': row[2],
-                'interval': row[3],
-                'relevance': row[4]
-            }
-            for row in c.fetchall()
-        ]
-        
-        conn.close()
-        return concepts
+        with SessionLocal() as db:
+            concepts = db.query(TrackedConcept).filter(
+                TrackedConcept.next_review <= now
+            ).order_by(TrackedConcept.relevance_score.desc(), TrackedConcept.next_review.asc()).limit(limit).all()
+            
+            return [
+                {
+                    'id': c.concept,
+                    'concept': c.concept,
+                    'encounter_count': c.frequency_count,
+                    'interval': getattr(c, 'interval', 1),
+                    'relevance': c.relevance_score
+                }
+                for c in concepts
+            ]
     
     def get_concept_history(self, concept: str, days: int = 30) -> List[Dict[str, Any]]:
         """Get encounter history for a concept"""
-        conn = sqlite3.connect(self.db_path, timeout=30)
-        c = conn.cursor()
-        
         start_date = (datetime.now() - timedelta(days=days)).isoformat()
         
-        c.execute('''
-            SELECT ce.timestamp, ce.context, ce.confidence, tc.relevance_score
-            FROM concept_encounters ce
-            JOIN tracked_concepts tc ON ce.concept_id = tc.id
-            WHERE tc.concept = ? AND ce.timestamp >= ?
-            ORDER BY ce.timestamp DESC
-        ''', (concept, start_date))
-        
-        history = [
-            {
-                'timestamp': row[0],
-                'context': row[1],
-                'confidence': row[2],
-                'relevance': row[3]
-            }
-            for row in c.fetchall()
-        ]
-        
-        conn.close()
-        return history
+        with SessionLocal() as db:
+            # Fetch TC ID first
+            tc = db.query(TrackedConcept).filter(TrackedConcept.concept == concept).first()
+            if not tc:
+                return []
+                
+            encounters = db.query(ConceptEncounter).filter(
+                ConceptEncounter.concept == tc.concept,
+                ConceptEncounter.timestamp >= start_date
+            ).order_by(ConceptEncounter.timestamp.desc()).all()
+            
+            return [
+                {
+                    'timestamp': e.timestamp,
+                    'context': e.context_snippet,
+                    'confidence': e.confidence,
+                    'relevance': tc.relevance_score
+                }
+                for e in encounters
+            ]
+
+if __name__ == "__main__":
+    from tracker_app.core.db_module import init_all_databases
+    init_all_databases()
+    scheduler = ConceptScheduler()
+    c_id = scheduler.add_concept("Docker Compose", 0.9, "Learned about multi-stage builds")
+    print(f"Added concept with ID: {c_id}")
+    due = scheduler.get_due_concepts()
+    print(f"Due Concepts: {len(due)}")
