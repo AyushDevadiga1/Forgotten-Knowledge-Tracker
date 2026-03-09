@@ -56,7 +56,7 @@ TESSERACT_PATH = find_tesseract()
 
 # Model paths
 KNOWLEDGE_GRAPH_PATH = str(DATA_DIR / "knowledge_graph.pkl")
-KNOWLEDGE_GRAPH_PATH = str(DATA_DIR / "knowledge_graph.pkl")
+
 
 # Memory model parameters
 MEMORY_THRESHOLD = 0.6           # Threshold for review reminders
@@ -88,7 +88,6 @@ def validate_config():
     if not DATA_DIR.exists():
         issues.append(f"Data directory does not exist: {DATA_DIR}")
     
-    # Check Tesseract
     # Check Tesseract
     is_in_path = TESSERACT_PATH.lower() == "tesseract"
     if is_in_path:

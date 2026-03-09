@@ -5,7 +5,6 @@ from typing import Dict, Any, List, Optional, Tuple
 import cv2
 import numpy as np
 from pynput import keyboard, mouse
-import win32gui
 
 from tracker_app.config import TRACK_INTERVAL, SCREENSHOT_INTERVAL, AUDIO_INTERVAL, WEBCAM_INTERVAL
 from tracker_app.db.db_module import init_all_databases
@@ -62,8 +61,12 @@ def start_listeners():
 
 def get_active_window() -> Tuple[str, float]:
     try:
-        hwnd = win32gui.GetForegroundWindow()
-        title = win32gui.GetWindowText(hwnd) or "Unknown"
+        try:
+            import win32gui
+            hwnd = win32gui.GetForegroundWindow()
+            title = win32gui.GetWindowText(hwnd) or "Unknown"
+        except ImportError:
+            title = "Unknown"  # Non-Windows platform
         total_events = monitor.keyboard_counter.get_value() + monitor.mouse_counter.get_value()
         interaction_rate = min(total_events / TRACK_INTERVAL if TRACK_INTERVAL > 0 else 0, 100)
         return title, interaction_rate

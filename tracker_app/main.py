@@ -1,7 +1,14 @@
 from tracker_app.tracking.loop import track_loop, ask_user_permissions
 from tracker_app.config import setup_directories
+import logging
 
 if __name__ == "__main__":
+    # Setup logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s [%(name)s] %(levelname)s: %(message)s'
+    )
+
     setup_directories()  # Ensure data/ and models/ dirs exist before tracker starts
     print("Forgotten Knowledge Tracker initializing...")
     allow_webcam = ask_user_permissions()

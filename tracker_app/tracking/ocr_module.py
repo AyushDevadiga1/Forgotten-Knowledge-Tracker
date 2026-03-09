@@ -18,6 +18,7 @@ pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
 # Initialize models with error handling
 kw_extractor = None
 nlp = None
+embedding_model = None  # Optional sentence-transformer model; None disables embeddings
 
 try:
     kw_extractor = get_keyword_extractor()
@@ -57,8 +58,9 @@ def capture_screenshot(use_roi=True):
                         print(f"[PRIVACY] Skipped sensitive window: {window_info['title']}")
                         return None
                     
-                    # Deduplication check
-                    img_hash = hashlib.md5(img.tobytes()).hexdigest()
+                    # Deduplication check — hash a small thumbnail (~100x faster than full frame)
+                    thumb = cv2.resize(img, (192, 108)) if img is not None else img
+                    img_hash = hashlib.md5(thumb.tobytes()).hexdigest()
                     if img_hash == _last_screenshot_hash:
                         return None
                     
@@ -72,8 +74,9 @@ def capture_screenshot(use_roi=True):
             monitor = sct.monitors[1]
             img = np.array(sct.grab(monitor))
             
-            # Calculate hash for deduplication
-            img_hash = hashlib.md5(img.tobytes()).hexdigest()
+            # Calculate hash for deduplication — use thumbnail for speed
+            thumb = cv2.resize(img, (192, 108))
+            img_hash = hashlib.md5(thumb.tobytes()).hexdigest()
             
             # Skip if same as last screenshot
             if img_hash == _last_screenshot_hash:
@@ -167,7 +170,7 @@ def extract_keywords(text, top_n=15, boost_repeats=True):
     
     # Use cleaned text for extraction
     clean_text = validation['cleaned_text']
-    concepts = {}
+    kw_dict = {}  # unified keyword dict used by all extraction steps below
     
     try:
         # TF-IDF extraction on VALIDATED and SANITIZED text
@@ -176,7 +179,7 @@ def extract_keywords(text, top_n=15, boost_repeats=True):
             for kw, score in keywords:
                 # Additional filter: skip single-char and UI garbage
                 if len(kw) > 2 and kw.lower() not in {'the', 'and', 'for', 'with'}:
-                    concepts[kw] = score * 0.8
+                    kw_dict[kw] = score * 0.8
     except Exception as e:
         print(f"Keyword extraction failed: {e}")
 
@@ -196,7 +199,7 @@ def extract_keywords(text, top_n=15, boost_repeats=True):
             # Extract named entities
             entities = [ent.text.lower() for ent in doc.ents if ent.label_ in ["PERSON", "ORG", "GPE", "PRODUCT", "EVENT"]]
             
-            # Add to dictionary with moderate scores
+            # Add to kw_dict with moderate scores
             for kw in set(nlp_keywords + entities):
                 if kw not in kw_dict:
                     kw_dict[kw] = 0.3
@@ -272,7 +275,12 @@ def extract_concepts_v2(text, top_n=5):
 
 
 def get_text_embedding_v2(text):
-    """Compute sentence embeddings for semantic search"""
+    """Compute sentence embeddings for semantic search.
+    
+    `embedding_model` is None by default (module-level). To enable, assign a
+    sentence-transformers SentenceTransformer instance to this module's
+    `embedding_model` variable before calling this function.
+    """
     if not text or not text.strip() or embedding_model is None:
         return np.zeros(384)  # Default embedding size for all-MiniLM-L6-v2
         

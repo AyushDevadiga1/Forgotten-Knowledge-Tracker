@@ -35,59 +35,32 @@ class ThreadSafeCounter:
 
 
 class IntentValidator:
-    """Validates and improves intent predictions over time"""
+    """Validates and improves intent predictions over time.
+    
+    Writes directly to the shared ORM database (sessions.db) so that
+    the web API reads the same data the tracker writes.
+    """
     
     def __init__(self, db_path: str = None):
-        self.db_path = db_path or str(DATA_DIR / "intent_validation.db")
-        self._init_db()
+        # db_path parameter kept for backward-compat but ignored; all writes
+        # now go through the shared SQLAlchemy engine in models.py.
         self.prediction_buffer = []
     
-    def _init_db(self):
-        """Initialize intent validation database"""
-        os.makedirs(os.path.dirname(self.db_path) or "data", exist_ok=True)
-        conn = sqlite3.connect(self.db_path, timeout=30)
-        c = conn.cursor()
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS intent_predictions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp TEXT,
-                predicted_intent TEXT,
-                confidence REAL,
-                context_keywords TEXT,
-                user_feedback INTEGER,
-                feedback_timestamp TEXT
-            )
-        ''')
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS intent_accuracy (
-                intent TEXT PRIMARY KEY,
-                total_predictions INTEGER DEFAULT 0,
-                correct_predictions INTEGER DEFAULT 0,
-                accuracy REAL DEFAULT 0.0,
-                last_updated TEXT
-            )
-        ''')
-        
-        c.execute('CREATE INDEX IF NOT EXISTS idx_intent_timestamp ON intent_predictions(timestamp)')
-        
-        conn.commit()
-        conn.close()
-    
     def log_prediction(self, predicted_intent: str, confidence: float, context: str):
-        """Log an intent prediction"""
-        conn = sqlite3.connect(self.db_path, timeout=30)
-        c = conn.cursor()
-        
-        c.execute('''
-            INSERT INTO intent_predictions 
-            (timestamp, predicted_intent, confidence, context_keywords)
-            VALUES (?, ?, ?, ?)
-        ''', (datetime.now().isoformat(), predicted_intent, confidence, context))
-        
-        conn.commit()
-        conn.close()
+        """Log an intent prediction to the shared ORM database"""
+        try:
+            from tracker_app.db.models import SessionLocal, IntentPrediction
+            with SessionLocal() as db:
+                pred = IntentPrediction(
+                    timestamp=datetime.now().isoformat(),
+                    predicted_intent=predicted_intent,
+                    confidence=confidence,
+                    context_keywords=context
+                )
+                db.add(pred)
+                db.commit()
+        except Exception as e:
+            logger.error(f"Failed to log intent prediction: {e}")
         
         self.prediction_buffer.append({
             'intent': predicted_intent,
@@ -97,173 +70,144 @@ class IntentValidator:
     
     def log_feedback(self, prediction_id: int, correct: bool):
         """User provides feedback on prediction accuracy"""
-        conn = sqlite3.connect(self.db_path, timeout=30)
-        c = conn.cursor()
-        
-        c.execute('''
-            UPDATE intent_predictions 
-            SET user_feedback = ?, feedback_timestamp = ?
-            WHERE id = ?
-        ''', (1 if correct else 0, datetime.now().isoformat(), prediction_id))
-        
-        # Update accuracy stats
-        c.execute('SELECT predicted_intent FROM intent_predictions WHERE id = ?', (prediction_id,))
-        intent = c.fetchone()[0]
-        
-        c.execute('''
-            INSERT OR IGNORE INTO intent_accuracy (intent, total_predictions, correct_predictions)
-            VALUES (?, 1, ?)
-        ''', (intent, 1 if correct else 0))
-        
-        c.execute('''
-            UPDATE intent_accuracy 
-            SET total_predictions = total_predictions + 1,
-                correct_predictions = correct_predictions + ?,
-                accuracy = CAST(correct_predictions + ? AS REAL) / (total_predictions + 1),
-                last_updated = ?
-            WHERE intent = ?
-        ''', (1 if correct else 0, 1 if correct else 0, datetime.now().isoformat(), intent))
-        
-        conn.commit()
-        conn.close()
+        try:
+            from tracker_app.db.models import SessionLocal, IntentPrediction, IntentAccuracy
+            with SessionLocal() as db:
+                pred = db.query(IntentPrediction).filter(IntentPrediction.id == prediction_id).first()
+                if pred:
+                    pred.user_feedback = 1 if correct else 0
+                    pred.feedback_timestamp = datetime.now().isoformat()
+                    intent = pred.predicted_intent
+                    
+                    # Update accuracy stats
+                    acc = db.query(IntentAccuracy).filter(IntentAccuracy.intent == intent).first()
+                    if acc is None:
+                        acc = IntentAccuracy(
+                            intent=intent,
+                            total_predictions=1,
+                            correct_predictions=1 if correct else 0,
+                        )
+                        db.add(acc)
+                    else:
+                        acc.total_predictions += 1
+                        if correct:
+                            acc.correct_predictions += 1
+                        acc.accuracy = acc.correct_predictions / acc.total_predictions
+                        acc.last_updated = datetime.now().isoformat()
+                    
+                    db.commit()
+        except Exception as e:
+            logger.error(f"Failed to log intent feedback: {e}")
     
     def get_accuracy_stats(self) -> Dict[str, Any]:
         """Get overall intent prediction accuracy"""
-        conn = sqlite3.connect(self.db_path, timeout=30)
-        c = conn.cursor()
-        
-        c.execute('''
-            SELECT AVG(accuracy), COUNT(*), MAX(accuracy), MIN(accuracy)
-            FROM intent_accuracy
-            WHERE total_predictions >= 5
-        ''')
-        
-        row = c.fetchone()
-        avg_acc = row[0] or 0.5
-        intent_count = row[1] or 0
-        
-        result = {
-            'average_accuracy': avg_acc,
-            'intents_tracked': intent_count,
-            'best_accuracy': row[2] or 0,
-            'worst_accuracy': row[3] or 0
-        }
-        
-        conn.close()
-        return result
+        try:
+            from tracker_app.db.models import SessionLocal, IntentAccuracy
+            with SessionLocal() as db:
+                from sqlalchemy import func
+                row = db.query(
+                    func.avg(IntentAccuracy.accuracy),
+                    func.count(IntentAccuracy.intent),
+                    func.max(IntentAccuracy.accuracy),
+                    func.min(IntentAccuracy.accuracy)
+                ).filter(IntentAccuracy.total_predictions >= 5).first()
+                
+                return {
+                    'average_accuracy': row[0] or 0.5,
+                    'intents_tracked': row[1] or 0,
+                    'best_accuracy': row[2] or 0,
+                    'worst_accuracy': row[3] or 0
+                }
+        except Exception as e:
+            logger.error(f"Failed to get accuracy stats: {e}")
+            return {'average_accuracy': 0.5, 'intents_tracked': 0, 'best_accuracy': 0, 'worst_accuracy': 0}
 
 
 class TrackingAnalytics:
-    """Analytics on tracked concepts and sessions"""
+    """Analytics on tracked concepts and sessions.
+    
+    Writes directly to the shared ORM database (sessions.db) so that
+    the web API reads the same data the tracker writes.
+    """
     
     def __init__(self, db_path: str = None):
-        self.db_path = db_path or str(DATA_DIR / "tracking_analytics.db")
-        self._init_db()
-    
-    def _init_db(self):
-        """Initialize analytics database"""
-        os.makedirs(os.path.dirname(self.db_path) or "data", exist_ok=True)
-        conn = sqlite3.connect(self.db_path, timeout=30)
-        c = conn.cursor()
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS tracking_sessions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                start_time TEXT,
-                end_time TEXT,
-                duration_minutes REAL,
-                concepts_encountered INTEGER,
-                avg_attention REAL,
-                primary_activity TEXT
-            )
-        ''')
-        
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS daily_summary (
-                date TEXT PRIMARY KEY,
-                total_tracking_minutes REAL,
-                concepts_encountered INTEGER,
-                avg_attention REAL,
-                primary_intents TEXT
-            )
-        ''')
-        
-        conn.commit()
-        conn.close()
+        # db_path parameter kept for backward-compat; all writes go through ORM.
+        pass
     
     def log_session(self, start_time: datetime, end_time: datetime, 
                    concepts_count: int, avg_attention: float, primary_activity: str):
-        """Log a tracking session"""
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        
-        duration = (end_time - start_time).total_seconds() / 60
-        
-        c.execute('''
-            INSERT INTO tracking_sessions 
-            (start_time, end_time, duration_minutes, concepts_encountered, avg_attention, primary_activity)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (start_time.isoformat(), end_time.isoformat(), duration, concepts_count, avg_attention, primary_activity))
-        
-        conn.commit()
-        conn.close()
+        """Log a tracking session to the shared ORM database"""
+        try:
+            from tracker_app.db.models import SessionLocal, TrackingSession
+            with SessionLocal() as db:
+                duration = (end_time - start_time).total_seconds() / 60
+                session = TrackingSession(
+                    start_time=start_time.isoformat(),
+                    end_time=end_time.isoformat(),
+                    duration_minutes=duration,
+                    concepts_encountered=concepts_count,
+                    avg_attention=avg_attention,
+                    primary_activity=primary_activity
+                )
+                db.add(session)
+                db.commit()
+        except Exception as e:
+            logger.error(f"Failed to log tracking session: {e}")
     
     def get_daily_summary(self, date: Optional[datetime] = None) -> Dict[str, Any]:
         """Get daily tracking summary"""
         if date is None:
             date = datetime.now()
-        
         date_str = date.strftime("%Y-%m-%d")
         
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        
-        c.execute('''
-            SELECT SUM(duration_minutes), SUM(concepts_encountered), AVG(avg_attention)
-            FROM tracking_sessions
-            WHERE DATE(start_time) = ?
-        ''', (date_str,))
-        
-        row = c.fetchone()
-        
-        summary = {
-            'date': date_str,
-            'total_minutes': row[0] or 0,
-            'concepts': row[1] or 0,
-            'avg_attention': row[2] or 0
-        }
-        
-        conn.close()
-        return summary
+        try:
+            from tracker_app.db.models import SessionLocal, TrackingSession
+            from sqlalchemy import func
+            with SessionLocal() as db:
+                row = db.query(
+                    func.sum(TrackingSession.duration_minutes),
+                    func.sum(TrackingSession.concepts_encountered),
+                    func.avg(TrackingSession.avg_attention)
+                ).filter(
+                    TrackingSession.start_time.like(f"{date_str}%")
+                ).first()
+                
+                return {
+                    'date': date_str,
+                    'total_minutes': row[0] or 0,
+                    'concepts': row[1] or 0,
+                    'avg_attention': row[2] or 0
+                }
+        except Exception as e:
+            logger.error(f"Failed to get daily summary: {e}")
+            return {'date': date_str, 'total_minutes': 0, 'concepts': 0, 'avg_attention': 0}
     
     def get_trend_analysis(self, days: int = 7) -> Dict[str, Any]:
         """Analyze tracking trends"""
-        conn = sqlite3.connect(self.db_path)
-        c = conn.cursor()
-        
-        start_date = (datetime.now() - timedelta(days=days)).isoformat()
-        
-        c.execute('''
-            SELECT 
-                COUNT(DISTINCT DATE(start_time)) as tracking_days,
-                AVG(duration_minutes) as avg_session_length,
-                SUM(concepts_encountered) as total_concepts,
-                AVG(avg_attention) as avg_attention
-            FROM tracking_sessions
-            WHERE start_time >= ?
-        ''', (start_date,))
-        
-        row = c.fetchone()
-        
-        result = {
-            'tracking_days': row[0] or 0,
-            'avg_session_minutes': row[1] or 0,
-            'total_concepts_encountered': row[2] or 0,
-            'avg_attention_score': row[3] or 0
-        }
-        
-        conn.close()
-        return result
+        try:
+            from tracker_app.db.models import SessionLocal, TrackingSession
+            from sqlalchemy import func
+            start_date = (datetime.now() - timedelta(days=days)).isoformat()
+            
+            with SessionLocal() as db:
+                row = db.query(
+                    func.count(TrackingSession.id),
+                    func.avg(TrackingSession.duration_minutes),
+                    func.sum(TrackingSession.concepts_encountered),
+                    func.avg(TrackingSession.avg_attention)
+                ).filter(
+                    TrackingSession.start_time >= start_date
+                ).first()
+                
+                return {
+                    'tracking_days': row[0] or 0,
+                    'avg_session_minutes': row[1] or 0,
+                    'total_concepts_encountered': row[2] or 0,
+                    'avg_attention_score': row[3] or 0
+                }
+        except Exception as e:
+            logger.error(f"Failed to get trend analysis: {e}")
+            return {'tracking_days': 0, 'avg_session_minutes': 0, 'total_concepts_encountered': 0, 'avg_attention_score': 0}
 
 
 class ActivityMonitor:
@@ -323,8 +267,8 @@ class ActivityMonitor:
             )
             
             self.is_running = False
-            
-        logger.info(f"Tracking session ended. Concepts: {concepts_count}, Avg Attention: {avg_attention:.2f}")
+            # Log inside the lock while variables are guaranteed to be defined
+            logger.info(f"Tracking session ended. Concepts: {concepts_count}, Avg Attention: {avg_attention:.2f}")
     
     def process_concepts(self, ocr_keywords: Dict[str, Any], confidence: float = 0.6):
         """Process and schedule encountered concepts"""

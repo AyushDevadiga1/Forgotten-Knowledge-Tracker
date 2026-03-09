@@ -70,11 +70,16 @@ class LightweightKeywordExtractor:
             return []
         
         try:
-            # Fit TF-IDF on the processed text
+            # NOTE: TF-IDF on a single document typically results in all words having the same 
+            # importance (1.0) because there's no corpus to determine "commonality".
+            # This serves as a proxy for "important tokens" in the current view.
             tfidf_matrix = self.vectorizer.fit_transform([processed_text])
             feature_names = self.vectorizer.get_feature_names_out()
             
             # Get scores
+            if tfidf_matrix.shape[0] == 0:
+                return []
+                
             scores = tfidf_matrix.toarray()[0]
             
             # Sort by score
@@ -86,6 +91,14 @@ class LightweightKeywordExtractor:
                 if scores[idx] > 0
             ]
             
+            # If TF-IDF failed to find meaningful words, fallback to raw word frequency
+            if not keywords:
+                from collections import Counter
+                words = [w for w in processed_text.split() if len(w) > 3]
+                counts = Counter(words).most_common(top_n)
+                total = sum(c for _, c in counts) if counts else 1
+                keywords = [(w, c/total) for w, c in counts]
+
             return keywords
             
         except Exception as e:

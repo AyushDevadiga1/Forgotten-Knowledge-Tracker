@@ -199,18 +199,26 @@ def send_intent_feedback():
 def health_check():
     """Basic health check endpoint for monitoring"""
     try:
-        # Check DB accessibility via raw tracker status
+        from tracker_app.db.models import SessionLocal, LearningItem
+        with SessionLocal() as db:
+            item_count = db.query(LearningItem).count()
+            
         return jsonify({
             'status': 'healthy',
             'timestamp': datetime.now().isoformat(),
             'version': '1.0.0',
             'components': {
                 'database': 'reachable',
+                'item_count': item_count,
                 'api': 'online'
             }
         }), 200
     except Exception as e:
         return jsonify({
             'status': 'unhealthy',
-            'error': str(e)
+            'error': str(e),
+            'components': {
+                'database': 'error',
+                'api': 'online'
+            }
         }), 503

@@ -19,6 +19,16 @@ load_dotenv()
 from tracker_app.config import DATA_DIR, setup_directories
 setup_directories()  # Ensure data/ and models/ dirs exist before app starts
 
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(name)s] %(levelname)s: %(message)s'
+)
+
+from tracker_app.db.db_module import init_all_databases
+init_all_databases() # Ensure tables exist for the web app
+
+
 # Point static folder to the built Vite frontend
 frontend_dist = os.path.join(os.path.dirname(__file__), 'frontend', 'dist')
 app = Flask(__name__, static_folder=frontend_dist)

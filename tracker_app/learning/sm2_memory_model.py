@@ -15,7 +15,7 @@ import math
 # These are research-validated defaults from SuperMemo
 DEFAULT_EASE_FACTOR = 2.5          # Initial difficulty (multiplier)
 MIN_EASE_FACTOR = 1.3              # Never decrease below this
-MAX_EASE_FACTOR = 2.5              # Never increase above this
+MAX_EASE_FACTOR = 3.5              # Never increase above this
 
 # Minimum quality rating (0-5 scale)
 # 0-2 = Incorrect (review tomorrow)

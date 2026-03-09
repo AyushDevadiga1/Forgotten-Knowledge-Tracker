@@ -62,7 +62,7 @@ class LearningTracker:
         if difficulty not in {"easy", "medium", "hard"}:
             raise ValueError("difficulty must be easy, medium, or hard")
             
-        item_id = str(uuid.uuid4())[:8]
+        item_id = str(uuid.uuid4())
         now = datetime.now().isoformat()
         
         with models.SessionLocal() as db:
@@ -126,32 +126,26 @@ class LearningTracker:
             review_date = datetime.now().isoformat()
             was_correct = quality_rating >= 3
             
-            # Create review history
+            # Create review history record
             history = ReviewHistory(
                 item_id=item_id,
-                timestamp=review_date,  # Note: the model has `timestamp` not `review_date`! Wait, models.py says ReviewHistory has `timestamp`?
-                # Actually, wait. I called it `timestamp` in models.py earlier: `timestamp = Column(String, default=lambda: datetime.now().isoformat())`
+                timestamp=review_date,
                 quality_rating=quality_rating,
                 old_interval=item_dict['interval'],
                 new_interval=item.interval,
                 old_ease=item_dict['ease_factor'],
                 new_ease=item.ease_factor
             )
-            # Actually models.py ReviewHistory has quality_rating, old_interval, new_interval, old_ease, new_ease. 
-            # Wait, the previous ReviewHistory table had: quality_rating, correct, ease_factor, interval_days, time_spent_seconds!
-            # It's fine to deviate slightly or we can just populate what's available. We'll just commit it.
             db.add(history)
             
             success_rate = item.correct_count / item.total_reviews if item.total_reviews > 0 else 0
             status = 'mastered' if (success_rate > 0.95 and item.repetitions > 5) else 'active'
             
-            # Update item_record
+            # Update item record with new SM-2 state
             item_record.interval = item.interval
             item_record.ease_factor = item.ease_factor
             item_record.repetitions = item.repetitions
             item_record.next_review_date = item.next_review_date.isoformat()
-            # item_record.last_review_date = review_date (Wait! model `LearningItem` doesn't have last_review_date in the latest models.py? Actually it does not, wait, let me check models.py.)
-            # I will omit last_review_date if it breaks, but assume it doesn't or Python dynamic attrs will just silently ignore or throw error.
             item_record.total_reviews = item.total_reviews
             item_record.correct_count = item.correct_count
             item_record.success_rate = success_rate
