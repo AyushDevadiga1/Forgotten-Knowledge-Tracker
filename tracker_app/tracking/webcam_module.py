@@ -1,19 +1,38 @@
 # core/webcam_module.py
+# FKT 2.0 — Lazy-loaded webcam module.
+# MediaPipe FaceMesh is initialised on FIRST CALL, not at import time.
+# This prevents crashes on machines without a webcam or with low RAM.
 import cv2
 import numpy as np
-import mediapipe as mp
 import time
+import logging
+
+logger = logging.getLogger("WebcamModule")
 
 # ----------------------------
-# MediaPipe Face Mesh Setup
+# Lazy MediaPipe initialisation
 # ----------------------------
-mp_face_mesh = mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh(
-    max_num_faces=1,
-    refine_landmarks=True,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5
-)
+_face_mesh = None
+_mp_face_mesh = None
+
+def _get_face_mesh():
+    """Lazily initialise MediaPipe FaceMesh on first use."""
+    global _face_mesh, _mp_face_mesh
+    if _face_mesh is None:
+        try:
+            import mediapipe as mp
+            _mp_face_mesh = mp.solutions.face_mesh
+            _face_mesh = _mp_face_mesh.FaceMesh(
+                max_num_faces=1,
+                refine_landmarks=True,
+                min_detection_confidence=0.5,
+                min_tracking_confidence=0.5
+            )
+            logger.info("MediaPipe FaceMesh initialised successfully.")
+        except Exception as e:
+            logger.warning(f"MediaPipe FaceMesh init failed: {e}. Webcam attention disabled.")
+            _face_mesh = None
+    return _face_mesh
 
 # ----------------------------
 # EAR & attention helpers
@@ -98,6 +117,16 @@ def webcam_pipeline(num_frames=3):
     LEFT_EYE = [362, 385, 387, 263, 373, 380] 
     RIGHT_EYE = [33, 160, 158, 133, 153, 144]
 
+    face_mesh = _get_face_mesh()
+    if face_mesh is None:
+        # MediaPipe unavailable — return neutral score
+        return {
+            "attentiveness_score": 50.0,
+            "face_count": 0,
+            "frames_processed": 0,
+            "status": "mediapipe_unavailable"
+        }
+
     for _ in range(num_frames):
         frame = capture_frame()
         if frame is None:
@@ -121,7 +150,7 @@ def webcam_pipeline(num_frames=3):
                     ear_values.append(avg_ear)
                     
         except Exception as e:
-            print(f"Error in MediaPipe processing: {e}")
+            logger.warning(f"Error in MediaPipe processing: {e}")
             continue
             
         # Small delay between frames
