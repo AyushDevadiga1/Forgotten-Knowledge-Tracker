@@ -3,11 +3,14 @@ import time
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
 import uuid
+import logging
 
 from tracker_app.config import DATA_DIR
 from tracker_app.db import models
-from tracker_app.db.models import TrackedConcept, ConceptEncounter
+from tracker_app.db.models import TrackedConcept, ConceptEncounter, SessionLocal
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger("ConceptScheduler")
 
 class ConceptScheduler:
     """SM-2 inspired scheduling for tracked concepts using SQLAlchemy"""
@@ -21,7 +24,7 @@ class ConceptScheduler:
         pass
     
     def add_concept(self, concept: str, confidence: float = 0.5, context: str = "") -> str:
-        """Add or update a tracked concept"""
+        """Add or update a tracked concept. Returns the concept string (PK)."""
         now = datetime.now().isoformat()
         
         with SessionLocal() as db:
@@ -43,11 +46,11 @@ class ConceptScheduler:
                 db.add(new_concept)
             
             encounter = ConceptEncounter(
-                concept=concept_id, # Wait, model says "concept" but DB had "concept_id". The model says: concept = Column(String, index=True)
+                concept=concept,
                 timestamp=now,
-                source="ui", # Added source because model schema has it
+                source="ocr",
                 confidence=confidence,
-                context_snippet=context # model has context_snippet instead of context
+                context_snippet=context[:200] if context else ""
             )
             db.add(encounter)
             db.commit()
@@ -56,40 +59,38 @@ class ConceptScheduler:
     
     def schedule_next_review(self, concept_id: str, quality: int = 3):
         """
-        Schedule next review using SM-2 algorithm
+        Schedule next review using SM-2 algorithm.
+        concept_id is the concept STRING (primary key), not an integer.
         quality: 0-5 (0=fail, 5=perfect)
         """
         with models.SessionLocal() as db:
-            tracked = db.query(TrackedConcept).filter(TrackedConcept.id == concept_id).first()
+            # FKT 2.0 fix: PK is `concept` (string), NOT an integer `id`
+            tracked = db.query(TrackedConcept).filter(TrackedConcept.concept == concept_id).first()
             
             if not tracked:
+                logger.warning(f"schedule_next_review: concept '{concept_id}' not found in DB.")
                 return
             
-            # Need to adapt because model uses `memory_strength` and `relevance_score` but no `sm2_interval` or `sm2_ease`
-            # Actually, `models.py` only defines TrackedConcept with fields:
-            # id, concept, first_seen, last_seen, encounter_count, relevance_score, memory_strength, next_review, context, related_concepts
-            # I must dynamically manage interval/ease within the object if it's missing, but the old one had it.
-            # I will use a simple heuristic for next review interval based on memory_strength.
-            
-            interval = getattr(tracked, 'interval', 1) 
-            ease = getattr(tracked, 'memory_strength', 2.5)
+            interval = getattr(tracked, 'interval', 1) or 1
+            ease = getattr(tracked, 'memory_strength', 2.5) or 2.5
             
             if quality < 3:
                 new_interval = 1
                 new_ease = max(1.3, ease - 0.2)
             else:
-                if interval == 1:
+                if interval <= 1:
                     new_interval = 3
                 else:
-                    new_interval = interval * ease
+                    new_interval = round(interval * ease)
                 new_ease = ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
-                new_ease = max(1.3, new_ease)
+                new_ease = max(1.3, min(new_ease, 3.5))
             
             tracked.interval = new_interval
             tracked.memory_strength = new_ease
             tracked.next_review = (datetime.now() + timedelta(days=new_interval)).isoformat()
             
             db.commit()
+            logger.debug(f"Scheduled '{concept_id}' for review in {new_interval} days.")
     
     def get_due_concepts(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Get concepts due for review"""
