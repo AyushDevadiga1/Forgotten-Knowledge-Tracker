@@ -11,7 +11,7 @@ venv/
 ENV/
 env/
 
-.agent
+.agent.skills/
 
 #Node js 
 tracker_app/web/frontend/node_modules
