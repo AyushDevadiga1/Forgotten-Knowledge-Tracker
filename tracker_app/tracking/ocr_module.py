@@ -1,4 +1,5 @@
 # core/ocr_module.py
+# FKT 2.0 — Fixed missing functions, lazy init, proper logging
 import cv2
 import numpy as np
 import pytesseract
@@ -6,11 +7,14 @@ import hashlib
 from mss import mss
 from tracker_app.config import TESSERACT_PATH
 import spacy
+import logging
 from tracker_app.tracking.knowledge_graph import get_graph
 from tracker_app.tracking.keyword_extractor import get_keyword_extractor
 from tracker_app.learning.text_quality_validator import validate_and_clean_extraction
 import re
 from functools import lru_cache
+
+logger = logging.getLogger("OCRModule")
 
 # Set tesseract executable path
 pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
@@ -18,22 +22,65 @@ pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
 # Initialize models with error handling
 kw_extractor = None
 nlp = None
-embedding_model = None  # Optional sentence-transformer model; None disables embeddings
+embedding_model = None  # Optional; set externally to enable semantic embeddings
 
 try:
     kw_extractor = get_keyword_extractor()
-    print("Lightweight keyword extractor loaded successfully.")
+    logger.info("Keyword extractor loaded.")
 except Exception as e:
-    print(f"Error loading keyword extractor: {e}")
+    logger.warning(f"Keyword extractor load failed: {e}")
 
 try:
     nlp = spacy.load("en_core_web_sm")
-    print("spaCy model loaded successfully.")
+    logger.info("spaCy model loaded.")
 except Exception as e:
-    print(f"Error loading spaCy model: {e}")
+    logger.warning(f"spaCy load failed: {e}")
 
 # Screenshot deduplication
 _last_screenshot_hash = None
+
+# ----------------------------
+# FKT 2.0: Missing helper functions added
+# ----------------------------
+
+SENSITIVE_WINDOW_KEYWORDS = [
+    'password', 'login', 'sign in', 'bank', 'paypal',
+    'credit card', 'private', 'incognito', 'inprivate', 'medical'
+]
+
+def should_skip_window(title: str) -> bool:
+    """Return True if the window title suggests sensitive/private content."""
+    if not title:
+        return False
+    title_lower = title.lower()
+    return any(kw in title_lower for kw in SENSITIVE_WINDOW_KEYWORDS)
+
+def capture_active_window():
+    """
+    Attempt to capture only the active (foreground) window region.
+    Returns (image_array, window_info_dict) or (None, None) on failure.
+    """
+    try:
+        import win32gui
+        hwnd = win32gui.GetForegroundWindow()
+        title = win32gui.GetWindowText(hwnd) or ""
+        rect = win32gui.GetWindowRect(hwnd)
+        left, top, right, bottom = rect
+        width = right - left
+        height = bottom - top
+        if width <= 0 or height <= 0:
+            return None, None
+        with mss() as sct:
+            monitor = {"left": left, "top": top, "width": width, "height": height}
+            img = np.array(sct.grab(monitor))
+        if img.shape[2] == 4:
+            img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+        return img, {"title": title, "rect": rect}
+    except ImportError:
+        return None, None  # Non-Windows: fallback to full screen
+    except Exception as e:
+        logger.debug(f"capture_active_window failed: {e}")
+        return None, None
 
 def capture_screenshot(use_roi=True):
     """
@@ -48,8 +95,6 @@ def capture_screenshot(use_roi=True):
         # Try ROI capture first (active window only)
         if use_roi:
             try:
-                # Roi detector was removed as redundant legacy code
-                pass
                 img, window_info = capture_active_window()
                 
                 if img is not None and window_info:
