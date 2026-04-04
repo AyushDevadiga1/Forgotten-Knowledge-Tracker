@@ -1,9 +1,10 @@
 # core/memory_model.py
+# FKT 2.0 — Fixed import path for DB_PATH
 import numpy as np
 from datetime import datetime, timedelta
 import sqlite3
 import math
-from config import DB_PATH
+from tracker_app.config import DB_PATH  # FKT 2.0 fix: was `from config import DB_PATH`
 
 # Datetime format for consistency across modules
 DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
