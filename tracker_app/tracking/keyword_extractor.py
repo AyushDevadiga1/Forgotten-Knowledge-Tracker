@@ -1,121 +1,200 @@
 """
-Lightweight Keyword Extractor - KeyBERT Replacement
+FKT 2.0 — Keyword Extractor (YAKE! + spaCy NER)
+=================================================
+Replaces the broken TF-IDF single-document extractor with YAKE!
+(Yet Another Keyword Extractor) — a statistical, corpus-free algorithm
+that actually ranks keywords by importance within a single document.
 
-This module provides a lightweight alternative to KeyBERT using TF-IDF
-and spaCy for keyword extraction, eliminating the 2GB+ PyTorch dependency.
+Why YAKE! beats TF-IDF here:
+  TF-IDF on ONE document gives every term the same score (= 1.0).
+  YAKE! uses term frequency, casing, position, co-occurrence, and
+  sentence dispersion within the single text — real ranking without
+  needing a background corpus.
+
+Pipeline:
+  1. YAKE!          → ranked keyword candidates (statistical)
+  2. spaCy NER      → named entities (PERSON, ORG, GPE, PRODUCT, EVENT)
+  3. spaCy nouns    → noun chunks as supplementary candidates
+  4. Merge + dedup  → final scored keyword dict
+
+Fallback: if YAKE! is not installed, falls back to spaCy noun extraction.
 """
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-import spacy
-import numpy as np
-from typing import List, Tuple
+import logging
+import re
+from typing import List, Tuple, Optional
 
-class LightweightKeywordExtractor:
-    """
-    Lightweight keyword extractor using TF-IDF and spaCy.
-    Drop-in replacement for KeyBERT with ~100x smaller footprint.
-    """
-    
-    def __init__(self, model_name='en_core_web_sm'):
-        """Initialize with spaCy model"""
-        try:
-            self.nlp = spacy.load(model_name)
-        except OSError:
-            print(f"spaCy model '{model_name}' not found. Run: python -m spacy download {model_name}")
-            self.nlp = None
-        
-        self.vectorizer = TfidfVectorizer(
-            max_features=100,
-            ngram_range=(1, 2),
-            stop_words='english',
-            min_df=1
-        )
-    
-    def extract_keywords(self, text: str, top_n: int = 5) -> List[Tuple[str, float]]:
-        """
-        Extract keywords from text using TF-IDF.
-        
-        Args:
-            text: Input text
-            top_n: Number of keywords to extract
-            
-        Returns:
-            List of (keyword, score) tuples
-        """
-        if not text or not text.strip():
-            return []
-        
-        # Use spaCy for better tokenization if available
-        if self.nlp:
-            doc = self.nlp(text)
-            # Filter out stop words, punctuation, and short tokens
-            tokens = [
-                token.text.lower() 
-                for token in doc 
-                if not token.is_stop 
-                and not token.is_punct 
-                and len(token.text) > 2
-                and token.is_alpha
-            ]
-            
-            # Also extract noun phrases
-            noun_phrases = [chunk.text.lower() for chunk in doc.noun_chunks if len(chunk.text) > 3]
-            
-            # Combine tokens and noun phrases
-            processed_text = ' '.join(tokens + noun_phrases)
-        else:
-            processed_text = text.lower()
-        
-        if not processed_text.strip():
-            return []
-        
-        try:
-            # NOTE: TF-IDF on a single document typically results in all words having the same 
-            # importance (1.0) because there's no corpus to determine "commonality".
-            # This serves as a proxy for "important tokens" in the current view.
-            tfidf_matrix = self.vectorizer.fit_transform([processed_text])
-            feature_names = self.vectorizer.get_feature_names_out()
-            
-            # Get scores
-            if tfidf_matrix.shape[0] == 0:
-                return []
-                
-            scores = tfidf_matrix.toarray()[0]
-            
-            # Sort by score
-            top_indices = np.argsort(scores)[::-1][:top_n]
-            
-            keywords = [
-                (feature_names[idx], float(scores[idx]))
-                for idx in top_indices
-                if scores[idx] > 0
-            ]
-            
-            # If TF-IDF failed to find meaningful words, fallback to raw word frequency
-            if not keywords:
-                from collections import Counter
-                words = [w for w in processed_text.split() if len(w) > 3]
-                counts = Counter(words).most_common(top_n)
-                total = sum(c for _, c in counts) if counts else 1
-                keywords = [(w, c/total) for w, c in counts]
+logger = logging.getLogger("KeywordExtractor")
 
-            return keywords
-            
+# ── Lazy-loaded heavy objects ────────────────────────────────
+_yake_extractor = None
+_spacy_nlp      = None
+
+def _get_yake(language="en", max_ngram=2, top_n=20):
+    """Return a YAKE extractor instance (lazy init)."""
+    global _yake_extractor
+    if _yake_extractor is None:
+        try:
+            import yake
+            _yake_extractor = yake.KeywordExtractor(
+                lan=language,
+                n=max_ngram,
+                dedupLim=0.7,      # deduplicate near-identical keywords
+                dedupFunc="seqm",
+                windowsSize=2,
+                top=top_n,
+                features=None,
+            )
+            logger.info("YAKE! keyword extractor initialised.")
+        except ImportError:
+            logger.warning("YAKE! not installed. Run: pip install yake")
+            _yake_extractor = None
+    return _yake_extractor
+
+def _get_nlp():
+    """Return spaCy nlp model (lazy init)."""
+    global _spacy_nlp
+    if _spacy_nlp is None:
+        try:
+            import spacy
+            _spacy_nlp = spacy.load("en_core_web_sm")
+            logger.info("spaCy en_core_web_sm loaded for keyword extraction.")
         except Exception as e:
-            print(f"Keyword extraction error: {e}")
+            logger.warning(f"spaCy load failed: {e}")
+            _spacy_nlp = None
+    return _spacy_nlp
+
+
+class YAKEKeywordExtractor:
+    """
+    YAKE! + spaCy NER keyword extractor.
+    Drop-in replacement for the old LightweightKeywordExtractor.
+    """
+
+    # YAKE! scores are LOWER = more important (inverse of most systems)
+    # We convert: relevance = 1 - normalised_yake_score  → higher is better
+    YAKE_SCORE_CAP = 0.5   # scores above this are noise
+    MIN_KW_LEN     = 3
+    ENTITY_TYPES   = {"PERSON", "ORG", "GPE", "PRODUCT", "EVENT",
+                      "WORK_OF_ART", "LAW", "LANGUAGE"}
+
+    def extract_keywords(self, text: str, top_n: int = 15) -> List[Tuple[str, float]]:
+        """
+        Extract and rank keywords from a single text.
+
+        Returns:
+            List of (keyword, relevance_score) sorted high→low.
+            relevance_score is in [0.0, 1.0].
+        """
+        if not text or len(text.strip()) < 10:
             return []
-    
-    def extract_keywords_batch(self, texts: List[str], top_n: int = 5) -> List[List[Tuple[str, float]]]:
-        """Extract keywords from multiple texts"""
-        return [self.extract_keywords(text, top_n) for text in texts]
+
+        scores: dict[str, float] = {}
+
+        # ── 1. YAKE! extraction ──────────────────────────────
+        yake = _get_yake()
+        if yake is not None:
+            try:
+                raw = yake.extract_keywords(text)
+                # raw = [(keyword, yake_score), ...]  lower score = more relevant
+                if raw:
+                    min_s = min(s for _, s in raw)
+                    max_s = max(s for _, s in raw)
+                    rng   = max(max_s - min_s, 1e-9)
+                    for kw, s in raw:
+                        kw = kw.lower().strip()
+                        if len(kw) < self.MIN_KW_LEN:
+                            continue
+                        if s > self.YAKE_SCORE_CAP:
+                            continue
+                        # invert: low yake score → high relevance
+                        rel = 1.0 - (s - min_s) / rng
+                        scores[kw] = max(scores.get(kw, 0.0), round(rel, 4))
+            except Exception as e:
+                logger.warning(f"YAKE! extraction failed: {e}")
+
+        # ── 2. spaCy NER + noun chunks ───────────────────────
+        nlp = _get_nlp()
+        if nlp is not None:
+            try:
+                doc = nlp(text[:50_000])  # cap for performance
+
+                # Named entities — highest-value signal
+                for ent in doc.ents:
+                    if ent.label_ in self.ENTITY_TYPES:
+                        kw = ent.text.lower().strip()
+                        if len(kw) >= self.MIN_KW_LEN:
+                            # entities get a floor score of 0.7
+                            scores[kw] = max(scores.get(kw, 0.0), 0.7)
+
+                # Noun chunks — supplementary
+                for chunk in doc.noun_chunks:
+                    kw = chunk.root.lemma_.lower().strip()
+                    if len(kw) >= self.MIN_KW_LEN and not chunk.root.is_stop:
+                        scores[kw] = max(scores.get(kw, 0.0), 0.35)
+
+                # Nouns and proper nouns not already captured
+                for tok in doc:
+                    if tok.pos_ in ("NOUN", "PROPN") and not tok.is_stop:
+                        kw = tok.lemma_.lower().strip()
+                        if len(kw) >= self.MIN_KW_LEN and kw.isalpha():
+                            scores[kw] = max(scores.get(kw, 0.0), 0.25)
+            except Exception as e:
+                logger.warning(f"spaCy NER extraction failed: {e}")
+
+        # ── 3. Fallback: word frequency if both pipelines failed ─
+        if not scores:
+            scores = self._frequency_fallback(text, top_n)
+
+        # ── 4. Sort, cap, return ─────────────────────────────
+        sorted_kws = sorted(scores.items(), key=lambda x: -x[1])
+        return sorted_kws[:top_n]
+
+    @staticmethod
+    def _frequency_fallback(text: str, top_n: int) -> dict:
+        """Last-resort: normalised word frequency (no dependencies)."""
+        from collections import Counter
+        words = [w.lower() for w in re.findall(r'\b[a-zA-Z]{3,}\b', text)]
+        STOP  = {"the","and","for","with","that","this","are","was",
+                 "were","have","has","from","they","their","you","your"}
+        words = [w for w in words if w not in STOP]
+        counts = Counter(words)
+        total  = max(sum(counts.values()), 1)
+        return {w: round(c/total, 4) for w, c in counts.most_common(top_n)}
+
+    def extract_keywords_batch(self, texts: List[str], top_n: int = 15
+                               ) -> List[List[Tuple[str, float]]]:
+        return [self.extract_keywords(t, top_n) for t in texts]
+
+    def get_keyword_scores_dict(self, text: str, top_n: int = 15) -> dict:
+        """Return {keyword: score} dict for easy downstream use."""
+        return {kw: sc for kw, sc in self.extract_keywords(text, top_n)}
 
 
-# Global instance (lazy loaded)
-_extractor_instance = None
+# ── Global singleton ────────────────────────────────────────
+_extractor_instance: Optional[YAKEKeywordExtractor] = None
 
-def get_keyword_extractor():
-    """Get or create global keyword extractor instance"""
+def get_keyword_extractor() -> YAKEKeywordExtractor:
+    """Return the global YAKE extractor instance (lazy init)."""
     global _extractor_instance
     if _extractor_instance is None:
-        _extractor_instance = LightweightKeywordExtractor()
+        _extractor_instance = YAKEKeywordExtractor()
     return _extractor_instance
+
+# Legacy alias so nothing breaks
+LightweightKeywordExtractor = YAKEKeywordExtractor
+
+
+if __name__ == "__main__":
+    text = (
+        "Photosynthesis is the process by which plants convert sunlight into glucose "
+        "using chlorophyll in the chloroplasts. The light-dependent reactions occur in "
+        "the thylakoid membrane, while the Calvin cycle runs in the stroma. "
+        "NASA has studied photosynthesis in microgravity environments."
+    )
+    extractor = YAKEKeywordExtractor()
+    kws = extractor.extract_keywords(text, top_n=10)
+    print("Top keywords:")
+    for kw, sc in kws:
+        bar = "█" * int(sc * 20)
+        print(f"  {kw:<25} {sc:.4f}  {bar}")
