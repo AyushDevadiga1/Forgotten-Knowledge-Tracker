@@ -1,4 +1,6 @@
-﻿absl-py==2.3.1
+yake==0.4.8
+
+absl-py==2.3.1
 altair==5.5.0
 annotated-types==0.7.0
 asttokens==3.0.0
