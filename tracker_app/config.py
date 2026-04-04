@@ -1,143 +1,146 @@
-# config.py
+# config.py — FKT 2.0 — Single source of truth for all configuration
+# config_manager.py is DEPRECATED. Do not import it anywhere.
+# All settings live here or in the .env file at project root.
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
-# Get project root directory
+# Load .env from project root (two levels up from this file: tracker_app/config.py)
+_ENV_FILE = Path(__file__).parent.parent / ".env"
+if _ENV_FILE.exists():
+    load_dotenv(_ENV_FILE)
+else:
+    load_dotenv()  # fallback: search CWD
+
+# ----------------------------
+# Paths
+# ----------------------------
 PROJECT_ROOT = Path(__file__).parent.absolute()
-
-# Base directory for all data files
-DATA_DIR = PROJECT_ROOT / "data"
-
-# Model directory
-MODELS_DIR = PROJECT_ROOT / "models"
-
+DATA_DIR     = PROJECT_ROOT / "data"
+MODELS_DIR   = PROJECT_ROOT / "models"
+LOGS_DIR     = PROJECT_ROOT / "logs"
 
 def setup_directories():
-    """Create required directories. Call this from main entry points only.
-    NOT called at import time — keeps imports side-effect-free for testing."""
-    DATA_DIR.mkdir(exist_ok=True)
-    MODELS_DIR.mkdir(exist_ok=True)
+    """Create all required directories. Call once from main entry points."""
+    for d in (DATA_DIR, MODELS_DIR, LOGS_DIR):
+        d.mkdir(exist_ok=True)
 
-# Tracker intervals (in seconds)
-TRACK_INTERVAL = 5          # Main tracking loop interval
-SCREENSHOT_INTERVAL = 20     # OCR screenshot interval  
-AUDIO_INTERVAL = 15           # Audio recording interval
-WEBCAM_INTERVAL = 45         # Webcam attention check interval
-USER_ALLOW_WEBCAM = True   # Webcam permission toggle
-
-# Database path
-# In test mode, use the temporary database dictated by the test runner
+# ----------------------------
+# Database
+# ----------------------------
 DB_PATH = os.environ.get('FKT_TEST_DB', str(DATA_DIR / "sessions.db"))
 
-# Tesseract OCR path (update based on your installation)
-# Tesseract OCR path (update based on your installation)
-def find_tesseract():
-    """Find Tesseract executable"""
+# ----------------------------
+# Tesseract OCR
+# ----------------------------
+def find_tesseract() -> str:
+    """Locate Tesseract. Checks PATH, then common Windows install locations."""
     import shutil
-    
-    # Check PATH first
+    # 1. Honour explicit env override
+    env_path = os.environ.get('TESSERACT_PATH', '')
+    if env_path and os.path.exists(env_path):
+        return env_path
+    # 2. In system PATH
     if shutil.which("tesseract"):
         return "tesseract"
-        
-    # Check common Windows paths
-    common_paths = [
+    # 3. Common Windows locations
+    for p in [
         r"C:\Program Files\Tesseract-OCR\tesseract.exe",
         r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-        r"C:\Users\hp\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
-    ]
-    
-    for path in common_paths:
-        if os.path.exists(path):
-            return path
-            
-    return r"C:\Program Files\Tesseract-OCR\tesseract.exe"  # Default fallback
+        r"C:\Users\hp\AppData\Local\Programs\Tesseract-OCR\tesseract.exe",
+        str(Path.home() / "AppData" / "Local" / "Programs" / "Tesseract-OCR" / "tesseract.exe"),
+    ]:
+        if os.path.exists(p):
+            return p
+    # 4. Not found — setup.py will handle auto-download
+    return r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 TESSERACT_PATH = find_tesseract()
 
+# ----------------------------
+# Tracking intervals (seconds)
+# ----------------------------
+TRACK_INTERVAL      = int(os.environ.get('TRACK_INTERVAL',      5))
+SCREENSHOT_INTERVAL = int(os.environ.get('SCREENSHOT_INTERVAL', 20))
+AUDIO_INTERVAL      = int(os.environ.get('AUDIO_INTERVAL',      15))
+WEBCAM_INTERVAL     = int(os.environ.get('WEBCAM_INTERVAL',     45))
+USER_ALLOW_WEBCAM   = os.environ.get('ALLOW_WEBCAM', 'true').lower() == 'true'
+
+# ----------------------------
 # Model paths
+# ----------------------------
 KNOWLEDGE_GRAPH_PATH = str(DATA_DIR / "knowledge_graph.pkl")
 
+# ----------------------------
+# Memory / SM-2 parameters
+# ----------------------------
+MEMORY_THRESHOLD         = 0.6
+DEFAULT_LAMBDA           = 0.1
+MIN_REVIEW_INTERVAL_HOURS = 1
+MAX_REVIEW_INTERVAL_HOURS = 720
 
-# Memory model parameters
-MEMORY_THRESHOLD = 0.6           # Threshold for review reminders
-DEFAULT_LAMBDA = 0.1             # Default memory decay rate
-MIN_REVIEW_INTERVAL_HOURS = 1    # Minimum time between reviews
-MAX_REVIEW_INTERVAL_HOURS = 720  # Maximum time between reviews (30 days)
+# ----------------------------
+# Notifications
+# ----------------------------
+REMINDER_COOLDOWN_HOURS = 1
+NOTIFICATION_TIMEOUT    = 10
 
-# Notification settings
-REMINDER_COOLDOWN_HOURS = 1      # Minimum time between reminders for same concept
-NOTIFICATION_TIMEOUT = 10        # Notification display time in seconds
+# ----------------------------
+# OCR
+# ----------------------------
+OCR_TOP_KEYWORDS          = 15
+OCR_CONFIDENCE_THRESHOLD  = 0.3
 
-# OCR settings
-OCR_TOP_KEYWORDS = 15           # Number of keywords to extract
-OCR_CONFIDENCE_THRESHOLD = 0.3  # Minimum confidence for keywords
+# ----------------------------
+# Audio
+# ----------------------------
+AUDIO_SAMPLE_RATE = 16000
+AUDIO_DURATION    = 5
 
-# Audio settings
-AUDIO_SAMPLE_RATE = 16000       # Audio sampling rate
-AUDIO_DURATION = 5              # Audio clip duration in seconds
+# ----------------------------
+# Webcam
+# ----------------------------
+WEBCAM_FRAME_COUNT  = 5
+WEBCAM_RESOLUTION   = (640, 480)
 
-# Webcam settings
-WEBCAM_FRAME_COUNT = 5          # Number of frames to process for attention
-WEBCAM_RESOLUTION = (640, 480)  # Webcam resolution
-
-def validate_config():
-    """Validate configuration and check for common issues"""
+# ----------------------------
+# Validation
+# ----------------------------
+def validate_config() -> list:
+    """Return a list of configuration issue strings (empty = all good)."""
+    import shutil
     issues = []
-    
-    # Check database directory
-    if not DATA_DIR.exists():
-        issues.append(f"Data directory does not exist: {DATA_DIR}")
-    
-    # Check Tesseract
-    is_in_path = TESSERACT_PATH.lower() == "tesseract"
-    if is_in_path:
-        import shutil
-        if not shutil.which("tesseract"):
-             issues.append(f"⚠️  WARNING: Tesseract not found in PATH")
-             issues.append("   OCR features will not work. Install from: https://github.com/UB-Mannheim/tesseract/wiki")
-    elif not os.path.exists(TESSERACT_PATH):
-        issues.append(f"⚠️  WARNING: Tesseract not found at: {TESSERACT_PATH}")
-        issues.append("   OCR features will not work. Install from: https://github.com/UB-Mannheim/tesseract/wiki")
-    
 
-    # Validate intervals
-    intervals = [
-        (TRACK_INTERVAL, "TRACK_INTERVAL"),
-        (SCREENSHOT_INTERVAL, "SCREENSHOT_INTERVAL"),
-        (AUDIO_INTERVAL, "AUDIO_INTERVAL"), 
-        (WEBCAM_INTERVAL, "WEBCAM_INTERVAL")
-    ]
-    
-    for value, name in intervals:
-        if value <= 0:
-            issues.append(f"ERROR: {name} must be positive: {value}")
-    
+    if not DATA_DIR.exists():
+        issues.append(f"Data directory missing: {DATA_DIR}")
+
+    tess_in_path = TESSERACT_PATH.lower() == "tesseract"
+    if tess_in_path and not shutil.which("tesseract"):
+        issues.append("Tesseract not in PATH — run setup.py to auto-install")
+    elif not tess_in_path and not os.path.exists(TESSERACT_PATH):
+        issues.append(f"Tesseract not found at {TESSERACT_PATH} — run setup.py to auto-install")
+
+    for val, name in [
+        (TRACK_INTERVAL,      'TRACK_INTERVAL'),
+        (SCREENSHOT_INTERVAL, 'SCREENSHOT_INTERVAL'),
+        (AUDIO_INTERVAL,      'AUDIO_INTERVAL'),
+        (WEBCAM_INTERVAL,     'WEBCAM_INTERVAL'),
+    ]:
+        if val <= 0:
+            issues.append(f"{name} must be positive (got {val})")
+
     return issues
 
-def print_config_summary():
-    """Print configuration summary"""
-    print("=== Configuration Summary ===")
-    print(f"Project Root: {PROJECT_ROOT}")
-    print(f"Database: {DB_PATH}")
-    print(f"Data Directory: {DATA_DIR}")
-    print("\nIntervals (seconds):")
-    print(f"  Tracking: {TRACK_INTERVAL}")
-    print(f"  Screenshots: {SCREENSHOT_INTERVAL}") 
-    print(f"  Audio: {AUDIO_INTERVAL}")
-    print(f"  Webcam: {WEBCAM_INTERVAL}")
-    print(f"Webcam Enabled: {USER_ALLOW_WEBCAM}")
-    print("\nPaths:")
-    print(f"  Tesseract: {TESSERACT_PATH}")
-
-    
-    # Validate and show any issues
-    issues = validate_config()
-    if issues:
-        print("\n⚠️  Configuration Issues:")
-        for issue in issues:
-            print(f"  - {issue}")
-    else:
-        print("\n✅ Configuration validated successfully")
 
 if __name__ == "__main__":
-    print_config_summary()
+    setup_directories()
+    print(f"Project root : {PROJECT_ROOT}")
+    print(f"Database     : {DB_PATH}")
+    print(f"Tesseract    : {TESSERACT_PATH}")
+    issues = validate_config()
+    if issues:
+        print("\nConfiguration issues:")
+        for i in issues:
+            print(f"  ! {i}")
+    else:
+        print("\nConfiguration OK.")
