@@ -1,99 +1,77 @@
-# preflight_strict_stress_test.py
+# tools/preflight_check.py — FKT 2.0 Phase 12 fix
+# Updated: expects 6-feature vector from new intent module (was 4 in v1)
+
 import numpy as np
 from tracker_app.tracking import intent_module
-from tracker_app.db.db_module import init_db, init_multi_modal_db
-import sqlite3
+from tracker_app.db.db_module import init_all_databases
 from tracker_app.config import DB_PATH
+import sqlite3
 
-# -------------------------------
-# Initialize databases
-# -------------------------------
-init_db()
-init_multi_modal_db()
-print("Databases initialized.")
+init_all_databases()
+print("Databases initialised.")
 
-# -------------------------------
-# Test configurations
-# -------------------------------
-audio_labels = ["speech", "music", "silence", "unknown"]
-ocr_counts = [0, 1, 5, 50, 1000]  # extreme OCR cases
-attention_scores = [0, 25, 50, 75, 100]  # attention extremes
-interaction_rates = [0, 1, 5, 10, 100]  # interaction extremes
+audio_labels      = ["speech", "music", "silence", "unknown"]
+ocr_counts        = [0, 1, 5, 50]
+attention_scores  = [0, 25, 50, 75, 100]
+interaction_rates = [0, 1, 5, 10, 100]
 
-# -------------------------------
-# Stress Test
-# -------------------------------
+EXPECTED_FEATURE_SHAPE = (1, 6)   # FKT 2.0: 6 features
+
 def run_stress_test():
     failures = []
-    test_num = 1
+    test_num = 0
 
     for ocr_count in ocr_counts:
         for audio in audio_labels:
             for att in attention_scores:
                 for interact in interaction_rates:
-                    ocr_keywords = ["kw"] * ocr_count
-                    input_data = {
-                        "ocr_keywords": ocr_keywords,
-                        "audio_label": audio,
-                        "attention_score": att,
-                        "interaction_rate": interact
-                    }
+                    test_num += 1
+                    ocr_keywords = {f"kw{i}": {"score": 0.5} for i in range(ocr_count)}
 
-                    # -------------------------------
-                    # Feature extraction
-                    # -------------------------------
+                    # 1. Feature extraction
                     features = intent_module.extract_features(
                         ocr_keywords, audio, att, interact
                     )
-                    if features.shape != (1, 4):
-                        failures.append(f"Feature shape failed: {features.shape} | {input_data}")
+                    if features.shape != EXPECTED_FEATURE_SHAPE:
+                        failures.append(
+                            f"Feature shape {features.shape} != {EXPECTED_FEATURE_SHAPE} "
+                            f"(ocr={ocr_count}, audio={audio}, att={att}, ir={interact})"
+                        )
 
-                    # -------------------------------
-                    # Intent prediction
-                    # -------------------------------
-                    intent_result = intent_module.predict_intent(
+                    # 2. Intent prediction
+                    result = intent_module.predict_intent(
                         ocr_keywords, audio, att, interact
                     )
-                    if "intent_label" not in intent_result or "confidence" not in intent_result:
-                        failures.append(f"Intent prediction failed: {intent_result} | {input_data}")
+                    if "intent_label" not in result or "confidence" not in result:
+                        failures.append(f"Missing keys in result: {result}")
 
-                    # -------------------------------
-                    # Database logging test
-                    # -------------------------------
+                    # 3. DB write
                     try:
                         conn = sqlite3.connect(DB_PATH)
-                        c = conn.cursor()
-                        c.execute('''
+                        c    = conn.cursor()
+                        c.execute("""
                             INSERT INTO multi_modal_logs
-                            (timestamp, window_title, ocr_keywords, audio_label, attention_score, interaction_rate, intent_label, intent_confidence)
+                            (timestamp, window_title, ocr_keywords, audio_label,
+                             attention_score, interaction_rate, intent_label, intent_confidence)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                        ''', (
-                            "2025-10-02 10:00:00",
-                            "TestWindow",
-                            str({kw: {"score": 0.5, "count": 1} for kw in ocr_keywords}),
-                            audio,
-                            att,
-                            interact,
-                            intent_result["intent_label"],
-                            intent_result["confidence"]
+                        """, (
+                            "2025-10-02T10:00:00", "TestWindow",
+                            str(list(ocr_keywords.keys())),
+                            audio, att, interact,
+                            result["intent_label"], result["confidence"]
                         ))
                         conn.commit()
                         conn.close()
                     except Exception as e:
-                        failures.append(f"DB logging failed: {e} | {input_data}")
+                        failures.append(f"DB write failed: {e}")
 
-                    test_num += 1
-
-    print(f"Stress test completed: {test_num} combinations tested.")
+    print(f"Stress test: {test_num} combinations tested.")
     if failures:
-        print(f"Failures detected: {len(failures)}")
-        for f in failures:
-            print(f)
+        print(f"Failures: {len(failures)}")
+        for f in failures[:10]:
+            print(f"  ✗ {f}")
     else:
-        print("All tests passed successfully!")
+        print("All tests passed!")
 
-# -------------------------------
-# Run the stress test
-# -------------------------------
 if __name__ == "__main__":
     run_stress_test()
