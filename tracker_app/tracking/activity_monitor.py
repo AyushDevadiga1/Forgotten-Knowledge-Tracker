@@ -270,15 +270,29 @@ class ActivityMonitor:
             # Log inside the lock while variables are guaranteed to be defined
             logger.info(f"Tracking session ended. Concepts: {concepts_count}, Avg Attention: {avg_attention:.2f}")
     
-    def process_concepts(self, ocr_keywords: Dict[str, Any], confidence: float = 0.6):
-        """Process and schedule encountered concepts"""
+    def process_concepts(
+        self,
+        ocr_keywords: Dict[str, Any],
+        confidence: float = 0.6,
+        attention_score: float = 50.0,
+    ):
+        """Process and schedule encountered concepts.
+        Passes attention_score to concept_scheduler for AWFC λ personalisation.
+        """
         for concept, info in ocr_keywords.items():
             if not concept or len(concept) < 2:
                 continue
-            
             try:
-                concept_conf = float(info.get('score', confidence))
-                self.scheduler.add_concept(concept, concept_conf, context="ocr")
+                concept_conf = float(
+                    info.get('score', confidence)
+                    if isinstance(info, dict) else confidence
+                )
+                self.scheduler.add_concept(
+                    concept,
+                    concept_conf,
+                    context="ocr",
+                    attention_at_encoding=attention_score,  # AWFC
+                )
                 self.session_concepts.append(concept)
             except Exception as e:
                 logger.error(f"Error processing concept {concept}: {e}")
