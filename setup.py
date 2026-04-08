@@ -129,7 +129,7 @@ def init_db():
 
 def run_app():
     banner("Launching FKT 2.0")
-    print("  Dashboard → http://localhost:5000")
+    print("  Dashboard -> http://localhost:5000")
     print("  Press Ctrl+C to stop both processes.\n")
     tracker = subprocess.Popen(
         [str(VENV_PYTHON), "-m", "tracker_app.main"], cwd=str(ROOT)
