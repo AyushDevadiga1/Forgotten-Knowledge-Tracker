@@ -13,6 +13,7 @@ import json
 import pickle
 import random
 import logging
+import argparse
 from pathlib import Path
 
 import numpy as np
@@ -26,9 +27,9 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
 logger = logging.getLogger("TrainIntent")
 
-ROOT          = Path(__file__).parent.parent
-DATA_PATH     = ROOT / "training_data" / "intent_training_data.json"
-MODEL_PATH    = ROOT / "models" / "intent_classifier.pkl"
+ROOT       = Path(__file__).parent.parent
+DATA_PATH  = ROOT / "training_data" / "intent_training_data.json"
+MODEL_PATH = ROOT / "models" / "intent_classifier.pkl"
 MODEL_PATH.parent.mkdir(exist_ok=True)
 
 
@@ -155,28 +156,94 @@ def train(data: dict) -> dict:
     }
 
 
-# ────────────────────────────────────────────────────────────
+def load_feedback_samples() -> tuple:
+    """Load user-corrected samples from the DB for augmented retraining."""
+    X_fb, y_fb = [], []
+    try:
+        from tracker_app.db.models import SessionLocal, FeedbackTrainingSample
+        with SessionLocal() as db:
+            samples = db.query(FeedbackTrainingSample).all()
+        for s in samples:
+            try:
+                feats = json.loads(s.feature_vector)
+                if len(feats) == 6:
+                    X_fb.append([float(f) for f in feats])
+                    y_fb.append(s.actual_label)
+            except Exception:
+                pass
+        logger.info(f"Loaded {len(X_fb)} feedback samples for retraining.")
+    except Exception as e:
+        logger.warning(f"Could not load feedback samples: {e}")
+    return X_fb, y_fb
+
+
 def main():
+    parser = argparse.ArgumentParser(description="FKT Intent Classifier Trainer")
+    parser.add_argument(
+        "--include-feedback", action="store_true",
+        help="Augment synthetic data with user feedback corrections (3x weight)"
+    )
+    args = parser.parse_args()
+
     if DATA_PATH.exists():
-        logger.info(f"Loading existing training data from {DATA_PATH}")
+        logger.info(f"Loading training data from {DATA_PATH}")
         with open(DATA_PATH) as f:
             data = json.load(f)
     else:
-        logger.info("No training data found. Generating synthetic dataset...")
+        logger.info("Generating synthetic training dataset...")
         data = generate_synthetic_data()
         DATA_PATH.parent.mkdir(exist_ok=True)
         with open(DATA_PATH, "w") as f:
             json.dump(data, f, indent=2)
-        logger.info(f"Saved training data → {DATA_PATH}")
+        logger.info(f"Saved → {DATA_PATH}")
 
-    model_data = train(data)
+    X = list(data["X"])
+    y = list(data["y"])
 
-    with open(MODEL_PATH, "wb") as f:
-        pickle.dump(model_data, f)
+    if args.include_feedback:
+        X_fb, y_fb = load_feedback_samples()
+        if X_fb:
+            # Weight user corrections 3x — they are ground truth
+            X += X_fb * 3
+            y += y_fb * 3
+            logger.info(f"Augmented to {len(X)} total samples with feedback.")
 
-    size_kb = MODEL_PATH.stat().st_size / 1024
-    logger.info(f"Model saved → {MODEL_PATH} ({size_kb:.1f} KB)")
-    logger.info("Done. Restart the tracker to pick up the new model.")
+    augmented = {
+        "feature_names": data["feature_names"],
+        "labels":        data["labels"],
+        "total_samples": len(X),
+        "class_counts":  {l: y.count(l) for l in ["studying", "passive", "idle"]},
+        "X": X, "y": y,
+    }
+
+    # Load existing model accuracy to compare
+    old_accuracy = 0.0
+    if MODEL_PATH.exists():
+        try:
+            with open(MODEL_PATH, "rb") as f:
+                old_data = pickle.load(f)
+            old_accuracy = old_data.get("test_accuracy", 0.0)
+        except Exception:
+            pass
+
+    model_data = train(augmented)
+    new_accuracy = model_data["test_accuracy"]
+
+    # Only deploy if new model is at least as accurate (avoids degradation)
+    if new_accuracy >= old_accuracy - 0.01:
+        with open(MODEL_PATH, "wb") as f:
+            pickle.dump(model_data, f)
+        size_kb = MODEL_PATH.stat().st_size / 1024
+        logger.info(f"Model saved → {MODEL_PATH} ({size_kb:.1f} KB)")
+        if args.include_feedback and new_accuracy > old_accuracy:
+            logger.info(f"Improved: {old_accuracy:.4f} → {new_accuracy:.4f}")
+    else:
+        logger.warning(
+            f"New model ({new_accuracy:.4f}) worse than existing ({old_accuracy:.4f}). "
+            "Not deploying."
+        )
+
+    logger.info("Done. Restart the tracker to load the updated model.")
 
 
 if __name__ == "__main__":
