@@ -63,8 +63,8 @@ class LearningTracker:
             raise ValueError("difficulty must be easy, medium, or hard")
             
         item_id = str(uuid.uuid4())
-        now = datetime.now().isoformat()
-        
+        now = datetime.now()
+
         with models.SessionLocal() as db:
             new_item = LearningItem(
                 id=item_id,
@@ -79,19 +79,19 @@ class LearningTracker:
             )
             db.add(new_item)
             db.commit()
-            
+
         return item_id
     
     def get_items_due(self) -> List[Dict[str, Any]]:
         """Get items that are due for review now"""
-        now = datetime.now().isoformat()
-        
+        now = datetime.now()
+
         with models.SessionLocal() as db:
             items = db.query(LearningItem).filter(
                 LearningItem.status == 'active',
                 LearningItem.next_review_date <= now
             ).order_by(LearningItem.next_review_date.asc()).all()
-            
+
             return [self._row_to_dict(item) for item in items]
     
     def get_item(self, item_id: str) -> Optional[Dict[str, Any]]:
@@ -123,9 +123,9 @@ class LearningTracker:
                 was_correct = quality_rating >= 3
                 result = LeitnerSystem.advance_card(item, was_correct)
                 
-            review_date = datetime.now().isoformat()
+            review_date = datetime.now()
             was_correct = quality_rating >= 3
-            
+
             # Create review history record
             history = ReviewHistory(
                 item_id=item_id,
@@ -137,21 +137,21 @@ class LearningTracker:
                 new_ease=item.ease_factor
             )
             db.add(history)
-            
+
             success_rate = item.correct_count / item.total_reviews if item.total_reviews > 0 else 0
             status = 'mastered' if (success_rate > 0.95 and item.repetitions > 5) else 'active'
-            
+
             # Update item record with new SM-2 state
             item_record.interval = item.interval
             item_record.ease_factor = item.ease_factor
             item_record.repetitions = item.repetitions
-            item_record.next_review_date = item.next_review_date.isoformat()
+            item_record.next_review_date = item.next_review_date
             item_record.total_reviews = item.total_reviews
             item_record.correct_count = item.correct_count
             item_record.success_rate = success_rate
             item_record.status = status
-            item_record.updated_at = datetime.now().isoformat()
-            
+            item_record.updated_at = datetime.now()
+
             db.commit()
             
         updated_item = self.get_item(item_id)
@@ -166,8 +166,8 @@ class LearningTracker:
             active_count = db.query(LearningItem).filter(LearningItem.status == "active").count()
             mastered_count = db.query(LearningItem).filter(LearningItem.status == "mastered").count()
             total_count = db.query(LearningItem).count()
-            
-            now = datetime.now().isoformat()
+
+            now = datetime.now()
             due_count = db.query(LearningItem).filter(
                 LearningItem.status == "active",
                 LearningItem.next_review_date <= now
@@ -186,9 +186,9 @@ class LearningTracker:
             }
     
     def get_learning_today(self) -> Dict[str, Any]:
-        today_start = datetime.now().replace(hour=0, minute=0, second=0).isoformat()
-        today_end = datetime.now().isoformat()
-        
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = datetime.now()
+
         with models.SessionLocal() as db:
             reviews_today = db.query(ReviewHistory).filter(
                 ReviewHistory.timestamp >= today_start,
@@ -229,15 +229,15 @@ class LearningTracker:
             item = db.query(LearningItem).filter(LearningItem.id == item_id).first()
             if item:
                 item.status = "archived"
-                item.updated_at = datetime.now().isoformat()
+                item.updated_at = datetime.now()
                 db.commit()
-                
+
     def unarchive_item(self, item_id: str):
         with models.SessionLocal() as db:
             item = db.query(LearningItem).filter(LearningItem.id == item_id).first()
             if item:
                 item.status = "active"
-                item.updated_at = datetime.now().isoformat()
+                item.updated_at = datetime.now()
                 db.commit()
                 
     def export_items(self, format: str = "json") -> str:
@@ -282,22 +282,29 @@ class LearningTracker:
         
     @staticmethod
     def _dict_to_sm2item(item_dict: Dict[str, Any]) -> SM2Item:
+        def _to_dt(val):
+            """Safely coerce str or datetime to datetime."""
+            if isinstance(val, datetime):
+                return val
+            if val:
+                return datetime.fromisoformat(str(val))
+            return None
+
         item = SM2Item(
             item_id=item_dict['id'],
             question=item_dict['question'],
             answer=item_dict['answer'],
             difficulty=item_dict['difficulty'],
-            created_at=datetime.fromisoformat(item_dict['created_at'])
+            created_at=_to_dt(item_dict['created_at'])
         )
         item.interval = item_dict['interval']
         item.ease_factor = item_dict['ease_factor']
         item.repetitions = item_dict['repetitions']
-        item.next_review_date = datetime.fromisoformat(item_dict['next_review_date'])
-        
-        # safely handle missing last_review_date
+        item.next_review_date = _to_dt(item_dict['next_review_date'])
+
         lrd = item_dict.get('last_review_date')
-        item.last_review_date = datetime.fromisoformat(lrd) if lrd else None
-        
+        item.last_review_date = _to_dt(lrd) if lrd else None
+
         item.total_reviews = item_dict['total_reviews']
         item.correct_count = item_dict['correct_count']
         return item
