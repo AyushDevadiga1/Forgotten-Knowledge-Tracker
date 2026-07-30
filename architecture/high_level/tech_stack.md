@@ -5,15 +5,16 @@
 
 ## Core Libraries
 - **Flask (3.0.x)** & **Flask-SocketIO**: For lightweight synchronous and asynchronous web endpoints.
-- **SQLite3**: Inbuilt Python DB. Chosen because FKT is a local, strictly single-user application that does not warrant a remote SQL host.
+- **SQLite3** & **SQLAlchemy**: Inbuilt Python DB managed via an ORM. Chosen because FKT is a local, strictly single-user application.
 - **Pillow (10.0+)** & **pytesseract**: For screen grabbing and keyword OCR processing.
 - **sounddevice** & **librosa**: For reading microphone buffers and extracting RMS/Energy to detect silence/speech.
-- **opencv-python** & **dlib**: To detect user gaze and attention from the webcam. 
+- **mediapipe**: To detect user gaze and attention from the webcam using FaceMesh. 
 - **pynput**: Keyboard and mouse event listeners.
+- **scikit-learn**: Used for the auto-retraining Intent Predictor model.
 
 ## Architecture Patterns
-- **Monolithic Modularity**: Distinct directories for `/core`, `/web`, and `/scripts` but operating on a shared `/data` volume.
-- **Heuristic Fallbacks**: Intent and audio categorization now explicitly rely on deterministic mathematical rules rather than black-box AI models to ensure transparency and efficiency.
+- **Monolithic Modularity**: A single entry point (`main.py`) orchestrates distinct directories for `/tracking`, `/learning`, and `/web`, all operating on a shared, unified `/data/fkt_tracking.db` SQLite volume.
+- **Hybrid Heuristic/ML Approach**: Intent classification uses a lightweight `RandomForestClassifier` that continuously auto-retrains itself from user feedback. Audio categorization explicitly relies on deterministic mathematical rules.
 
 ## To-Be-Configured (Frontend)
 - The frontend tech stack is pending modernization. Expected to use vanilla JS + modern CSS frameworks.

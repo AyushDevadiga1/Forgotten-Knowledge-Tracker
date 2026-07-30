@@ -17,3 +17,11 @@ We removed the Machine Learning `.pkl` bundles, purged the heavy mathematical de
 ## Consequences
 - **Positive**: Application boots faster, installation is smaller, and predictions are predictably configurable by simply changing a threshold integer block.
 - **Negative**: N/A. (The previous "ML" wasn't learning or improving anyway).
+
+## Update (Phase 9 Reversal)
+During Phase 9, we realized strict heuristics failed on edge cases for Intent Classification. We **reintroduced `scikit-learn`** specifically for the Intent Prediction model using a lightweight `RandomForestClassifier`. 
+The system now uses a **Hybrid Approach**:
+1. It uses the `RandomForestClassifier` for intent predictions.
+2. If the user corrects the prediction via the web dashboard, the feedback is saved.
+3. Every 50 corrections, a background thread silently auto-retrains the model and swaps it in if accuracy improves.
+This gives us the best of both worlds: a real ML model that actually learns from the user over time, without the bloat of deep learning libraries.

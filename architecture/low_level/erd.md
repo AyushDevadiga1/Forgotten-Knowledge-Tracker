@@ -1,49 +1,65 @@
 # Entity Relationship Diagram (ERD)
 
-The system relies on a local SQLite3 configuration split broadly internally between distinct files (e.g. `tracking_concepts.db`, `sessions.db`). For conceptual simplicity, they operate as distinct entities.
+The system relies on a local SQLite3 configuration managed through SQLAlchemy. All data is unified into a single database file (`fkt_tracking.db`).
 
 ## Main Tables
 
-### 1. `tracked_concepts`
-Stores the active knowledge items to be reviewed via spaced repetition.
-- `id` (TEXT, PK): Unique identifier.
-- `concept` (TEXT, UNIQUE): The keyword/topic.
-- `first_seen` (TEXT): ISO8601 Timestamp.
-- `last_seen` (TEXT): ISO8601 Timestamp.
-- `encounter_count` (INTEGER): Total times recognized.
-- `sm2_interval` (REAL): Days until next review.
-- `sm2_ease` (REAL): Multiplier for review scaling.
-- `next_review` (TEXT): ISO8601 Target deadline.
-- `relevance_score` (REAL): 0.0 to 1.0 confidence value.
-- `priority` (INTEGER): Manual user override logic.
+### 1. `learning_items`
+Stores the active knowledge items to be reviewed via spaced repetition (SM-2).
+- `id` (String, PK): Unique identifier.
+- `question` (String): The concept/keyword.
+- `answer` (String): The context or definition.
+- `difficulty` (String): e.g., "medium".
+- `item_type` (String): e.g., "concept".
+- `tags` (String): Comma-separated tags.
+- `interval` (Integer): Days until next review.
+- `ease_factor` (Float): SM-2 multiplier for review scaling.
+- `repetitions` (Integer): Success streak count.
+- `next_review_date` (DateTime, Indexed): Target deadline.
+- `total_reviews` (Integer): Total attempts.
+- `correct_count` (Integer): Successful attempts.
+- `success_rate` (Float): Correct / Total.
+- `status` (String, Indexed): "active", "mastered", or "archived".
+- `created_at` (DateTime): ISO8601 Timestamp.
+- `updated_at` (DateTime): ISO8601 Timestamp.
 
-### 2. `concept_encounters`
-Historical log of when and where concepts were discovered.
-- `id` (INTEGER, PK, AUTOINCREMENT)
-- `concept_id` (TEXT, FK): Maps to `tracked_concepts(id)`
-- `timestamp` (TEXT): ISO8601 Timestamp
-- `context` (TEXT): e.g. "ocr", "manual"
-- `confidence` (REAL): Detection confidence.
+### 2. `review_history`
+Historical log of when learning items were reviewed.
+- `id` (Integer, PK, AUTOINCREMENT)
+- `item_id` (String, FK): Maps to `learning_items.id`.
+- `timestamp` (DateTime, Indexed): ISO8601 Timestamp.
+- `quality_rating` (Integer): 0-5 SM-2 quality score.
+- `old_interval`, `new_interval` (Integer)
+- `old_ease`, `new_ease` (Float)
+- `duration_ms` (Integer): How long the user took to answer.
 
 ### 3. `tracking_sessions`
 Aggregated session blocks.
-- `id` (INTEGER, PK, AUTOINCREMENT)
-- `start_time` (TEXT)
-- `end_time` (TEXT)
-- `duration_minutes` (REAL)
-- `concepts_encountered` (INTEGER)
-- `avg_attention` (REAL)
-- `primary_activity` (TEXT)
+- `id` (Integer, PK, AUTOINCREMENT)
+- `start_time` (DateTime)
+- `end_time` (DateTime)
+- `duration_minutes` (Float)
+- `concepts_encountered` (Integer)
+- `avg_attention` (Float)
+- `primary_activity` (String)
 
-### 4. `intent_predictions`
-Log of heuristic intent evaluations.
-- `id` (INTEGER, PK, AUTOINCREMENT)
-- `timestamp` (TEXT)
-- `predicted_intent` (TEXT): 'idle', 'passive', 'studying'.
-- `confidence` (REAL)
-- `context_keywords` (TEXT)
-- `user_feedback` (INTEGER)
-- `feedback_timestamp` (TEXT)
+### 4. `multi_modal_logs`
+Periodic snapshot of user context (OCR, Audio, Attention).
+- `id` (Integer, PK, AUTOINCREMENT)
+- `timestamp` (DateTime)
+- `keyboard_events`, `mouse_events` (Integer)
+- `active_window` (String)
+- `audio_state` (String): "speech", "music", "silence".
+- `attention_score` (Float)
+- `extracted_text` (String)
+
+### 5. Intent ML Tables (Phase 9)
+- **`intent_predictions`**: Logs heuristic/ML intent evaluations.
+  - `id`, `timestamp`, `predicted_intent`, `confidence`, `context_keywords`, `user_feedback` (1=correct, 0=wrong), `actual_intent`, `feedback_timestamp`.
+- **`intent_accuracy`**: Aggregated accuracy per intent class.
+  - `intent` (PK), `total_predictions`, `correct_predictions`, `accuracy`, `last_updated`.
+- **`feedback_training_samples`**: Used for background auto-retraining.
+  - `id`, `timestamp`, `feature_vector`, `predicted_label`, `actual_label`, `confidence`.
 
 ### Relationships
-- `tracked_concepts (id)` -> `concept_encounters (concept_id)` : One-to-Many.
+- `learning_items (id)` -> `review_history (item_id)` : One-to-Many (Cascade Delete).

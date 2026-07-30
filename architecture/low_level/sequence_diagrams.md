@@ -4,10 +4,10 @@
 ```mermaid
 sequenceDiagram
     participant OS as OS Sensors
-    participant Tracker as EnhancedActivityTracker
+    participant Tracker as track_loop
     participant CV as OCR/Webcam Pipeline
     participant Audio as Audio Pipeline
-    participant DB as SQLite DB
+    participant DB as fkt_tracking.db
 
     loop Every 5 seconds
         Tracker->>OS: Poll interaction counters
@@ -31,20 +31,20 @@ sequenceDiagram
     participant User
     participant Browser
     participant Flask Route
-    participant ConceptScheduler
-    participant DB as SQLite DB
+    participant LearningTracker
+    participant DB as fkt_tracking.db
 
     User->>Browser: Selects Review Quality (1-5)
-    Browser->>Flask Route: POST /review/123 (quality=4)
-    Flask Route->>ConceptScheduler: schedule_next_review("123", 4)
+    Browser->>Flask Route: POST /api/v1/learning/reviews (quality=4)
+    Flask Route->>LearningTracker: record_review("123", 4)
     
-    ConceptScheduler->>DB: SELECT sm2_interval, sm2_ease WHERE id="123"
-    DB-->>ConceptScheduler: (current parameters)
+    LearningTracker->>DB: Query LearningItem WHERE id="123"
+    DB-->>LearningTracker: (current item state)
     
-    ConceptScheduler->>ConceptScheduler: Calculate new SM-2 interval
+    LearningTracker->>LearningTracker: Calculate new SM-2 interval
     
-    ConceptScheduler->>DB: UPDATE tracked_concepts SET interval, ease, next_review
-    DB-->>ConceptScheduler: OK
+    LearningTracker->>DB: db.commit() -> UPDATE learning_items
+    DB-->>LearningTracker: OK
     
     Flask Route-->>Browser: Redirect -> Next Due Item
 ```

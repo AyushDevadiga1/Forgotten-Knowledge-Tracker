@@ -5,22 +5,22 @@ The Forgotten Knowledge Tracker (FKT) is a productivity and learning companion t
 
 ## 2. High-Level Architecture
 FKT employs a local-first, background-agent architecture divided into two primary subsystems:
-1. **Background Tracker (`tracker_app/core/`)**: Collects multi-modal telemetry (OCR, Audio, Webcam, Input rates).
+1. **Background Tracker (`tracker_app/tracking/`)**: Collects multi-modal telemetry (OCR, Audio, Webcam, Input rates).
 2. **Web Dashboard (`tracker_app/web/`)**: A Flask-based lightweight HTTP and WebSocket server presenting stats and scheduled reviews to the user.
 
-Both subsystems share a local SQLite data layer to ensure robust state management across sessions.
+Both subsystems are orchestrated via `main.py` and share a local SQLAlchemy SQLite data layer to ensure robust state management across sessions.
 
 ## 3. Technology Choices
 - **Backend & Orchestration**: Python 3.11+
-- **Database**: SQLite3 (Local, lightweight, zero-configuration)
+- **Database**: SQLite3 via SQLAlchemy (Local, lightweight, zero-configuration)
 - **Web Server**: Flask + Flask-SocketIO
 - **UI/Frontend**: (Pending redesign) Native HTML/JS/CSS 
 - **OCR**: Tesseract + Pillow
 - **Audio Processing**: Sounddevice + librosa (RMS energy thresholding)
-- **Webcam Tracking**: OpenCV + dlib for facial pose / attention
+- **Webcam Tracking**: Mediapipe FaceMesh for facial pose / attention
 
 ## 4. Components
-- `EnhancedActivityTracker`: Coordinates polling from input listeners, audio pipeline, webcam, and OCR.
-- `ConceptScheduler`: Employs SM-2 algorithms to plan knowledge retention schedules.
-- `ActivityMonitor`: Logs interaction tracking.
-- `LearningTracker`: Provides the CRUD business logic interface for the web dashboard.
+- **`track_loop`**: The central loop in `loop.py` that coordinates polling from input listeners, audio pipeline, webcam, and OCR.
+- **`LearningTracker`**: Maintains the SM-2 SRS spaced repetition cycle and provides the CRUD business logic interface for the web dashboard.
+- **`ActivityMonitor`**: Logs interaction tracking and records user sessions.
+- **`FeedbackService`**: Manages user corrections to AI predictions and orchestrates background auto-retraining.

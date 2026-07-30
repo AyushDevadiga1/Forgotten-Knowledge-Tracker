@@ -18,12 +18,12 @@ The data flow within the Forgotten Knowledge Tracker follows an Event-Driven per
 2. **Transform**
    - **Audio Array** -> `librosa.feature` -> RMS Energy -> Output "speech"/"music"/"silence".
    - **Pillow Image** -> `pytesseract` -> Output text string -> `TF-IDF Extractor` -> Output top K keywords.
-   - **Webcam Image** -> `dlib` -> Eye ratio & pose estimation -> Output integer attention score.
+   - **Webcam Image** -> `mediapipe` -> Eye ratio & pose estimation -> Output integer attention score.
 3. **Synthesis**
-   - `EnhancedActivityTracker` collates the keywords, the attention score, the audio state, and the interaction rate into an `intent_result` dictionary.
+   - `track_loop` collates the keywords, the attention score, the audio state, and the interaction rate into an `intent_result` dictionary.
 4. **Storage**
-   - Extracted concepts are fired to `ConceptScheduler`, executing an SQL `INSERT` or `UPDATE` conditionally.
-   - The aggregate session is fired to `TrackingAnalytics` bounding the time frame and average interactions.
+   - Extracted concepts are fired to `LearningTracker`, executing a SQLAlchemy `INSERT` or `UPDATE` conditionally.
+   - The aggregate session is fired to `ActivityMonitor` bounding the time frame and average interactions.
 5. **Retrieval**
    - User loads the Web Dashboard (`app.py`).
    - `LearningTracker` reads SQLite databases and pushes data to the Jinja templates.
