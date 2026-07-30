@@ -52,7 +52,7 @@ class IntentValidator:
             from tracker_app.db.models import SessionLocal, IntentPrediction
             with SessionLocal() as db:
                 pred = IntentPrediction(
-                    timestamp=datetime.now().isoformat(),
+                    timestamp=datetime.now(),
                     predicted_intent=predicted_intent,
                     confidence=confidence,
                     context_keywords=context
@@ -76,9 +76,9 @@ class IntentValidator:
                 pred = db.query(IntentPrediction).filter(IntentPrediction.id == prediction_id).first()
                 if pred:
                     pred.user_feedback = 1 if correct else 0
-                    pred.feedback_timestamp = datetime.now().isoformat()
+                    pred.feedback_timestamp = datetime.now()
                     intent = pred.predicted_intent
-                    
+
                     # Update accuracy stats
                     acc = db.query(IntentAccuracy).filter(IntentAccuracy.intent == intent).first()
                     if acc is None:
@@ -93,8 +93,8 @@ class IntentValidator:
                         if correct:
                             acc.correct_predictions += 1
                         acc.accuracy = acc.correct_predictions / acc.total_predictions
-                        acc.last_updated = datetime.now().isoformat()
-                    
+                        acc.last_updated = datetime.now()
+
                     db.commit()
         except Exception as e:
             logger.error(f"Failed to log intent feedback: {e}")
@@ -134,7 +134,7 @@ class TrackingAnalytics:
         # db_path parameter kept for backward-compat; all writes go through ORM.
         pass
     
-    def log_session(self, start_time: datetime, end_time: datetime, 
+    def log_session(self, start_time: datetime, end_time: datetime,
                    concepts_count: int, avg_attention: float, primary_activity: str):
         """Log a tracking session to the shared ORM database"""
         try:
@@ -142,8 +142,8 @@ class TrackingAnalytics:
             with SessionLocal() as db:
                 duration = (end_time - start_time).total_seconds() / 60
                 session = TrackingSession(
-                    start_time=start_time.isoformat(),
-                    end_time=end_time.isoformat(),
+                    start_time=start_time,
+                    end_time=end_time,
                     duration_minutes=duration,
                     concepts_encountered=concepts_count,
                     avg_attention=avg_attention,
@@ -328,13 +328,16 @@ class ActivityMonitor:
         """Get top concepts to review"""
         return self.scheduler.get_due_concepts(limit)
     
-    def export_tracking_data(self, output_file: str = "data/tracking_export.json"):
-        """Export all tracking data"""
+    def export_tracking_data(self, output_file: str = None):
+        """Export all tracking data to DATA_DIR (or a provided absolute path)."""
+        if output_file is None:
+            output_file = str(DATA_DIR / "tracking_export.json")
+
         due_concepts = self.scheduler.get_due_concepts(1000)
         intent_stats = self.validator.get_accuracy_stats()
         daily_stats = self.analytics.get_daily_summary()
         trend_stats = self.analytics.get_trend_analysis(30)
-        
+
         export_data = {
             'timestamp': datetime.now().isoformat(),
             'session_stats': self.get_session_stats(),
@@ -343,10 +346,10 @@ class ActivityMonitor:
             'daily_summary': daily_stats,
             'trend_analysis': trend_stats
         }
-        
-        os.makedirs(os.path.dirname(output_file) or "data", exist_ok=True)
+
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
         with open(output_file, 'w') as f:
             json.dump(export_data, f, indent=2)
-        
+
         logger.info(f"Tracking data exported to {output_file}")
         return export_data
