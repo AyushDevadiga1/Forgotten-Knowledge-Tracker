@@ -34,6 +34,101 @@ MAX_LIMIT      = 500
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# FeedbackService  (business logic extracted from route handler)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class FeedbackService:
+    """Handles intent feedback recording and auto-retraining."""
+
+    @staticmethod
+    def record_feedback(prediction_id: int, is_correct: bool,
+                        actual_intent: str | None = None) -> None:
+        """Persist user feedback, update accuracy stats, save training sample."""
+        from tracker_app.db.models import (
+            SessionLocal, IntentPrediction, IntentAccuracy, FeedbackTrainingSample
+        )
+        now = datetime.utcnow()
+        with SessionLocal() as db:
+            pred = db.query(IntentPrediction).filter(
+                IntentPrediction.id == prediction_id
+            ).first()
+
+            if pred:
+                pred.user_feedback = 1 if is_correct else 0
+                pred.feedback_timestamp = now
+
+                if not is_correct and actual_intent:
+                    pred.actual_intent = actual_intent
+                    sample = FeedbackTrainingSample(
+                        timestamp=now,
+                        feature_vector=pred.context_keywords or "[]",
+                        predicted_label=pred.predicted_intent or "unknown",
+                        actual_label=actual_intent,
+                        confidence=pred.confidence or 0.0,
+                    )
+                    db.add(sample)
+
+                # Update per-intent accuracy stats
+                intent = pred.predicted_intent or "unknown"
+                acc = db.query(IntentAccuracy).filter(
+                    IntentAccuracy.intent == intent
+                ).first()
+                if acc is None:
+                    acc = IntentAccuracy(
+                        intent=intent,
+                        total_predictions=1,
+                        correct_predictions=1 if is_correct else 0,
+                    )
+                    db.add(acc)
+                else:
+                    acc.total_predictions += 1
+                    if is_correct:
+                        acc.correct_predictions += 1
+                    acc.accuracy = acc.correct_predictions / acc.total_predictions
+                    acc.last_updated = now
+
+                db.commit()
+
+    @staticmethod
+    def maybe_trigger_retrain() -> None:
+        """Trigger background retraining after every 50 user corrections."""
+        try:
+            from tracker_app.db.models import SessionLocal, FeedbackTrainingSample
+            with SessionLocal() as db:
+                count = db.query(FeedbackTrainingSample).count()
+            if count > 0 and count % 50 == 0:
+                t = threading.Thread(
+                    target=FeedbackService._retrain_from_feedback,
+                    daemon=True, name="fkt-retrain"
+                )
+                t.start()
+                logger.info(f"Auto-retrain triggered at {count} feedback samples.")
+        except Exception as e:
+            logger.debug(f"maybe_trigger_retrain: {e}")
+
+    @staticmethod
+    def _retrain_from_feedback() -> None:
+        """Background retraining from user corrections. Replaces model if improved."""
+        import subprocess, sys
+        from pathlib import Path
+        log = logging.getLogger("AutoRetrain")
+        log.info("Background retraining started...")
+        try:
+            root = Path(__file__).parent.parent.parent
+            result = subprocess.run(
+                [sys.executable, "-m", "tracker_app.scripts.train_models_from_logs",
+                 "--include-feedback"],
+                cwd=str(root), capture_output=True, text=True, timeout=180
+            )
+            if result.returncode == 0:
+                log.info("Background retraining complete — model updated.")
+            else:
+                log.warning(f"Retraining failed: {result.stderr[:300]}")
+        except Exception as e:
+            log.error(f"Retraining error: {e}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Learning Items
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -189,97 +284,16 @@ def send_intent_feedback():
                         'error': 'actual_intent required when is_correct=false'}), 400
 
     try:
-        from tracker_app.db.models import (
-            SessionLocal, IntentPrediction, IntentAccuracy, FeedbackTrainingSample
+        FeedbackService.record_feedback(
+            prediction_id=int(data['prediction_id']),
+            is_correct=bool(data['is_correct']),
+            actual_intent=data.get('actual_intent'),
         )
-        with SessionLocal() as db:
-            pred = db.query(IntentPrediction).filter(
-                IntentPrediction.id == int(data['prediction_id'])
-            ).first()
-
-            if pred:
-                if data['is_correct']:
-                    pred.user_feedback = 1
-                    pred.feedback_timestamp = datetime.utcnow()
-                else:
-                    pred.user_feedback = 0
-                    pred.feedback_timestamp = datetime.utcnow()
-                    actual = str(data['actual_intent'])
-                    pred.actual_intent = actual
-
-                    # Save feedback sample for Phase 9 retraining
-                    sample = FeedbackTrainingSample(
-                        timestamp=datetime.utcnow(),
-                        feature_vector=pred.context_keywords or "[]",
-                        predicted_label=pred.predicted_intent or "unknown",
-                        actual_label=actual,
-                        confidence=pred.confidence or 0.0,
-                    )
-                    db.add(sample)
-
-                # Update accuracy stats
-                intent = pred.predicted_intent or "unknown"
-                acc = db.query(IntentAccuracy).filter(
-                    IntentAccuracy.intent == intent
-                ).first()
-                if acc is None:
-                    acc = IntentAccuracy(
-                        intent=intent,
-                        total_predictions=1,
-                        correct_predictions=1 if data['is_correct'] else 0,
-                    )
-                    db.add(acc)
-                else:
-                    acc.total_predictions += 1
-                    if data['is_correct']:
-                        acc.correct_predictions += 1
-                    acc.accuracy = acc.correct_predictions / acc.total_predictions
-                    acc.last_updated = datetime.utcnow()
-
-                db.commit()
-
-        # Phase 9: trigger retraining every 50 feedback samples
-        _maybe_trigger_retrain()
-
+        FeedbackService.maybe_trigger_retrain()
         return jsonify({'success': True, 'message': 'Feedback recorded'})
     except Exception as e:
         logger.error(f"send_intent_feedback: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
-
-
-def _maybe_trigger_retrain():
-    """Trigger background retraining after every 50 user corrections."""
-    try:
-        from tracker_app.db.models import SessionLocal, FeedbackTrainingSample
-        with SessionLocal() as db:
-            count = db.query(FeedbackTrainingSample).count()
-        if count > 0 and count % 50 == 0:
-            t = threading.Thread(target=_retrain_from_feedback, daemon=True, name="fkt-retrain")
-            t.start()
-            logger.info(f"Auto-retrain triggered at {count} feedback samples.")
-    except Exception as e:
-        logger.debug(f"_maybe_trigger_retrain: {e}")
-
-
-def _retrain_from_feedback():
-    """Background retraining from user corrections. Replaces model if improved."""
-    import subprocess, sys
-    from pathlib import Path
-    log = logging.getLogger("AutoRetrain")
-    log.info("Background retraining started...")
-    try:
-        root   = Path(__file__).parent.parent.parent
-        result = subprocess.run(
-            [sys.executable, "-m", "tracker_app.scripts.train_models_from_logs",
-             "--include-feedback"],
-            cwd=str(root), capture_output=True, text=True, timeout=180
-        )
-        if result.returncode == 0:
-            log.info("Background retraining complete — model updated.")
-        else:
-            log.warning(f"Retraining failed: {result.stderr[:300]}")
-    except Exception as e:
-        log.error(f"Retraining error: {e}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
