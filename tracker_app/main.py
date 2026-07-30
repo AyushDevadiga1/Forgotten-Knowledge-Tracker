@@ -3,8 +3,41 @@
 
 import logging
 import threading
-from tracker_app.tracking.loop import track_loop, ask_user_permissions, warm_up_all_pipelines
+from tracker_app.tracking.loop import track_loop, warm_up_all_pipelines
 from tracker_app.config import setup_directories
+
+
+def ask_user_permissions() -> bool:
+    """Explain webcam vs CLE options and prompt the user. CLI concern only."""
+    print()
+    print("=" * 55)
+    print("  FKT 2.0 — Attention Tracking")
+    print("=" * 55)
+    print()
+    print("  FKT tracks your focus level to weight how strongly")
+    print("  each concept is remembered in your knowledge graph.")
+    print()
+    print("  OPTION 1 — Webcam (Recommended)")
+    print("    Eye-tracking via MediaPipe FaceMesh.")
+    print("    Highest accuracy. 100% local — no cloud.")
+    print()
+    print("  OPTION 2 — Keystroke-only (CLE Fallback)")
+    print("    Typing rhythm analysis. No camera needed.")
+    print("    Still effective — especially during active typing.")
+    print()
+    print("  Change anytime: set ALLOW_WEBCAM in .env")
+    print()
+    while True:
+        val = input("  Enable webcam? (y/n): ").strip().lower()
+        if val in ('y', 'yes'):
+            print("\n  [OK] Webcam enabled. CLE also active as backup.\n")
+            return True
+        if val in ('n', 'no'):
+            print("\n  [OK] Webcam disabled. Using CLE (keystroke-based).")
+            print("       Tip: enable webcam later for better accuracy.\n")
+            return False
+        print("  Please enter 'y' or 'n'.")
+
 
 if __name__ == "__main__":
     logging.basicConfig(

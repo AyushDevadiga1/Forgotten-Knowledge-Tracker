@@ -61,31 +61,32 @@ def get_webcam_pipeline():
     return _webcam_pipeline
 
 
-# ─── Activity monitor + CLE singletons ───────────────────────────────────────
+# ─── Input listener factory ───────────────────────────────────────────────────
+# Callbacks are closures over the loop-local monitor/cle so that importing
+# this module does NOT instantiate any live resources at module load time.
 
-monitor = ActivityMonitor()
-cle     = get_cle()
+def _make_listeners(monitor, cle):
+    """Return (on_key_press, on_mouse_click) closures bound to monitor/cle."""
+    def on_key_press(key):
+        monitor.keyboard_counter.increment()
+        try:
+            from pynput.keyboard import Key
+            is_backspace = (key == Key.backspace)
+        except Exception:
+            is_backspace = False
+        cle.record_key(is_backspace=is_backspace)
+
+    def on_mouse_click(x, y, button, pressed):
+        if pressed:
+            monitor.mouse_counter.increment()
+            cle.record_mouse_click()
+
+    return on_key_press, on_mouse_click
 
 
-# ─── Input listeners ─────────────────────────────────────────────────────────
-
-def on_key_press(key):
-    monitor.keyboard_counter.increment()
-    try:
-        from pynput.keyboard import Key
-        is_backspace = (key == Key.backspace)
-    except Exception:
-        is_backspace = False
-    cle.record_key(is_backspace=is_backspace)
-
-
-def on_mouse_click(x, y, button, pressed):
-    if pressed:
-        monitor.mouse_counter.increment()
-        cle.record_mouse_click()
-
-
-def start_listeners():
+def start_listeners(monitor, cle):
+    """Start keyboard and mouse listeners bound to the provided monitor/cle."""
+    on_key_press, on_mouse_click = _make_listeners(monitor, cle)
     try:
         kb = keyboard.Listener(on_press=on_key_press)
         ms = mouse.Listener(on_click=on_mouse_click)
@@ -100,7 +101,7 @@ def start_listeners():
 
 # ─── Window / interaction ─────────────────────────────────────────────────────
 
-def get_active_window() -> Tuple[str, float]:
+def get_active_window(monitor) -> Tuple[str, float]:
     """Return (window_title, interaction_rate_per_second)."""
     try:
         try:
@@ -124,6 +125,7 @@ def get_active_window() -> Tuple[str, float]:
 def _get_attention_score(
     webcam_enabled: bool,
     webcam_result: Optional[dict],
+    cle,
 ) -> float:
     """Blend webcam EAR (70%) and CLE (30%). CLE-only when webcam disabled."""
     cle_score = cle.get_cle_score()['cle_score'] * 100
@@ -259,7 +261,11 @@ def track_loop(
 
     init_all_databases()
 
-    kb_listener, ms_listener = start_listeners()
+    # ── Create session-scoped singletons here, not at module import ───────────
+    monitor = ActivityMonitor()
+    cle     = get_cle()
+
+    kb_listener, ms_listener = start_listeners(monitor, cle)
     if not kb_listener or not ms_listener:
         logger.error("Failed to start input listeners — aborting.")
         return
@@ -281,7 +287,7 @@ def track_loop(
     try:
         while not stop_event.is_set():
             cycle_start = time.time()
-            window_title, interaction_rate = get_active_window()
+            window_title, interaction_rate = get_active_window(monitor)
 
             # Adaptive intervals based on current CPU
             intervals = _get_effective_intervals()
@@ -335,7 +341,7 @@ def track_loop(
                     logger.warning(f"{name} pipeline future error: {e}")
 
             # ── Unified attention score ───────────────────────────────────────
-            attention_score = _get_attention_score(webcam_enabled, webcam_result)
+            attention_score = _get_attention_score(webcam_enabled, webcam_result, cle)
             monitor.update_attention(attention_score)
 
             # ── Intent prediction ─────────────────────────────────────────────
@@ -385,35 +391,5 @@ def track_loop(
         logger.info("FKT tracking loop shut down cleanly.")
 
 
-# ─── Permissions prompt ───────────────────────────────────────────────────────
-
-def ask_user_permissions() -> bool:
-    """Explain webcam vs CLE options. Strongly encourages webcam."""
-    print()
-    print("=" * 55)
-    print("  FKT 2.0 — Attention Tracking")
-    print("=" * 55)
-    print()
-    print("  FKT tracks your focus level to weight how strongly")
-    print("  each concept is remembered in your knowledge graph.")
-    print()
-    print("  OPTION 1 — Webcam (Recommended)")
-    print("    Eye-tracking via MediaPipe FaceMesh.")
-    print("    Highest accuracy. 100% local — no cloud.")
-    print()
-    print("  OPTION 2 — Keystroke-only (CLE Fallback)")
-    print("    Typing rhythm analysis. No camera needed.")
-    print("    Still effective — especially during active typing.")
-    print()
-    print("  Change anytime: set ALLOW_WEBCAM in .env")
-    print()
-    while True:
-        val = input("  Enable webcam? (y/n): ").strip().lower()
-        if val in ('y', 'yes'):
-            print("\n  [OK] Webcam enabled. CLE also active as backup.\n")
-            return True
-        if val in ('n', 'no'):
-            print("\n  [OK] Webcam disabled. Using CLE (keystroke-based).")
-            print("       Tip: enable webcam later for better accuracy.\n")
-            return False
-        print("  Please enter 'y' or 'n'.")
+# ask_user_permissions has been moved to tracker_app/main.py
+# (CLI concerns do not belong in the tracking engine)
