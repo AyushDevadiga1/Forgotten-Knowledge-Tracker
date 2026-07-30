@@ -46,7 +46,7 @@ docker-compose down
 1. Create new Web Service
 2. Connect your repository
 3. Build command: `pip install -r requirements.txt && python -m spacy download en_core_web_sm`
-4. Start command: `python -m tracker_app.web.app`
+4. Start command: `python -m tracker_app.main`
 
 ### Heroku
 ```bash

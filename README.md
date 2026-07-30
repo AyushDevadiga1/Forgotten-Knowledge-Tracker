@@ -96,18 +96,15 @@ The dashboard will be at **http://localhost:5000**
 
 ### Manual Start (Advanced)
 
-If you prefer to run components separately:
+If you prefer to run it manually without the `setup.py` auto-launcher:
 
 ```bash
 # Activate the virtual environment
 .\venv\Scripts\activate          # Windows
 source venv/bin/activate         # Linux/macOS
 
-# Terminal 1 — Background tracker
+# Start the application (spawns both web dashboard and background tracker)
 python -m tracker_app.main
-
-# Terminal 2 — Web dashboard
-python -m tracker_app.web.app
 ```
 
 ---
@@ -227,7 +224,7 @@ FKT is designed to be fully local and private:
 - **PII redaction** — the privacy filter automatically detects and redacts credit card numbers, email addresses, phone numbers, passwords, IP addresses, and API keys before any text is stored.
 - **Sensitive windows** — windows with titles containing "password", "login", "bank", "private", "incognito" are automatically skipped.
 - **Browser extension** *(coming)* — only activates on user-approved domains and only talks to `localhost`.
-- **Local database** — all data is stored in a single SQLite file at `tracker_app/data/sessions.db`. You can delete it at any time.
+- **Local database** — all data is stored in a single SQLite file at `tracker_app/data/fkt_tracking.db`. You can delete it at any time.
 
 ---
 

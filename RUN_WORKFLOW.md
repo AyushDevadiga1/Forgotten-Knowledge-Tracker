@@ -36,26 +36,20 @@ Ensure all required packages are installed within the venv:
 python -m pip install -r requirements.txt
 ```
 > [!NOTE]
-> If you encounter issues with `dlib` or `sentence-transformers`, you can install them manually using `pip install sentence-transformers`.
+> If you encounter issues with `mediapipe` or `sentence-transformers`, you can install them manually using `pip install sentence-transformers mediapipe`.
 
 ---
 
 ## 🏃 Step 3: Running the Application
 
-To have a fully functional system, you need to run **two separate components** in two different terminals.
+To have a fully functional system, you only need to run a **single command**. `main.py` automatically orchestrates both the background tracker engine and the web dashboard simultaneously.
 
-### 3.1 Start the Web Dashboard
-This provides the premium user interface for reviews and statistics.
-```powershell
-python -m tracker_app.web.app
-```
-👉 **Access UI**: [http://localhost:5000](http://localhost:5000)
-
-### 3.2 Start the Background Tracker
-This starts the "Second Brain" engine that scans your activity.
+### 3.1 Start the Application
 ```powershell
 python -m tracker_app.main
 ```
+👉 **Access UI**: [http://localhost:5000](http://localhost:5000)
+
 > [!IMPORTANT]
 > The tracker will ask: `Enable facial attention tracking (webcam)? (y/n)`. 
 > Type **'y'** and press Enter to enable the full learning intensity analytics.
@@ -74,5 +68,5 @@ python -m tracker_app.main
 ## 🔍 Troubleshooting
 
 - **Database Errors**: Ensure the `data/` directory exists. The app calls `setup_directories()` automatically on startup.
-- **Model Warnings**: If you see XGBoost or Scikit-learn version warnings, the app will still function, but you can retrain models via `python -m tracker_app.scripts.train_models`.
+- **Model Warnings**: If you see Scikit-learn version warnings, the app will still function, but you can retrain models via `python -m tracker_app.scripts.train_models_from_logs`.
 - **Tesseract Not Found**: Verify `TESSERACT_PATH` in `tracker_app/config.py` or `.env`.
