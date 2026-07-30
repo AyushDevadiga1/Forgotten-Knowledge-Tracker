@@ -4,7 +4,7 @@ import os
 import logging
 from contextlib import contextmanager
 from tracker_app.config import DB_PATH
-from tracker_app.db.models import engine, Base, get_db
+from tracker_app.db.models import get_engine, Base, get_db
 
 logger = logging.getLogger("Database")
 
@@ -28,7 +28,7 @@ def ensure_db_directory():
 
 def init_db():
     ensure_db_directory()
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=get_engine())
     logger.info("SQLAlchemy tables constructed: sessions, multi_modal_logs, memory_decay, etc.")
 
 def init_multi_modal_db():

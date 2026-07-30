@@ -21,28 +21,84 @@ from tracker_app.config import DB_PATH
 
 Base = declarative_base()
 
-# ─── Engine ───────────────────────────────────────────────────────────────────
-engine = create_engine(
-    f"sqlite:///{DB_PATH}",
-    connect_args={"check_same_thread": False},
-    echo=False,
-    pool_pre_ping=True,   # verify connection before use
-    pool_recycle=3600,    # recycle connections after 1 hour
-)
+# ─── Lazy engine factory ───────────────────────────────────────────────────
+# Creating the engine at module import time means FKT_TEST_DB env overrides
+# only work if they are set BEFORE the first import of this module — fragile
+# in test setups that configure the env programmatically.
+#
+# The lazy pattern below defers creation until first use, so tests can safely
+# set FKT_TEST_DB at the top of a test file and get the correct DB path.
 
-# Enable FK enforcement in SQLite (disabled by default)
-@event.listens_for(engine, "connect")
-def _set_sqlite_pragma(dbapi_conn, _connection_record):
-    cursor = dbapi_conn.cursor()
-    cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.execute("PRAGMA journal_mode=WAL")   # better concurrency
-    cursor.execute("PRAGMA synchronous=NORMAL") # faster writes, still safe
-    cursor.close()
+_engine = None
+_SessionLocal = None
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def get_engine():
+    """Return the shared SQLAlchemy engine, creating it on first call."""
+    global _engine
+    if _engine is None:
+        from tracker_app.config import DB_PATH  # re-read here so tests that
+        # set FKT_TEST_DB before importing see the updated value
+        _engine = create_engine(
+            f"sqlite:///{DB_PATH}",
+            connect_args={"check_same_thread": False},
+            echo=False,
+            pool_pre_ping=True,
+            pool_recycle=3600,
+        )
+
+        @event.listens_for(_engine, "connect")
+        def _set_sqlite_pragma(dbapi_conn, _connection_record):
+            cursor = dbapi_conn.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute("PRAGMA synchronous=NORMAL")
+            cursor.close()
+
+    return _engine
+
+
+def get_session_local():
+    """Return the shared sessionmaker, creating it on first call."""
+    global _SessionLocal
+    if _SessionLocal is None:
+        _SessionLocal = sessionmaker(autocommit=False, autoflush=False,
+                                     bind=get_engine())
+    return _SessionLocal
+
+
+# ─── Backward-compatible module-level aliases ─────────────────────────────────
+# Existing code that does `from tracker_app.db.models import SessionLocal`
+# continues to work: accessing the attribute calls through to the lazy getter.
+
+class _LazySessionProxy:
+    """Proxy that forwards all calls to the lazily-created SessionLocal."""
+    def __call__(self, *args, **kwargs):
+        return get_session_local()(*args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(get_session_local(), name)
+
+
+SessionLocal = _LazySessionProxy()
+
+
+# engine at module level is kept for code that accesses it directly
+# (e.g. Base.metadata.create_all(bind=engine) in db_module.py).
+# It resolves lazily via the property-like function below.
+class _LazyEngineProxy:
+    def __getattr__(self, name):
+        return getattr(get_engine(), name)
+
+    def __repr__(self):
+        return repr(get_engine())
+
+
+engine = _LazyEngineProxy()
+
 
 def get_db():
-    db = SessionLocal()
+    db = get_session_local()()
     try:
         yield db
     finally:
