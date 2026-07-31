@@ -19,6 +19,21 @@ logger = logging.getLogger("OCRModule")
 # Set tesseract executable path
 pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
 
+# Startup sanity-check: warn loudly if Tesseract isn't where we expect it.
+import os as _os
+if TESSERACT_PATH.lower() != "tesseract" and not _os.path.exists(TESSERACT_PATH):
+    logger.warning(
+        f"[OCR] Tesseract binary NOT found at '{TESSERACT_PATH}'. "
+        "OCR will silently return empty text. Run setup.py or set TESSERACT_PATH in .env."
+    )
+elif TESSERACT_PATH.lower() == "tesseract":
+    import shutil as _shutil
+    if not _shutil.which("tesseract"):
+        logger.warning(
+            "[OCR] Tesseract is not on PATH. OCR will silently return empty text. "
+            "Run setup.py or set TESSERACT_PATH in .env."
+        )
+
 # Initialize models with error handling
 kw_extractor = None
 nlp = None
