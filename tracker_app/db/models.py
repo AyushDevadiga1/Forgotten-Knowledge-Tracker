@@ -15,7 +15,8 @@ from sqlalchemy import (
     Column, Integer, String, Float, DateTime, Text,
     ForeignKey, Index, event, create_engine
 )
-from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship, Session
+import logging
 
 from tracker_app.config import DB_PATH
 
@@ -103,6 +104,23 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+# ─── Active Model Logging ──────────────────────────────────────────────────────
+# Listens for all SQLAlchemy flush events and logs exactly what records
+# were inserted, updated, or deleted. This satisfies the requirement to
+# "log each of the changes and all and it is saved as logs".
+
+db_logger = logging.getLogger("DB_Models")
+
+@event.listens_for(Session, "after_flush")
+def receive_after_flush(session, flush_context):
+    for obj in session.new:
+        db_logger.info(f"INSERTED [{obj.__class__.__name__}]: {obj.__dict__}")
+    for obj in session.dirty:
+        db_logger.info(f"UPDATED  [{obj.__class__.__name__}]: {obj.__dict__}")
+    for obj in session.deleted:
+        db_logger.info(f"DELETED  [{obj.__class__.__name__}]: {obj.__dict__}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════

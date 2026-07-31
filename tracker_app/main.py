@@ -40,9 +40,16 @@ def ask_user_permissions() -> bool:
 
 
 if __name__ == "__main__":
+    from tracker_app.config import LOGS_DIR
+    log_file = LOGS_DIR / "tracker.log"
+    
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()
+        ]
     )
 
     setup_directories()
