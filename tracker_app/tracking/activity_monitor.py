@@ -9,6 +9,8 @@ import logging
 
 from tracker_app.config import DATA_DIR
 from tracker_app.learning.concept_scheduler import ConceptScheduler
+from tracker_app.db.repository import TrackingRepository
+from tracker_app.db.models import SessionLocal, IntentPrediction, TrackingSession
 
 logger = logging.getLogger("ActivityMonitor")
 
@@ -49,7 +51,6 @@ class IntentValidator:
     def log_prediction(self, predicted_intent: str, confidence: float, context: str):
         """Log an intent prediction to the shared ORM database"""
         try:
-            from tracker_app.db.models import SessionLocal, IntentPrediction
             with SessionLocal() as db:
                 pred = IntentPrediction(
                     timestamp=datetime.now(),
@@ -57,8 +58,7 @@ class IntentValidator:
                     confidence=confidence,
                     context_keywords=context
                 )
-                db.add(pred)
-                db.commit()
+                TrackingRepository.log_intent_prediction(db, pred)
         except Exception as e:
             logger.error(f"Failed to log intent prediction: {e}")
         
@@ -71,53 +71,23 @@ class IntentValidator:
     def log_feedback(self, prediction_id: int, correct: bool):
         """User provides feedback on prediction accuracy"""
         try:
-            from tracker_app.db.models import SessionLocal, IntentPrediction, IntentAccuracy
             with SessionLocal() as db:
-                pred = db.query(IntentPrediction).filter(IntentPrediction.id == prediction_id).first()
+                pred = TrackingRepository.get_intent_prediction(db, prediction_id)
                 if pred:
                     pred.user_feedback = 1 if correct else 0
                     pred.feedback_timestamp = datetime.now()
                     intent = pred.predicted_intent
-
-                    # Update accuracy stats
-                    acc = db.query(IntentAccuracy).filter(IntentAccuracy.intent == intent).first()
-                    if acc is None:
-                        acc = IntentAccuracy(
-                            intent=intent,
-                            total_predictions=1,
-                            correct_predictions=1 if correct else 0,
-                        )
-                        db.add(acc)
-                    else:
-                        acc.total_predictions += 1
-                        if correct:
-                            acc.correct_predictions += 1
-                        acc.accuracy = acc.correct_predictions / acc.total_predictions
-                        acc.last_updated = datetime.now()
-
-                    db.commit()
+                    
+                    TrackingRepository.update_intent_accuracy(db, intent, correct)
+                    # Note: update_intent_accuracy handles the db.commit()
         except Exception as e:
             logger.error(f"Failed to log intent feedback: {e}")
     
     def get_accuracy_stats(self) -> Dict[str, Any]:
         """Get overall intent prediction accuracy"""
         try:
-            from tracker_app.db.models import SessionLocal, IntentAccuracy
             with SessionLocal() as db:
-                from sqlalchemy import func
-                row = db.query(
-                    func.avg(IntentAccuracy.accuracy),
-                    func.count(IntentAccuracy.intent),
-                    func.max(IntentAccuracy.accuracy),
-                    func.min(IntentAccuracy.accuracy)
-                ).filter(IntentAccuracy.total_predictions >= 5).first()
-                
-                return {
-                    'average_accuracy': row[0] or 0.5,
-                    'intents_tracked': row[1] or 0,
-                    'best_accuracy': row[2] or 0,
-                    'worst_accuracy': row[3] or 0
-                }
+                return TrackingRepository.get_accuracy_stats(db)
         except Exception as e:
             logger.error(f"Failed to get accuracy stats: {e}")
             return {'average_accuracy': 0.5, 'intents_tracked': 0, 'best_accuracy': 0, 'worst_accuracy': 0}
@@ -138,7 +108,6 @@ class TrackingAnalytics:
                    concepts_count: int, avg_attention: float, primary_activity: str):
         """Log a tracking session to the shared ORM database"""
         try:
-            from tracker_app.db.models import SessionLocal, TrackingSession
             with SessionLocal() as db:
                 duration = (end_time - start_time).total_seconds() / 60
                 session = TrackingSession(
@@ -149,62 +118,25 @@ class TrackingAnalytics:
                     avg_attention=avg_attention,
                     primary_activity=primary_activity
                 )
-                db.add(session)
-                db.commit()
+                TrackingRepository.log_session(db, session)
         except Exception as e:
             logger.error(f"Failed to log tracking session: {e}")
     
     def get_daily_summary(self, date: Optional[datetime] = None) -> Dict[str, Any]:
         """Get daily tracking summary"""
-        if date is None:
-            date = datetime.now()
-        date_str = date.strftime("%Y-%m-%d")
-        
         try:
-            from tracker_app.db.models import SessionLocal, TrackingSession
-            from sqlalchemy import func
             with SessionLocal() as db:
-                row = db.query(
-                    func.sum(TrackingSession.duration_minutes),
-                    func.sum(TrackingSession.concepts_encountered),
-                    func.avg(TrackingSession.avg_attention)
-                ).filter(
-                    TrackingSession.start_time.like(f"{date_str}%")
-                ).first()
-                
-                return {
-                    'date': date_str,
-                    'total_minutes': row[0] or 0,
-                    'concepts': row[1] or 0,
-                    'avg_attention': row[2] or 0
-                }
+                return TrackingRepository.get_daily_summary(db, date)
         except Exception as e:
             logger.error(f"Failed to get daily summary: {e}")
+            date_str = date.strftime("%Y-%m-%d") if date else datetime.now().strftime("%Y-%m-%d")
             return {'date': date_str, 'total_minutes': 0, 'concepts': 0, 'avg_attention': 0}
     
     def get_trend_analysis(self, days: int = 7) -> Dict[str, Any]:
         """Analyze tracking trends"""
         try:
-            from tracker_app.db.models import SessionLocal, TrackingSession
-            from sqlalchemy import func
-            start_date = (datetime.now() - timedelta(days=days)).isoformat()
-            
             with SessionLocal() as db:
-                row = db.query(
-                    func.count(TrackingSession.id),
-                    func.avg(TrackingSession.duration_minutes),
-                    func.sum(TrackingSession.concepts_encountered),
-                    func.avg(TrackingSession.avg_attention)
-                ).filter(
-                    TrackingSession.start_time >= start_date
-                ).first()
-                
-                return {
-                    'tracking_days': row[0] or 0,
-                    'avg_session_minutes': row[1] or 0,
-                    'total_concepts_encountered': row[2] or 0,
-                    'avg_attention_score': row[3] or 0
-                }
+                return TrackingRepository.get_trend_analysis(db, days)
         except Exception as e:
             logger.error(f"Failed to get trend analysis: {e}")
             return {'tracking_days': 0, 'avg_session_minutes': 0, 'total_concepts_encountered': 0, 'avg_attention_score': 0}
