@@ -9,6 +9,7 @@ from tracker_app.learning.sm2_memory_model import SM2Item, SM2Scheduler, Leitner
 from tracker_app.config import DATA_DIR
 from tracker_app.db import models
 from tracker_app.db.models import LearningItem, ReviewHistory
+from tracker_app.db.repository import LearningRepository
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
@@ -77,27 +78,20 @@ class LearningTracker:
                 next_review_date=now,
                 updated_at=now
             )
-            db.add(new_item)
-            db.commit()
+            LearningRepository.add_item(db, new_item)
 
         return item_id
     
     def get_items_due(self) -> List[Dict[str, Any]]:
         """Get items that are due for review now"""
-        now = datetime.now()
-
         with models.SessionLocal() as db:
-            items = db.query(LearningItem).filter(
-                LearningItem.status == 'active',
-                LearningItem.next_review_date <= now
-            ).order_by(LearningItem.next_review_date.asc()).all()
-
+            items = LearningRepository.get_items_due(db)
             return [self._row_to_dict(item) for item in items]
     
     def get_item(self, item_id: str) -> Optional[Dict[str, Any]]:
         """Get a single learning item by ID"""
         with models.SessionLocal() as db:
-            item = db.query(LearningItem).filter(LearningItem.id == item_id).first()
+            item = LearningRepository.get_item(db, item_id)
             return self._row_to_dict(item) if item else None
     
     def record_review(
@@ -112,7 +106,7 @@ class LearningTracker:
             raise ValueError(f"Item {item_id} not found")
         
         with models.SessionLocal() as db:
-            item_record = db.query(LearningItem).filter(LearningItem.id == item_id).first()
+            item_record = LearningRepository.get_item(db, item_id)
             
             # Reconstruct SM2Item
             item = self._dict_to_sm2item(item_dict)
@@ -136,7 +130,6 @@ class LearningTracker:
                 old_ease=item_dict['ease_factor'],
                 new_ease=item.ease_factor
             )
-            db.add(history)
 
             success_rate = item.correct_count / item.total_reviews if item.total_reviews > 0 else 0
             status = 'mastered' if (success_rate > 0.95 and item.repetitions > 5) else 'active'
@@ -152,7 +145,7 @@ class LearningTracker:
             item_record.status = status
             item_record.updated_at = datetime.now()
 
-            db.commit()
+            LearningRepository.record_review(db, history, item_record)
             
         updated_item = self.get_item(item_id)
         return {
@@ -163,70 +156,38 @@ class LearningTracker:
     
     def get_learning_stats(self) -> Dict[str, Any]:
         with models.SessionLocal() as db:
-            active_count = db.query(LearningItem).filter(LearningItem.status == "active").count()
-            mastered_count = db.query(LearningItem).filter(LearningItem.status == "mastered").count()
-            total_count = db.query(LearningItem).count()
-
-            now = datetime.now()
-            due_count = db.query(LearningItem).filter(
-                LearningItem.status == "active",
-                LearningItem.next_review_date <= now
-            ).count()
+            base_stats = LearningRepository.get_stats(db)
             
+            total_count = len(LearningRepository.get_all_items(db))
             avg_success = db.query(func.avg(LearningItem.success_rate)).scalar() or 0.0
             total_reviews = db.query(func.sum(LearningItem.total_reviews)).scalar() or 0
             
             return {
                 'total_items': total_count,
-                'active_items': active_count,
-                'mastered_items': mastered_count,
-                'due_now': due_count,
+                'active_items': base_stats['total_active'],
+                'mastered_items': base_stats['mastered'],
+                'due_now': base_stats['total_due'],
                 'average_success_rate': avg_success,
                 'total_reviews_ever': total_reviews
             }
     
     def get_learning_today(self) -> Dict[str, Any]:
-        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        today_end = datetime.now()
-
         with models.SessionLocal() as db:
-            reviews_today = db.query(ReviewHistory).filter(
-                ReviewHistory.timestamp >= today_start,
-                ReviewHistory.timestamp <= today_end
-            ).all()
-            
-            total_reviews = len(reviews_today)
-            correct_reviews = sum(1 for r in reviews_today if r.quality_rating >= 3)
-            
-            return {
-                'reviews_today': total_reviews,
-                'correct_today': correct_reviews,
-                'accuracy_today': (correct_reviews / total_reviews * 100) if total_reviews else 0
-            }
+            return LearningRepository.get_learning_today(db)
             
     def search_items(self, query: str) -> List[Dict[str, Any]]:
-        search_term = f"%{query}%"
         with models.SessionLocal() as db:
-            items = db.query(LearningItem).filter(
-                LearningItem.status == "active",
-                or_(
-                    LearningItem.question.like(search_term),
-                    LearningItem.answer.like(search_term)
-                )
-            ).order_by(LearningItem.created_at.desc()).all()
+            items = LearningRepository.search_items(db, query)
             return [self._row_to_dict(item) for item in items]
 
     def get_items(self, status: str = 'active', limit: int = 50) -> List[Dict[str, Any]]:
         with models.SessionLocal() as db:
-            query = db.query(LearningItem)
-            if status != 'all':
-                query = query.filter(LearningItem.status == status)
-            items = query.order_by(LearningItem.created_at.desc()).limit(limit).all()
+            items = LearningRepository.get_items(db, status, limit)
             return [self._row_to_dict(item) for item in items]
             
     def archive_item(self, item_id: str):
         with models.SessionLocal() as db:
-            item = db.query(LearningItem).filter(LearningItem.id == item_id).first()
+            item = LearningRepository.get_item(db, item_id)
             if item:
                 item.status = "archived"
                 item.updated_at = datetime.now()
@@ -234,7 +195,7 @@ class LearningTracker:
 
     def unarchive_item(self, item_id: str):
         with models.SessionLocal() as db:
-            item = db.query(LearningItem).filter(LearningItem.id == item_id).first()
+            item = LearningRepository.get_item(db, item_id)
             if item:
                 item.status = "active"
                 item.updated_at = datetime.now()
@@ -242,7 +203,7 @@ class LearningTracker:
                 
     def export_items(self, format: str = "json") -> str:
         with models.SessionLocal() as db:
-            items = db.query(LearningItem).order_by(LearningItem.created_at.desc()).all()
+            items = LearningRepository.get_all_items(db)
             items_dict = [self._row_to_dict(item) for item in items]
             
             if format == "json":
