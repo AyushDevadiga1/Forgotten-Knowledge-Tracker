@@ -254,7 +254,7 @@ def format_next_review(next_date: datetime) -> str:
     now = datetime.now()
     delta = next_date - now
     
-    if delta.total_seconds() < 0:
+    if delta.total_seconds() <= 0:
         return "NOW"
     elif delta.days == 0:
         hours = delta.seconds // 3600
