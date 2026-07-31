@@ -160,9 +160,10 @@ def load_feedback_samples() -> tuple:
     """Load user-corrected samples from the DB for augmented retraining."""
     X_fb, y_fb = [], []
     try:
-        from tracker_app.db.models import SessionLocal, FeedbackTrainingSample
+        from tracker_app.db.models import SessionLocal
+        from tracker_app.db.repository import FeedbackRepository
         with SessionLocal() as db:
-            samples = db.query(FeedbackTrainingSample).all()
+            samples = FeedbackRepository.get_all_samples(db)
         for s in samples:
             try:
                 feats = json.loads(s.feature_vector)
