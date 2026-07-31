@@ -16,5 +16,8 @@
 - **Monolithic Modularity**: A single entry point (`main.py`) orchestrates distinct directories for `/tracking`, `/learning`, and `/web`, all operating on a shared, unified `/data/fkt_tracking.db` SQLite volume.
 - **Hybrid Heuristic/ML Approach**: Intent classification uses a lightweight `RandomForestClassifier` that continuously auto-retrains itself from user feedback. Audio categorization explicitly relies on deterministic mathematical rules.
 
-## To-Be-Configured (Frontend)
-- The frontend tech stack is pending modernization. Expected to use vanilla JS + modern CSS frameworks.
+## Frontend
+- **React 18 + TypeScript**: Component-based UI served from `tracker_app/web/frontend/`.
+- **Vite**: Development server and build tool (`npm run dev` in the frontend directory).
+- **Tailwind CSS**: Utility-first styling; configured via `tailwind.config.js`.
+- **Flask-SocketIO**: Real-time push events from backend to frontend (quiz interrupts, live stats).
