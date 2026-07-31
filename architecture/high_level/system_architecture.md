@@ -21,6 +21,7 @@ Both subsystems are orchestrated via `main.py` and share a local SQLAlchemy SQLi
 
 ## 4. Components
 - **`track_loop`**: The central loop in `loop.py` that coordinates polling from input listeners, audio pipeline, webcam, and OCR.
-- **`LearningTracker`**: Maintains the SM-2 SRS spaced repetition cycle and provides the CRUD business logic interface for the web dashboard.
+- **`LearningTracker`**: Maintains the SM-2 SRS spaced repetition cycle and coordinates with the data layer.
 - **`ActivityMonitor`**: Logs interaction tracking and records user sessions.
 - **`FeedbackService`**: Manages user corrections to AI predictions and orchestrates background auto-retraining.
+- **`Repository Layer` (`db/repository.py`)**: Centralizes all SQLAlchemy data access logic (CRUD, aggregations) to fully decouple the business logic from the ORM.

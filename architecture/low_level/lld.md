@@ -16,7 +16,12 @@
 - **Methods**:
   - `add_learning_item(question, answer, tags)`
   - `record_review(item_id, quality_rating, duration_ms)`: Core SM-2 interval logic block.
-  - `get_items_due(limit)`: SQLite interaction via SQLAlchemy for fetching matured rows.
+  - `get_items_due(limit)`: Retrieves items via `LearningRepository`.
+
+### 1.4 `Repository Layer` (`db/repository.py`)
+- **Role**: Decouples business logic modules (`LearningTracker`, `ActivityMonitor`, `api.py`) from SQLAlchemy models and ORM logic.
+- **Classes**: `LearningRepository`, `TrackingRepository`, `FeedbackRepository`.
+- **Methods**: Contain all raw `db.query(...)` calls for database interaction.
 
 ### 1.3 `ActivityMonitor`
 - **Role**: Handles raw IO operations and telemetry calculations. 
