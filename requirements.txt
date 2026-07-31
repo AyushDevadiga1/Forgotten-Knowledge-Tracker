@@ -20,18 +20,15 @@ hdbscan>=0.8.40
 scikit-learn>=1.4.0
 
 # Computer Vision & OCR
-opencv-python>=4.9.0
+# opencv-python removed: opencv-contrib-python is a strict superset
 opencv-contrib-python>=4.9.0
 mediapipe>=0.10.14
 pytesseract>=0.3.10
-paddleocr>=2.7.0
 
 # Utility & Monitoring
 pillow>=10.0.0
 mss>=9.0.0
 pynput>=1.7.6
 pyvis>=0.3.0
-streamlit>=1.35.0
-streamlit-autorefresh>=1.0.0
 requests>=2.31.0
 tqdm>=4.66.0
