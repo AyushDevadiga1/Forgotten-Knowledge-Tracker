@@ -44,14 +44,11 @@ class FeedbackService:
     def record_feedback(prediction_id: int, is_correct: bool,
                         actual_intent: str | None = None) -> None:
         """Persist user feedback, update accuracy stats, save training sample."""
-        from tracker_app.db.models import (
-            SessionLocal, IntentPrediction, IntentAccuracy, FeedbackTrainingSample
-        )
+        from tracker_app.db.models import SessionLocal, FeedbackTrainingSample
+        from tracker_app.db.repository import TrackingRepository, FeedbackRepository
         now = datetime.utcnow()
         with SessionLocal() as db:
-            pred = db.query(IntentPrediction).filter(
-                IntentPrediction.id == prediction_id
-            ).first()
+            pred = TrackingRepository.get_intent_prediction(db, prediction_id)
 
             if pred:
                 pred.user_feedback = 1 if is_correct else 0
@@ -66,36 +63,19 @@ class FeedbackService:
                         actual_label=actual_intent,
                         confidence=pred.confidence or 0.0,
                     )
-                    db.add(sample)
+                    FeedbackRepository.log_feedback_sample(db, sample)
 
-                # Update per-intent accuracy stats
                 intent = pred.predicted_intent or "unknown"
-                acc = db.query(IntentAccuracy).filter(
-                    IntentAccuracy.intent == intent
-                ).first()
-                if acc is None:
-                    acc = IntentAccuracy(
-                        intent=intent,
-                        total_predictions=1,
-                        correct_predictions=1 if is_correct else 0,
-                    )
-                    db.add(acc)
-                else:
-                    acc.total_predictions += 1
-                    if is_correct:
-                        acc.correct_predictions += 1
-                    acc.accuracy = acc.correct_predictions / acc.total_predictions
-                    acc.last_updated = now
-
-                db.commit()
+                TrackingRepository.update_intent_accuracy(db, intent, is_correct)
 
     @staticmethod
     def maybe_trigger_retrain() -> None:
         """Trigger background retraining after every 50 user corrections."""
         try:
-            from tracker_app.db.models import SessionLocal, FeedbackTrainingSample
+            from tracker_app.db.models import SessionLocal
+            from tracker_app.db.repository import FeedbackRepository
             with SessionLocal() as db:
-                count = db.query(FeedbackTrainingSample).count()
+                count = FeedbackRepository.get_total_count(db)
             if count > 0 and count % 50 == 0:
                 t = threading.Thread(
                     target=FeedbackService._retrain_from_feedback,
@@ -248,12 +228,11 @@ def get_stats():
 
 @api_bp.route('/intent/recent', methods=['GET'])
 def get_recent_intent():
-    from tracker_app.db.models import SessionLocal, IntentPrediction
+    from tracker_app.db.models import SessionLocal
+    from tracker_app.db.repository import TrackingRepository
     try:
         with SessionLocal() as db:
-            row = (db.query(IntentPrediction)
-                     .order_by(IntentPrediction.timestamp.desc())
-                     .first())
+            row = TrackingRepository.get_recent_intent_prediction(db)
             if not row:
                 return jsonify({'success': True, 'data': None})
             ts = row.timestamp.isoformat() if isinstance(row.timestamp, datetime) else str(row.timestamp)
@@ -426,10 +405,11 @@ def browser_ingest():
 @api_bp.route('/health', methods=['GET'])
 def health_check():
     try:
-        from tracker_app.db.models import SessionLocal, LearningItem, FeedbackTrainingSample
+        from tracker_app.db.models import SessionLocal
+        from tracker_app.db.repository import LearningRepository, FeedbackRepository
         with SessionLocal() as db:
-            item_count     = db.query(LearningItem).count()
-            feedback_count = db.query(FeedbackTrainingSample).count()
+            item_count     = LearningRepository.get_total_count(db)
+            feedback_count = FeedbackRepository.get_total_count(db)
         return jsonify({
             'status': 'healthy',
             'timestamp': datetime.utcnow().isoformat(),
