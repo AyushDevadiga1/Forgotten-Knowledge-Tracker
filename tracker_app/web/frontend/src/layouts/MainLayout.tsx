@@ -1,11 +1,13 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Home, Activity, Database, PlusCircle, Search } from 'lucide-react'
+import { Home, Activity, Database, PlusCircle, Search, Share2, Zap } from 'lucide-react'
 import IntentFeedbackToast from '../components/IntentFeedbackToast'
 
 const navItems = [
     { id: '', icon: Home, label: 'Overview' },
     { id: 'review', icon: Activity, label: 'Review Session' },
     { id: 'database', icon: Database, label: 'Knowledge Base' },
+    { id: 'graph', icon: Share2, label: 'Knowledge Graph' },
+    { id: 'quiz', icon: Zap, label: 'Micro-Quiz' },
     { id: 'add', icon: PlusCircle, label: 'Add Concept' },
 ]
 

@@ -111,4 +111,47 @@ export const api = {
             method: 'POST',
             body: JSON.stringify({ prediction_id, is_correct, actual_intent }),
         }),
+
+    /** GET /api/v1/graph/stats */
+    getGraphStats: () => apiFetch<{ success: boolean; data: GraphStats }>('/graph/stats'),
+
+    /** GET /api/v1/graph/gaps?limit=N */
+    getKnowledgeGaps: (limit = 8) =>
+        apiFetch<{ success: boolean; data: KnowledgeGap[]; count: number }>(`/graph/gaps?limit=${limit}`),
+
+    /** GET /api/v1/quiz/current */
+    getQuiz: () => apiFetch<{ success: boolean; data: QuizQuestion | null }>('/quiz/current'),
+
+    /** POST /api/v1/quiz/answer */
+    submitQuizAnswer: (concept: string, was_correct: boolean) =>
+        apiFetch<{ success: boolean; message: string }>('/quiz/answer', {
+            method: 'POST',
+            body: JSON.stringify({ concept, was_correct }),
+        }),
+
+    /** GET /api/v1/health */
+    health: () => apiFetch<{ status: string }>('/health'),
+}
+
+// ── Graph + Quiz Types ────────────────────────────────────
+export interface GraphStats {
+    total_concepts: number
+    total_edges: number
+    avg_memory_strength: number
+    top_concepts: string[]
+}
+
+export interface KnowledgeGap {
+    concept: string
+    last_seen: string
+    memory_strength: number
+    gap_score: number
+}
+
+export interface QuizQuestion {
+    concept: string
+    question: string
+    options: string[]
+    correct_answer: string
+    difficulty: string
 }

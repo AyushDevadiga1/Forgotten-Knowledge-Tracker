@@ -4,6 +4,8 @@ import OverviewPage from './pages/OverviewPage'
 import ReviewPage from './pages/ReviewPage'
 import KnowledgeBasePage from './pages/KnowledgeBasePage'
 import AddConceptPage from './pages/AddConceptPage'
+import GraphPage from './pages/GraphPage'
+import QuizPage from './pages/QuizPage'
 
 function App() {
   return (
@@ -14,6 +16,8 @@ function App() {
           <Route path="review" element={<ReviewPage />} />
           <Route path="database" element={<KnowledgeBasePage />} />
           <Route path="add" element={<AddConceptPage />} />
+          <Route path="graph" element={<GraphPage />} />
+          <Route path="quiz" element={<QuizPage />} />
         </Route>
       </Routes>
     </BrowserRouter>
