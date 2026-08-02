@@ -31,6 +31,9 @@ htmlcov/
 
 # Data files (Runtime)
 tracker_app/data/*.db
+tracker_app/data/*.db-wal
+tracker_app/data/*.db-shm
+tracker_app/data/*.db-journal
 tracker_app/data/*.csv
 tracker_app/data/*.pkl
 tracker_app/data/*.json

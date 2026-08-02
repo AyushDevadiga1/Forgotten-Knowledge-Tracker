@@ -64,7 +64,7 @@ class LearningRepository:
         
     @staticmethod
     def get_stats(db: Session) -> Dict[str, Any]:
-        now = datetime.utcnow()
+        now = datetime.now()
         total_active = db.query(LearningItem).filter(LearningItem.status == 'active').count()
         total_due = db.query(LearningItem)\
                       .filter(LearningItem.status == 'active')\
@@ -155,7 +155,7 @@ class TrackingRepository:
             acc.correct_predictions += 1
             
         acc.accuracy = acc.correct_predictions / acc.total_predictions
-        acc.last_updated = datetime.utcnow()
+        acc.last_updated = datetime.now()
         db.commit()
 
     @staticmethod
@@ -177,7 +177,7 @@ class TrackingRepository:
     @staticmethod
     def get_daily_summary(db: Session, date: Optional[datetime] = None) -> Dict[str, Any]:
         if date is None:
-            date = datetime.utcnow()
+            date = datetime.now()
         date_str = date.strftime("%Y-%m-%d")
         
         row = db.query(
@@ -198,7 +198,7 @@ class TrackingRepository:
     @staticmethod
     def get_trend_analysis(db: Session, days: int = 7) -> Dict[str, Any]:
         from datetime import timedelta
-        start_date = (datetime.utcnow() - timedelta(days=days)).isoformat()
+        start_date = (datetime.now() - timedelta(days=days)).isoformat()
         
         row = db.query(
             func.count(TrackingSession.id),
