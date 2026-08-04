@@ -2,6 +2,7 @@
 # Adds background warm-up thread so models are ready before first cycle.
 
 import logging
+import os
 import threading
 from tracker_app.tracking.loop import track_loop, warm_up_all_pipelines
 from tracker_app.config import setup_directories
@@ -9,6 +10,15 @@ from tracker_app.config import setup_directories
 
 def ask_user_permissions() -> bool:
     """Explain webcam vs CLE options and prompt the user. CLI concern only."""
+    # Non-interactive override (matches README: "set ALLOW_WEBCAM in .env").
+    # Use from config so the constant is the single source of truth.
+    from tracker_app.config import USER_ALLOW_WEBCAM
+    if 'ALLOW_WEBCAM' in os.environ:
+        if USER_ALLOW_WEBCAM:
+            print("  [OK] ALLOW_WEBCAM=true — webcam enabled.\n")
+        else:
+            print("  [OK] ALLOW_WEBCAM=false — webcam disabled (CLE keystroke-based).\n")
+        return USER_ALLOW_WEBCAM
     print()
     print("=" * 55)
     print("  FKT 2.0 — Attention Tracking")
