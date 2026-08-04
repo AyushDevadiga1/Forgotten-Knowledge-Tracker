@@ -53,6 +53,19 @@ def _get_spacy_vectors(concepts):
 # Create the main knowledge graph
 knowledge_graph = nx.Graph()
 
+
+def _ensure_graph_loaded():
+    """Populate the in-memory graph from the DB on first use.
+
+    The graph is process-local: the web app starts with an empty graph, so
+    without this the dashboard's Graph page and quiz would stay empty even
+    though `tracked_concepts` has rows. No-op once loaded (or if already
+    empty of string nodes after a sync attempt).
+    """
+    with _graph_lock:
+        if knowledge_graph.number_of_nodes() == 0:
+            sync_db_to_graph()
+
 def fetch_concepts_from_db():
     """Fetch concepts from tracked_concepts table (NOT window titles)."""
     try:
@@ -146,6 +159,7 @@ def sync_db_to_graph():
 
 def get_graph():
     """Get graph with thread-safe access"""
+    _ensure_graph_loaded()
     return knowledge_graph
 
 
@@ -171,6 +185,7 @@ def compute_concept_drift(
             'co_concepts_historic': list,
         }
     """
+    _ensure_graph_loaded()
     with _graph_lock:
         if concept not in knowledge_graph:
             return {
@@ -235,6 +250,7 @@ def find_knowledge_gaps(top_k: int = 5) -> list:
         List of dicts sorted by score descending:
         [{'gap_concept': str, 'bridge_concepts': [str, str], 'score': float}]
     """
+    _ensure_graph_loaded()
     try:
         import spacy
         nlp = spacy.load("en_core_web_sm")
@@ -295,6 +311,7 @@ def find_knowledge_gaps(top_k: int = 5) -> list:
 
 def get_graph_stats() -> dict:
     """Return summary statistics about the knowledge graph."""
+    _ensure_graph_loaded()
     with _graph_lock:
         n_nodes = knowledge_graph.number_of_nodes()
         n_edges = knowledge_graph.number_of_edges()
