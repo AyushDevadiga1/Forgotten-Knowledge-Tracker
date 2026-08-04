@@ -94,6 +94,34 @@ def ensure_tesseract():
         warn("Download manually: https://github.com/UB-Mannheim/tesseract/wiki")
 
 
+def build_frontend():
+    """Best-effort build of the React frontend so the :5000 dashboard works.
+    Flask serves the built tracker_app/web/frontend/dist; without it the
+    dashboard root 404s. Falls back to a warning (dev server still usable)."""
+    fe = ROOT / "tracker_app" / "web" / "frontend"
+    pkg = fe / "package.json"
+    if not pkg.exists():
+        warn("frontend/package.json not found — skipping frontend build.")
+        return
+    import shutil
+    npm = shutil.which("npm")
+    if not npm:
+        warn("npm not found — skipping frontend build.")
+        warn("Dashboard at :5000 needs: cd tracker_app/web/frontend && npm install && npm run build")
+        return
+    step("Building frontend (npm install + npm run build)...")
+    try:
+        if not (fe / "node_modules").exists():
+            subprocess.run([npm, "install"], cwd=str(fe), check=True)
+        subprocess.run([npm, "run", "build"], cwd=str(fe), check=True)
+        if (fe / "dist").exists():
+            ok("Frontend built.")
+        else:
+            warn("npm build finished but dist/ missing — check frontend build output.")
+    except Exception as e:
+        warn(f"Frontend build failed ({e}). Dashboard needs a manual npm run build.")
+
+
 def ensure_env():
     env = ROOT / ".env"
     if env.exists():
@@ -154,6 +182,7 @@ def main():
     clean_duplicate_venv()
     ensure_venv()
     if not args.skip_deps:  install_deps()
+    build_frontend()
     if not args.skip_tess:  ensure_tesseract()
     ensure_env()
     init_db()
