@@ -1,8 +1,15 @@
 # core/face_detection_module.py
+# Legacy dlib-based detector — superseded by webcam_module.py (MediaPipe).
+# Nothing in the app imports this module; the dlib import is guarded so the
+# module at least stays importable without dlib installed.
 import cv2
-import dlib
 import time
 import numpy as np
+
+try:
+    import dlib
+except ImportError:
+    dlib = None
 
 class FaceDetector:
     def __init__(self):
