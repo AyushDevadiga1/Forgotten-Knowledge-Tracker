@@ -58,7 +58,10 @@ git push heroku main
 ## Production Checklist
 - [ ] Set strong SECRET_KEY in .env
 - [ ] Set DEBUG=False
+- [ ] Set API_KEY and NO_AUTH=false to enable API-key auth (`web/auth.py`; off by default for local dev)
 - [ ] Use production WSGI server (gunicorn)
 - [ ] Set up SSL/HTTPS
 - [ ] Configure database backups
 - [ ] Set up monitoring (Sentry, etc.)
+
+For local-only use none of the above are required — no secrets are committed and auth defaults are dev-friendly.
