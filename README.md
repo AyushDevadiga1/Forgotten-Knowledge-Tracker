@@ -103,9 +103,14 @@ If you prefer to run it manually without the `setup.py` auto-launcher:
 .\venv\Scripts\activate          # Windows
 source venv/bin/activate         # Linux/macOS
 
-# Start the application (spawns both web dashboard and background tracker)
+# Background tracker (asks about webcam on start)
 python -m tracker_app.main
+
+# In a second terminal: web dashboard -> http://localhost:5000
+python -m tracker_app.web.app
 ```
+
+(`python setup.py --run` starts both together.)
 
 ---
 
@@ -328,18 +333,18 @@ FKT introduces several ideas not found in any existing knowledge management or s
 | Phase | Status | Description |
 |---|---|---|
 | 1 — Crash Fixes | ✅ Done | All 5 critical crashes resolved; config unified; CLE built |
-| 2 — ML Pipeline | ✅ Done | YAKE! extractor; trained intent classifier; training script |
-| 3 — Database | 🔲 Next | DateTime columns; Alembic migrations; FK relationships |
-| 4 — AWFC | 🔲 Planned | Personalised forgetting curve |
-| 5 — Audio | 🔲 Planned | MFCC-based audio classifier; async recording |
-| 6 — Graph | 🔲 Planned | Concept drift; knowledge gap map |
-| 7 — Micro-Quiz | 🔲 Planned | Idle-triggered quiz interrupts |
-| 8 — Performance | 🔲 Planned | Thread pool; SSIM dedup; adaptive throttling |
-| 9 — Self-Improving | 🔲 Planned | Auto-retrain from user feedback |
-| 10 — Browser Ext | 🔲 Planned | Chrome extension as OCR alternative |
-| 11 — Frontend | 🔲 Planned | Graph page; attention heatmap; weekly report |
+| 2 — ML Pipeline | ✅ Done | YAKE! extractor; RandomForest intent classifier; training script |
+| 3 — Database | ✅ Done | SQLite + SQLAlchemy; custom migration runner; FK relationships |
+| 4 — AWFC | ✅ Done | Personalised forgetting curve (attention-weighted λ) |
+| 5 — Audio | ✅ Done | MFCC-based audio classifier; async recording |
+| 6 — Graph | ✅ Done | Concept graph; drift detection; graph page |
+| 7 — Micro-Quiz | ✅ Done | Idle-triggered quiz interrupts; quiz page |
+| 8 — Performance | ✅ Done | Thread pool; lazy-loaded pipelines; adaptive throttling |
+| 9 — Self-Improving | ✅ Done | Auto-retrain from session logs |
+| 10 — Browser Ext | 🔲 Planned | `/ingest` endpoint ready; Chrome extension itself not built |
+| 11 — Frontend | ✅ Done | React dashboard: overview, graph, quiz, review, add concept |
 
-See `FKT_IMPLEMENTATION_PLAN.md` for the full detailed plan with code samples for every phase.
+See [`MAKEOVER_PLAN.md`](MAKEOVER_PLAN.md) for the build-out status, and `architecture/` for the ADRs and design docs.
 
 ---
 
@@ -363,7 +368,7 @@ FKT was developed as a final-year B.E. project in Computer Science (AI/ML) at Bh
 4. Run the test suite: `python -m pytest tracker_app/tests/`
 5. Submit a pull request
 
-Please read `FKT_IMPLEMENTATION_PLAN.md` before contributing to understand what is planned and avoid duplicate work.
+Please read [`MAKEOVER_PLAN.md`](MAKEOVER_PLAN.md) and `architecture/adr/` before contributing to understand what is built and planned and avoid duplicate work.
 
 ---
 
