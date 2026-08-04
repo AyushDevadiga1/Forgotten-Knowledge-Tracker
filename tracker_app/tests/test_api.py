@@ -83,6 +83,38 @@ class TestAPICreateItem(TestAPIBase):
         self.assertEqual(data['count'], 1)
         self.assertEqual(data['data'][0]['question'], 'What is a decorator?')
 
+class TestAPIBrowserIngest(TestAPIBase):
+    def test_ingest_saves_concepts(self):
+        resp = self.client.post('/api/v1/ingest',
+            data=json.dumps({
+                'text': ('The mitochondria is the powerhouse of the cell. '
+                         'Cellular respiration converts glucose into ATP '
+                         'through the Krebs cycle and oxidative phosphorylation. '
+                         'This process produces the energy currency of the cell.'),
+                'title': 'Biology notes'
+            }),
+            content_type='application/json')
+        data = json.loads(resp.data)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(data['success'])
+        self.assertGreater(data['concepts_saved'], 0)
+        self.assertIn('keywords', data)
+
+    def test_ingest_rejects_short_text(self):
+        resp = self.client.post('/api/v1/ingest',
+            data=json.dumps({'text': 'hi', 'title': 'x'}),
+            content_type='application/json')
+        data = json.loads(resp.data)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(data['success'])
+        self.assertIn('skipped', data['message'])
+
+    def test_ingest_requires_text_field(self):
+        resp = self.client.post('/api/v1/ingest',
+            data=json.dumps({'title': 'x'}),
+            content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
+
 class TestAPIRecordReview(TestAPIBase):
     def test_record_review_valid(self):
         resp = self.client.post('/api/v1/items',
