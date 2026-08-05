@@ -219,13 +219,14 @@ class ActivityMonitor:
                     info.get('score', confidence)
                     if isinstance(info, dict) else confidence
                 )
-                self.scheduler.add_concept(
+                saved = self.scheduler.add_concept(
                     concept,
                     concept_conf,
                     context="ocr",
                     attention_at_encoding=attention_score,  # AWFC
                 )
-                self.session_concepts.append(concept)
+                if saved:
+                    self.session_concepts.append(concept)
             except Exception as e:
                 logger.error(f"Error processing concept {concept}: {e}")
     

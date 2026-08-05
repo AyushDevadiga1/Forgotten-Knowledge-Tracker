@@ -32,9 +32,15 @@ class ConceptScheduler:
         """
         Insert or update a tracked concept.
         Stores attention_at_encoding for AWFC ╬╗ personalisation.
-        Returns the concept string (primary key).
+        Returns the concept string (primary key), or None if the concept
+        is rejected by the plausibility filter (OCR noise, word fragments).
         """
         from tracker_app.learning.memory_model import compute_awfc_lambda
+        from tracker_app.learning.text_quality_validator import is_plausible_concept
+
+        if not is_plausible_concept(concept):
+            logger.debug("Skipping implausible concept: %r", concept)
+            return None
 
         now = datetime.utcnow()
 

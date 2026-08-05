@@ -9,6 +9,81 @@ from typing import Dict, List, Tuple, Optional
 import numpy as np
 
 # ============================================================
+# CONCEPT PLAUSIBILITY FILTER
+# ============================================================
+
+# Common OCR/word-fragment artifacts that are never useful concepts.
+_FRAGMENT_BLOCKLIST = frozenset({
+    'ano', 'ity', 'tion', 'ing', 'ent', 'ion', 'ati', 'ght', 'ack', 'ess',
+    'ere', 'ive', 'ous', 'igh', 'ord', 'heh', 'bene', 'tae', 'eve', 'ane',
+    'ation',
+})
+
+# Short no-vowel acronyms that are legitimately useful despite the vowel rule.
+_ACRONYM_WHITELIST = frozenset({'sql', 'css', 'html', 'http', 'https', 'ftp'})
+
+_VOWELS = frozenset('aeiou')
+_REPEATED_RUN = re.compile(r'(.)\1\1')  # three or more identical chars
+
+
+def _has_repeated_run_noise(word: str) -> bool:
+    """True if >40% of a word's chars sit in doubled runs ('aannup' -> 4/6)."""
+    runs, i, n = 0, 0, len(word)
+    while i < n:
+        j = i
+        while j + 1 < n and word[j] == word[j + 1]:
+            j += 1
+        if j > i:
+            runs += j - i + 1
+        i = j + 1
+    return n > 0 and runs / n > 0.4
+
+
+def is_plausible_concept(text) -> bool:
+    """Heuristic filter for OCR/keyword fragments that are not real concepts.
+
+    Catches the common OCR failure modes seen in live tracking:
+    short word fragments ('ano', 'ity'), vowel-less garbage ('hty'), and
+    doubled-character noise ('aannup'). Multi-word phrases pass only if
+    every word is plausible. ALL-CAPS acronyms (SQL, CSS, HTML) are allowed
+    even without a vowel so they are not dropped.
+    """
+    if not text or not isinstance(text, str):
+        return False
+    stripped = text.strip()
+    if not stripped or len(stripped) < 3 or len(stripped) > 80:
+        return False
+
+    words = re.findall(r"[A-Za-z]+", stripped)
+    if not words:
+        return False
+
+    return all(_is_plausible_word(w) for w in words)
+
+
+def _is_plausible_word(word: str) -> bool:
+    if len(word) < 3:
+        return False
+    low = word.lower()
+    if low in _FRAGMENT_BLOCKLIST:
+        return False
+    # All-caps acronyms pass regardless of vowels.
+    if word.isupper() and len(word) <= 6:
+        return True
+    if low in _ACRONYM_WHITELIST:
+        return True
+    has_vowel     = any(c in _VOWELS for c in low)
+    has_consonant = any(c not in _VOWELS for c in low)
+    if not has_vowel or not has_consonant:
+        return False
+    if _REPEATED_RUN.search(word):
+        return False
+    if _has_repeated_run_noise(word):
+        return False
+    return True
+
+
+# ============================================================
 # TEXT QUALITY VALIDATION
 # ============================================================
 

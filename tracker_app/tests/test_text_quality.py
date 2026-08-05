@@ -5,6 +5,7 @@ from tracker_app.learning.text_quality_validator import (
     is_coherent_text,
     extract_keywords,
     calculate_text_quality_score,
+    is_plausible_concept,
     UI_GARBAGE
 )
 
@@ -81,3 +82,29 @@ def test_ocr_confidence_impact():
     # Low confidence = REJECTED
     res_low = validate_and_clean_extraction(text, ocr_confidence=0.1)
     assert res_low['status'] == 'REJECTED'
+
+def test_plausible_concept_accepts_real_keywords():
+    assert is_plausible_concept("neural network") is True
+    assert is_plausible_concept("mitochondria") is True
+    assert is_plausible_concept("gradient descent") is True
+    assert is_plausible_concept("atp") is True
+    assert is_plausible_concept("dna replication") is True
+    assert is_plausible_concept("SQL") is True
+    assert is_plausible_concept("HTML") is True
+
+def test_plausible_concept_rejects_ocr_fragments():
+    # Word fragments that appeared in live E2E OCR runs
+    for fragment in ("ano", "ity", "heh", "bene", "tae"):
+        assert is_plausible_concept(fragment) is False, fragment
+
+def test_plausible_concept_rejects_garbage():
+    assert is_plausible_concept("hty") is False       # no vowel
+    assert is_plausible_concept("aannup") is False    # doubled-run noise
+    assert is_plausible_concept("qwrty") is False     # no vowel
+    assert is_plausible_concept("ab") is False        # too short
+    assert is_plausible_concept("") is False
+    assert is_plausible_concept(None) is False
+
+def test_plausible_concept_rejects_common_suffix_fragments():
+    for fragment in ("tion", "ing", "ent", "ion", "ation"):
+        assert is_plausible_concept(fragment) is False, fragment

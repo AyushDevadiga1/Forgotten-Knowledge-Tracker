@@ -380,13 +380,14 @@ def browser_ingest():
         saved     = 0
         for concept, score in keywords.items():
             if len(concept) >= 3:
-                scheduler.add_concept(
+                result = scheduler.add_concept(
                     concept=concept,
                     confidence=float(score),
                     context=f"browser:{title[:80]}",
                     attention_at_encoding=60.0,  # assume moderate engagement
                 )
-                saved += 1
+                if result:
+                    saved += 1
 
         return jsonify({
             'success':        True,
