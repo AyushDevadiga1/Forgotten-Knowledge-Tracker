@@ -1,8 +1,4 @@
-# db/migrations.py — FKT 2.0 Phase 3
-# Lightweight SQLite migration runner — no Alembic needed.
-# Tracks applied migrations in a `schema_migrations` table.
-# Safe to run on any existing database — already-applied migrations are skipped.
-# Run: python -m tracker_app.db.migrations
+"""SQLite migration runner — no Alembic. Applies idempotent MIGRATIONS in order."""
 
 import sqlite3
 import logging

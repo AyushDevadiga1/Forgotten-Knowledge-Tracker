@@ -1,9 +1,4 @@
-# tracking/audio_module.py — FKT 2.0 Phase 5
-# Changes from v1:
-#   - Non-blocking async recording: sd.wait() no longer freezes the main loop
-#   - MFCC-based classifier replaces unreliable energy heuristics
-#   - Lazy model loading: classifier loads on first call
-#   - Thread-safe result cache shared with loop.py
+"""Audio pipeline: async recording, MFCC feature extraction, and classification."""
 
 import threading
 import logging

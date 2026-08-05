@@ -1,6 +1,4 @@
-# tools/launcher.py — FKT 2.0 Phase 13 fix
-# Fixed broken imports: api_server, core.batch_operations never existed.
-# Now routes correctly to actual FKT 2.0 modules.
+"""CLI launcher routing to the real FKT modules (tracker, dashboard, training)."""
 
 import sys
 import os

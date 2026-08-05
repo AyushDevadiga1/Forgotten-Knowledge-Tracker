@@ -1,10 +1,8 @@
-# tracking/quiz_engine.py — FKT 2.0 Phase 7
-# Micro-Quiz Interrupt System — novel feature.
-#
-# When idle for 3+ consecutive cycles, FKT generates a contextual quiz
-# from the weakest concept in the knowledge graph and broadcasts it
-# to the dashboard via Socket.IO.
-# Results feed directly into SM-2 scheduling.
+"""Micro-quiz interrupt: generates a contextual quiz from the weakest graph concept.
+
+When idle for consecutive cycles, FKT quizzes the user via the dashboard
+(Socket.IO) and feeds results straight into SM-2 scheduling.
+"""
 
 import random
 import logging

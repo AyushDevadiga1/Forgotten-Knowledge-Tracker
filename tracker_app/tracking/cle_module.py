@@ -1,6 +1,5 @@
-"""
-Cognitive Load Estimator (CLe) — FKT 2.0 Novel Feature
-========================================================
+"""Cognitive Load Estimator (CLe).
+
 Estimates real-time cognitive load from keystroke dynamics WITHOUT requiring
 a webcam. Used as the primary attention signal when webcam is disabled, and
 as a complementary signal when webcam IS enabled.

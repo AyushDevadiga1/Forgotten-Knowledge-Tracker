@@ -1,5 +1,4 @@
-# tracker_app/main.py — FKT 2.0 Phase 8
-# Adds background warm-up thread so models are ready before first cycle.
+"""FKT entry point — starts the tracking loop with background model warm-up."""
 
 import logging
 import os

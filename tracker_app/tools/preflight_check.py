@@ -1,5 +1,4 @@
-# tools/preflight_check.py — FKT 2.0 Phase 12 fix
-# Updated: expects 6-feature vector from new intent module (was 4 in v1)
+"""Preflight check for the 6-feature intent model and DB readiness."""
 
 import numpy as np
 from tracker_app.tracking import intent_module
@@ -15,7 +14,7 @@ ocr_counts        = [0, 1, 5, 50]
 attention_scores  = [0, 25, 50, 75, 100]
 interaction_rates = [0, 1, 5, 10, 100]
 
-EXPECTED_FEATURE_SHAPE = (1, 6)   # FKT 2.0: 6 features
+EXPECTED_FEATURE_SHAPE = (1, 6)   # 6-feature vector
 
 def run_stress_test():
     failures = []

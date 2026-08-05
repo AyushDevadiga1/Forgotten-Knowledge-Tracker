@@ -1,7 +1,4 @@
-# core/webcam_module.py
-# FKT 2.0 — Lazy-loaded webcam module.
-# MediaPipe FaceMesh is initialised on FIRST CALL, not at import time.
-# This prevents crashes on machines without a webcam or with low RAM.
+"""Webcam pipeline: MediaPipe FaceMesh-based attention tracking (lazy-loaded)."""
 import cv2
 import numpy as np
 import time

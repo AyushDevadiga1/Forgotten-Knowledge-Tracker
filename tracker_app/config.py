@@ -1,6 +1,7 @@
-# config.py — FKT 2.0 — Single source of truth for all configuration
-# config_manager.py is DEPRECATED. Do not import it anywhere.
-# All settings live here or in the .env file at project root.
+"""Single source of truth for FKT configuration (env- and .env-driven).
+
+tracker_app.config_manager is DEPRECATED — never import it.
+"""
 import os
 from pathlib import Path
 from dotenv import load_dotenv

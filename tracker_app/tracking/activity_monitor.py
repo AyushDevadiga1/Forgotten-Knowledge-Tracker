@@ -1,10 +1,9 @@
 import time
 import os
-import sqlite3
 import json
 from datetime import datetime, timedelta
 from threading import Lock
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 import logging
 
 from tracker_app.config import DATA_DIR
@@ -30,10 +29,6 @@ class ThreadSafeCounter:
             value = self._value
             self._value = 0
             return value
-    
-    def get_value(self):
-        with self._lock:
-            return self._value
 
 
 class IntentValidator:
@@ -67,21 +62,6 @@ class IntentValidator:
             'confidence': confidence,
             'timestamp': datetime.now()
         })
-    
-    def log_feedback(self, prediction_id: int, correct: bool):
-        """User provides feedback on prediction accuracy"""
-        try:
-            with SessionLocal() as db:
-                pred = TrackingRepository.get_intent_prediction(db, prediction_id)
-                if pred:
-                    pred.user_feedback = 1 if correct else 0
-                    pred.feedback_timestamp = datetime.now()
-                    intent = pred.predicted_intent
-                    
-                    TrackingRepository.update_intent_accuracy(db, intent, correct)
-                    # Note: update_intent_accuracy handles the db.commit()
-        except Exception as e:
-            logger.error(f"Failed to log intent feedback: {e}")
     
     def get_accuracy_stats(self) -> Dict[str, Any]:
         """Get overall intent prediction accuracy"""
@@ -256,10 +236,6 @@ class ActivityMonitor:
                 'avg_attention': sum(self.session_attention_scores) / len(self.session_attention_scores) if self.session_attention_scores else 0,
                 'is_active': self.is_running
             }
-    
-    def get_concept_recommendations(self, limit: int = 5) -> List[Dict[str, Any]]:
-        """Get top concepts to review"""
-        return self.scheduler.get_due_concepts(limit)
     
     def export_tracking_data(self, output_file: str = None):
         """Export all tracking data to DATA_DIR (or a provided absolute path)."""

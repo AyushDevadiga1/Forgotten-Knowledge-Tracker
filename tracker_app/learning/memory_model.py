@@ -1,26 +1,19 @@
-# learning/memory_model.py — FKT 2.0 Phase 4
-# Attention-Weighted Forgetting Curve (AWFC) — novel contribution.
-#
-# Standard Ebbinghaus: R(t) = exp(-λ * t)
-# FKT AWFC:            R(t) = exp(-λ_p * t)
-#   where λ_p = λ_base * (1 - attention_norm * α)
-#   attention_norm = attention_at_encoding / 100
-#   α = 0.30  (high attention slows decay by up to 30%)
-#
-# This means a concept learned with 80% attention decays 24% slower
-# than one absorbed while idle (15% attention).
+"""Attention-Weighted Forgetting Curve (AWFC) retention model.
+
+Standard Ebbinghaus: R(t) = exp(-λ * t)
+FKT AWFC:            R(t) = exp(-λ_p * t), λ_p = λ_base * (1 - attention_norm * α)
+A concept learned at 80% attention decays ~24% slower than one at 15% attention.
+"""
 
 import math
-import sqlite3
 import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
-from tracker_app.config import DB_PATH, DEFAULT_LAMBDA, MEMORY_THRESHOLD
+from tracker_app.config import DEFAULT_LAMBDA, MEMORY_THRESHOLD
 
 logger = logging.getLogger("MemoryModel")
 
-DATETIME_FORMAT  = "%Y-%m-%d %H:%M:%S"
 AWFC_ALPHA       = 0.30    # dampening factor — max slowdown from attention
 LAMBDA_FLOOR     = 0.01    # minimum decay rate (concept never fully immortal)
 LAMBDA_CEIL      = 0.50    # maximum decay rate
@@ -102,34 +95,6 @@ def compute_memory_score_awfc(
     return max(0.05, min(1.0, R))
 
 
-# ─── Legacy compatibility: multi-modal weighted score ─────────────────────────
-
-def compute_memory_score(
-    last_review_time,
-    lambda_val: float,
-    intent_conf: float = 1.0,
-    attention_score: float = 50.0,
-    audio_conf: float = 1.0,
-) -> float:
-    """
-    Legacy wrapper — now delegates to AWFC.
-    kept so existing callers don't break.
-    """
-    last_review = safe_parse_datetime(last_review_time)
-
-    att_factor    = max(0.1, min(attention_score / 100.0, 1.0))
-    intent_factor = max(0.3, min(intent_conf,  1.0))
-    audio_factor  = max(0.5, min(audio_conf,   1.0))
-    modality_boost = (att_factor * intent_factor * audio_factor) ** (1 / 3)
-
-    return compute_memory_score_awfc(
-        last_review,
-        base_lambda=lambda_val,
-        attention_at_encoding=attention_score,
-        modality_boost=modality_boost,
-    )
-
-
 # ─── Review scheduling ────────────────────────────────────────────────────────
 
 def schedule_next_review(
@@ -190,50 +155,6 @@ def recalibrate_lambda(
     adjustment  = 0.05 * (predicted_rate - actual_success_rate)
     new_lambda  = current_lambda + adjustment
     return max(LAMBDA_FLOOR, min(new_lambda, LAMBDA_CEIL))
-
-
-# ─── Ebbinghaus retention probability ────────────────────────────────────────
-
-def forgetting_curve(t_hours: float, stability: float = 1.25) -> float:
-    """Standard Ebbinghaus. stability = memory strength parameter."""
-    try:
-        return math.exp(-t_hours / stability)
-    except Exception:
-        return 0.0
-
-
-# ─── DB logging (legacy) ─────────────────────────────────────────────────────
-
-def log_forgetting_curve(
-    concept: str,
-    last_seen_time,
-    observed_usage: int = 1,
-    memory_strength: float = 1.25,
-) -> float:
-    """Compute and persist predicted recall to memory_decay table."""
-    last_seen = safe_parse_datetime(last_seen_time)
-    t_hours   = max(0.0, (datetime.utcnow() - last_seen).total_seconds() / 3600.0)
-    predicted = forgetting_curve(t_hours, memory_strength)
-
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        c    = conn.cursor()
-        c.execute(
-            """INSERT INTO memory_decay
-               (keyword, last_seen_ts, predicted_recall, observed_usage, updated_at)
-               VALUES (?, ?, ?, ?, ?)""",
-            (str(concept),
-             last_seen.strftime(DATETIME_FORMAT),
-             float(predicted),
-             int(observed_usage),
-             datetime.utcnow().strftime(DATETIME_FORMAT))
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.error(f"log_forgetting_curve failed: {e}")
-
-    return predicted
 
 
 if __name__ == "__main__":

@@ -1,10 +1,6 @@
-"""
-SM-2 Spaced Repetition Algorithm
-Based on: Piotr Wozniak's SuperMemo 2 algorithm
-Research: 20+ years of validated user data
+"""SM-2 spaced repetition algorithm (Piotr Wozniak's SuperMemo 2).
 
-This replaces the pseudoscientific memory_model.py with a proven,
-research-backed spaced repetition algorithm.
+Research-backed scheduling defaults; complements the AWFC retention model.
 """
 
 from datetime import datetime, timedelta
@@ -243,12 +239,6 @@ class LeitnerSystem:
         }
 
 
-# Utility Functions
-def format_retention_percentage(retention_prob: float) -> str:
-    """Format retention probability as percentage"""
-    return f"{retention_prob * 100:.1f}%"
-
-
 def format_next_review(next_date: datetime) -> str:
     """Format next review date as human-readable string"""
     now = datetime.now()
@@ -269,41 +259,6 @@ def format_next_review(next_date: datetime) -> str:
     else:
         months = delta.days // 30
         return f"in {months} month{'s' if months > 1 else ''}"
-
-
-def estimate_learning_curve(item: SM2Item) -> Dict[str, Any]:
-    """
-    Estimate how well item is being learned over time.
-    
-    Returns metrics on learning progress
-    """
-    if item.total_reviews == 0:
-        return {
-            'status': 'not_started',
-            'reviews': 0,
-            'correct_rate': 0,
-            'stage': 'initial'
-        }
-    
-    success_rate = item.correct_count / item.total_reviews
-    
-    if success_rate < 0.3:
-        stage = 'struggling'
-    elif success_rate < 0.7:
-        stage = 'learning'
-    elif success_rate < 0.95:
-        stage = 'consolidating'
-    else:
-        stage = 'mastered'
-    
-    return {
-        'status': 'in_progress',
-        'reviews': item.total_reviews,
-        'correct_rate': success_rate,
-        'stage': stage,
-        'repetitions': item.repetitions,
-        'ease_factor': item.ease_factor
-    }
 
 
 # Example usage

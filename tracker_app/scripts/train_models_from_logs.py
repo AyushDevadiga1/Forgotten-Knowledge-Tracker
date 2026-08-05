@@ -1,13 +1,7 @@
-# scripts/train_models_from_logs.py — FKT 2.0
-# ────────────────────────────────────────────────────────────
-# Trains the intent classifier from either:
-#   (a) Existing synthetic data in training_data/intent_training_data.json
-#   (b) Freshly generated synthetic data (if no file found)
-# Saves model to: tracker_app/models/intent_classifier.pkl
-#
-# Run:
-#   python -m tracker_app.scripts.train_models_from_logs
-# ────────────────────────────────────────────────────────────
+"""Train the intent classifier (RandomForest) from log/synthetic training data.
+
+Run: python -m tracker_app.scripts.train_models_from_logs
+"""
 
 import json
 import pickle

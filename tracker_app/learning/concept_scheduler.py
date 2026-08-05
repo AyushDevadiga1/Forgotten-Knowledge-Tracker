@@ -1,7 +1,4 @@
-﻿# learning/concept_scheduler.py ΓÇö FKT 2.0 Phase 4
-# SM-2 scheduling with AWFC (Attention-Weighted Forgetting Curve).
-# Passes attention_at_encoding when saving concepts so ╬╗ is personalised
-# per concept from the first encounter.
+﻿"""SM-2 concept scheduling with AWFC-personalised decay (lambda per concept)."""
 
 import logging
 from datetime import datetime, timedelta

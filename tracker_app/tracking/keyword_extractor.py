@@ -1,6 +1,5 @@
-"""
-FKT 2.0 — Keyword Extractor (YAKE! + spaCy NER)
-=================================================
+"""Keyword extractor — YAKE! ranking with spaCy NER and noun-chunk supplementation.
+
 Replaces the broken TF-IDF single-document extractor with YAKE!
 (Yet Another Keyword Extractor) — a statistical, corpus-free algorithm
 that actually ranks keywords by importance within a single document.
@@ -162,10 +161,6 @@ class YAKEKeywordExtractor:
         total  = max(sum(counts.values()), 1)
         return {w: round(c/total, 4) for w, c in counts.most_common(top_n)}
 
-    def extract_keywords_batch(self, texts: List[str], top_n: int = 15
-                               ) -> List[List[Tuple[str, float]]]:
-        return [self.extract_keywords(t, top_n) for t in texts]
-
     def get_keyword_scores_dict(self, text: str, top_n: int = 15) -> dict:
         """Return {keyword: score} dict for easy downstream use."""
         return {kw: sc for kw, sc in self.extract_keywords(text, top_n)}
@@ -180,9 +175,6 @@ def get_keyword_extractor() -> YAKEKeywordExtractor:
     if _extractor_instance is None:
         _extractor_instance = YAKEKeywordExtractor()
     return _extractor_instance
-
-# Legacy alias so nothing breaks
-LightweightKeywordExtractor = YAKEKeywordExtractor
 
 
 if __name__ == "__main__":

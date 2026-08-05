@@ -1,5 +1,4 @@
-# core/ocr_module.py
-# FKT 2.0 — Fixed missing functions, lazy init, proper logging
+"""OCR pipeline: active-window capture, Tesseract extraction, keyword/concept extraction."""
 import cv2
 import numpy as np
 import pytesseract
@@ -55,7 +54,7 @@ except Exception as e:
 _last_screenshot_hash = None
 
 # ----------------------------
-# FKT 2.0: Missing helper functions added
+# Screenshot hashing helpers
 # ----------------------------
 
 SENSITIVE_WINDOW_KEYWORDS = [

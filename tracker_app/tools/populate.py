@@ -1,6 +1,4 @@
-# tools/populate.py — FKT 2.0 Phase 13
-# Fixed: was seeding DB with filename strings (.png, .docx, etc.)
-# Now uses real academic concept names across multiple domains.
+"""Seed the database with real academic concept names across multiple domains."""
 
 import random
 from datetime import datetime, timedelta

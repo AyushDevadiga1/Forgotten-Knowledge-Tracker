@@ -67,3 +67,6 @@ Thumbs.db
 # Docs/archive/  <-- Already deleted
 AGENTS.md
 MAKEOVER_PLAN.md
+
+# Retired/dead modules kept for reference (not part of the app)
+legacy/

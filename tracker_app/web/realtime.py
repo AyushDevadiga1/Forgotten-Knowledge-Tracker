@@ -1,13 +1,7 @@
-# web/realtime.py — FKT 2.0 Phase 11
-# Fixes:
-#   - LearningTracker singleton (was instantiated on every Socket.IO event)
-#   - Added broadcast_micro_quiz() for Phase 7 quiz interrupt
-#   - background_stats_updater runs every 30s via Socket.IO
+"""Socket.IO realtime layer: connects dashboard clients and broadcasts micro-quiz events."""
 
 from flask_socketio import SocketIO, emit
 from flask import request
-import threading
-import time
 import logging
 
 logger   = logging.getLogger("Realtime")
@@ -48,40 +42,10 @@ def init_socketio(app):
     return socketio
 
 
-# ── Broadcast helpers (called from loop.py / quiz_engine) ─────────────────────
-
-def broadcast_tracker_status(status_data: dict):
-    if socketio:
-        socketio.emit("tracker_status", status_data, broadcast=True)
-
-
-def broadcast_concept_discovered(concept_data: dict):
-    if socketio:
-        socketio.emit("concept_discovered", concept_data, broadcast=True)
-
-
-def broadcast_review_completed(review_data: dict):
-    if socketio:
-        socketio.emit("review_completed", review_data, broadcast=True)
-
+# ── Broadcast helpers (called from loop.py) ───────────────────────────────────
 
 def broadcast_micro_quiz(quiz_data: dict):
-    """Broadcast a micro-quiz to all connected dashboard clients (Phase 7)."""
+    """Broadcast a micro-quiz to all connected dashboard clients."""
     if socketio:
         socketio.emit("micro_quiz", quiz_data, broadcast=True)
         logger.info(f"Micro-quiz broadcast: '{quiz_data.get('concept', '?')}'")
-
-
-# ── Background periodic stats push ────────────────────────────────────────────
-
-def background_stats_updater(app):
-    """Push stats every 30 s to all connected clients."""
-    with app.app_context():
-        while True:
-            time.sleep(30)
-            try:
-                stats = _get_tracker().get_learning_stats()
-                if socketio:
-                    socketio.emit("stats_update", stats, broadcast=True)
-            except Exception as e:
-                logger.debug(f"Background stats error: {e}")

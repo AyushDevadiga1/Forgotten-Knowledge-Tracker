@@ -1,12 +1,4 @@
-# tracking/loop.py — FKT 2.0 Phase 8 (Performance Hardening)
-# Changes in this version:
-#   Phase 5: async audio pipeline (non-blocking)
-#   Phase 7: micro-quiz interrupt wired in
-#   Phase 8: ThreadPoolExecutor for parallel pipelines
-#            SSIM-based screenshot deduplication
-#            Adaptive CPU throttling (psutil)
-#            Pipeline warm-up on startup
-#            Fixed: attention_score used-before-assignment bug
+"""Main tracking loop: orchestrates OCR, audio, webcam, and intent pipelines."""
 
 import time
 import logging
@@ -135,7 +127,7 @@ def _get_attention_score(
     return round(cle_score, 1)
 
 
-# ─── Phase 8: adaptive interval throttling ────────────────────────────────────
+# ─── Adaptive interval throttling ─────────────────────────────────────────────
 
 def _get_effective_intervals() -> dict:
     """
@@ -156,7 +148,7 @@ def _get_effective_intervals() -> dict:
     }
 
 
-# ─── Phase 8: pipeline warm-up ───────────────────────────────────────────────
+# ─── Pipeline warm-up ─────────────────────────────────────────────────────────
 
 def warm_up_all_pipelines(webcam_enabled: bool = True):
     """
@@ -198,7 +190,7 @@ def warm_up_all_pipelines(webcam_enabled: bool = True):
     log.info("Warm-up complete.")
 
 
-# ─── Phase 8: safe pipeline runner ───────────────────────────────────────────
+# ─── Safe pipeline runner ─────────────────────────────────────────────────────
 
 def _safe_run(fn):
     """Wrap a pipeline call to catch all exceptions gracefully."""
@@ -209,7 +201,7 @@ def _safe_run(fn):
         return None
 
 
-# ─── Idle tracking for Phase 7 quiz trigger ──────────────────────────────────
+# ─── Idle tracking for quiz trigger ───────────────────────────────────────────
 
 _idle_cycles = 0
 
@@ -359,7 +351,7 @@ def track_loop(
             except Exception as e:
                 logger.warning(f"Intent prediction error: {e}")
 
-            # ── Phase 7: Micro-quiz interrupt ─────────────────────────────────
+            # ── Micro-quiz interrupt ──────────────────────────────────────────
             _maybe_trigger_quiz(
                 intent_result.get('intent_label', 'unknown'),
                 webcam_enabled,

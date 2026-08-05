@@ -1,11 +1,4 @@
-# web/api.py — FKT 2.0 Phase 9 (Self-Improving Model) + Phase 6/7 endpoints
-# Added:
-#   - /intent/feedback stores FeedbackTrainingSample + triggers auto-retrain
-#   - /graph/stats, /graph/gaps (Phase 6 knowledge graph)
-#   - /quiz/current, /quiz/answer (Phase 7 micro-quiz)
-#   - /ingest (Phase 10 browser extension)
-#   - Singleton LearningTracker (fixes double-instantiation)
-#   - realtime.py N+1 fix applied here too
+"""Flask API: tracking, feedback/retraining, knowledge graph, micro-quiz, and ingest endpoints."""
 
 import json
 import threading
@@ -223,7 +216,7 @@ def get_stats():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Intent — Phase 9 self-improving model
+# Intent & feedback retraining
 # ══════════════════════════════════════════════════════════════════════════════
 
 @api_bp.route('/intent/recent', methods=['GET'])
@@ -251,7 +244,7 @@ def send_intent_feedback():
     """
     Record user feedback. When is_correct=False and actual_intent is provided:
       1. Saves a FeedbackTrainingSample row
-      2. Triggers background retraining after every 50 corrections (Phase 9)
+      2. Triggers background retraining after every 50 corrections
     """
     data = request.get_json(silent=True)
     if not data or 'prediction_id' not in data or 'is_correct' not in data:
@@ -276,7 +269,7 @@ def send_intent_feedback():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Knowledge Graph — Phase 6
+# Knowledge Graph
 # ══════════════════════════════════════════════════════════════════════════════
 
 @api_bp.route('/graph/stats', methods=['GET'])
@@ -310,7 +303,7 @@ def get_concept_drift(concept):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Micro-Quiz — Phase 7
+# Micro-Quiz
 # ══════════════════════════════════════════════════════════════════════════════
 
 @api_bp.route('/quiz/current', methods=['GET'])
@@ -339,7 +332,7 @@ def submit_quiz_answer():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Browser Extension Ingestion — Phase 10
+# Browser Extension Ingestion
 # ══════════════════════════════════════════════════════════════════════════════
 
 @api_bp.route('/ingest', methods=['POST'])

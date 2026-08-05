@@ -1,11 +1,4 @@
-# core/knowledge_graph.py
-# FKT 2.0 Phase 6 — Knowledge Graph Improvements
-# Changes:
-#   - Edge weight uses EMA instead of unbounded accumulation
-#   - compute_concept_drift(): Jaccard-based cross-session drift detection (novel)
-#   - find_knowledge_gaps(): proactive learning path suggestion (novel)
-#   - get_graph_stats(): summary stats for dashboard API
-#   - add_concepts() refactored to use EMA edge weights
+"""Knowledge graph of tracked concepts with pkl persistence and drift/gap analytics."""
 import networkx as nx
 import numpy as np
 import pickle
@@ -212,7 +205,7 @@ def get_graph():
     return knowledge_graph
 
 
-# ─── Phase 6: Concept Drift Detector ─────────────────────────────────────────
+# ─── Concept Drift Detector ───────────────────────────────────────────────────
 
 def compute_concept_drift(
     concept: str,
@@ -282,7 +275,7 @@ def compute_concept_drift(
         }
 
 
-# ─── Phase 6: Knowledge Gap Map ──────────────────────────────────────────────
+# ─── Knowledge Gap Map ────────────────────────────────────────────────────────
 
 def find_knowledge_gaps(top_k: int = 5) -> list:
     """
@@ -381,28 +374,6 @@ def get_graph_stats() -> dict:
             'avg_memory_score': round(avg_memory, 4),
             'density':         round(nx.density(knowledge_graph), 6),
         }
-
-
-def add_edges(ocr_keywords, audio_label, intent_label, G=None):
-    """Add co-occurrence edges between modalities (kept for backward compat)."""
-    if G is None:
-        G = get_graph()
-    try:
-        with _graph_lock:
-            if ocr_keywords and isinstance(ocr_keywords, dict):
-                for kw in ocr_keywords.keys():
-                    if kw and str(kw).strip():
-                        G.add_edge(("OCR", str(kw)),
-                                   ("Intent", str(intent_label)),
-                                   type="co_occurrence")
-            if audio_label and str(audio_label).strip():
-                G.add_edge(("Audio", str(audio_label)),
-                           ("Intent", str(intent_label)),
-                           type="co_occurrence")
-        return G
-    except Exception as e:
-        logger.warning(f"add_edges error: {e}")
-        return G
 
 
 if __name__ == "__main__":

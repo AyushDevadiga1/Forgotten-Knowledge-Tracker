@@ -1,1 +1,1 @@
-# tracking/__init__.py — FKT 2.0
+"""Tracker backend: monitoring pipelines and knowledge-graph tracking."""

@@ -1,12 +1,4 @@
-# db/models.py — FKT 2.0 Phase 3
-# Changes from v1:
-#   - All timestamp columns converted from String → DateTime (proper indexing + comparisons)
-#   - FK constraints added: ReviewHistory→LearningItem, ConceptEncounter→TrackedConcept
-#   - FK enforcement enabled for SQLite via PRAGMA foreign_keys=ON
-#   - Performance indexes added to all frequently-queried columns
-#   - AWFC columns added to TrackedConcept: attention_at_encoding, lambda_personalised
-#   - FeedbackTrainingSample table added for Phase 9 self-improving model
-#   - Engine connection pool configured for stability
+"""SQLAlchemy ORM models for all FKT tables (lazy engine/session factories)."""
 
 import os
 from datetime import datetime
@@ -244,7 +236,7 @@ class TrackedConcept(Base):
     memory_strength  = Column(Float,   default=2.5)
     next_review      = Column(DateTime, index=True)   # ← DateTime + index (critical query path)
 
-    # AWFC fields (Phase 4) — attention at time of first learning
+    # AWFC fields — attention at time of first learning
     attention_at_encoding = Column(Float, default=50.0)   # 0–100 scale
     lambda_personalised   = Column(Float, default=0.1)    # personalised decay rate
 
@@ -323,9 +315,7 @@ class Metric(Base):
     last_updated     = Column(DateTime, default=datetime.utcnow)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Phase 9 — Self-Improving Model: Feedback Training Samples
-# ══════════════════════════════════════════════════════════════════════════════
+# ─── Self-improving model: feedback training samples ──────────────────────────
 
 class FeedbackTrainingSample(Base):
     """

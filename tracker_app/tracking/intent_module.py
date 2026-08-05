@@ -1,10 +1,8 @@
-# tracking/intent_module.py — FKT 2.0
-# Uses a trained RandomForest classifier (96% CV accuracy).
-# Falls back to rule-based logic if model file is not found.
-#
-# Feature vector fed to the model (6 features):
-#   [ocr_keyword_count, audio_val, attention_score,
-#    interaction_rate, keyword_avg_score, audio_confidence]
+"""Intent classification — trained RandomForest with rule-based fallback.
+
+Feature vector: [ocr_keyword_count, audio_val, attention_score,
+                 interaction_rate, keyword_avg_score, audio_confidence]
+"""
 
 import os
 import pickle

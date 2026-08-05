@@ -45,15 +45,6 @@ class LearningRepository:
         db.add(item)
         db.commit()
         db.refresh(item)
-        
-    @staticmethod
-    def delete_item(db: Session, item_id: str) -> bool:
-        item = db.query(LearningItem).filter(LearningItem.id == item_id).first()
-        if item:
-            db.delete(item)
-            db.commit()
-            return True
-        return False
 
     @staticmethod
     def record_review(db: Session, review: ReviewHistory, item: LearningItem) -> None:
