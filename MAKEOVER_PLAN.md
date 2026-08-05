@@ -87,3 +87,15 @@ A grader, recruiter, or future-you should be able to:
 6. Read the README/ADRs and find them consistent with what the code actually does.
 
 **Status: Phase 6 complete (clean-room, import audit, E2E, /ingest, security, README all verified).**
+
+---
+
+## Phase 7 — Post-verification improvements
+
+Three fixes/features flagged after Phase 6's live E2E run, in ascending order.
+
+- [x] **OCR noise cleanup.** The live E2E run captured random on-screen window text, and word fragments like `ano`, `ity`, `heh`, `bene`, `tae` (all OCR artifacts) were being persisted as tracked concepts. Added `is_plausible_concept()` in `learning/text_quality_validator.py` and applied it inside `ConceptScheduler.add_concept()` — the single choke point used by both the OCR tracking loop and `/api/v1/ingest`. It rejects fragments, vowel-less garbage (`hty`), doubled-run noise (`aannup`), and common suffix fragments (`tion`, `ation`), while keeping real keywords, multi-word phrases, and ALL-CAPS acronyms. `add_concept()` now returns `None` for rejected concepts so callers only count/track genuinely saved ones. (4 new tests.)
+- [x] **Knowledge-graph persistence.** The in-memory `networkx` graph was rebuilt from the DB on every web-app start, re-embedding all concepts with SentenceTransformer each time. It now persists to `KNOWLEDGE_GRAPH_PATH` (`tracker_app/data/knowledge_graph.pkl`, previously dead config). `_ensure_graph_loaded()` loads the pkl on first use and reconciles only concepts the DB gained since the last save; `sync_db_to_graph()` is incremental and persists via an atomic tmp-file replace. The pkl is a cache, not the source of truth — a missing/corrupt file falls back to a full DB rebuild. (4 new tests.)
+- [x] **Chrome extension (FKT Capture).** New `tracker_app/web/extension/` (MV3: manifest + background service worker + content script + popup). Select text in any tab, click the popup button, and it POSTs to the local `/api/v1/ingest`; the fetch runs from the background worker with `host_permissions`, so no page CORS is involved. The dashboard's `web/app.py` CORS config now also allows `chrome-extension://*` origins for defense in depth (verified: `Access-Control-Allow-Origin` echoes the extension origin and the passage is saved). README's Phase 10 row flipped to **Done**.
+
+**Status: Phase 7 complete. Full suite: 85 tests passing.**

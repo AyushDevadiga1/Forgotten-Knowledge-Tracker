@@ -228,7 +228,7 @@ FKT is designed to be fully local and private:
 - **No cloud** — everything runs on your machine. No data is ever sent to any external server.
 - **PII redaction** — the privacy filter automatically detects and redacts credit card numbers, email addresses, phone numbers, passwords, IP addresses, and API keys before any text is stored.
 - **Sensitive windows** — windows with titles containing "password", "login", "bank", "private", "incognito" are automatically skipped.
-- **Browser extension** *(coming)* — only activates on user-approved domains and only talks to `localhost`.
+- **Browser extension** — *FKT Capture* (`tracker_app/web/extension/`) sends text you select in a tab to the local dashboard's `/api/v1/ingest` endpoint. It only talks to `localhost`; load it via `chrome://extensions` → *Load unpacked*.
 - **Local database** — all data is stored in a single SQLite file at `tracker_app/data/fkt_tracking.db`. You can delete it at any time.
 
 ---
@@ -341,7 +341,7 @@ FKT introduces several ideas not found in any existing knowledge management or s
 | 7 — Micro-Quiz | ✅ Done | Idle-triggered quiz interrupts; quiz page |
 | 8 — Performance | ✅ Done | Thread pool; lazy-loaded pipelines; adaptive throttling |
 | 9 — Self-Improving | ✅ Done | Auto-retrain from session logs |
-| 10 — Browser Ext | 🔲 Planned | `/ingest` endpoint ready; Chrome extension itself not built |
+| 10 — Browser Ext | ✅ Done | `/ingest` endpoint + FKT Capture Chrome extension |
 | 11 — Frontend | ✅ Done | React dashboard: overview, graph, quiz, review, add concept |
 
 See [`MAKEOVER_PLAN.md`](MAKEOVER_PLAN.md) for the build-out status, and `architecture/` for the ADRs and design docs.

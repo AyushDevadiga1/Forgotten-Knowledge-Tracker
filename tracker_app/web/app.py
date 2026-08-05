@@ -49,8 +49,14 @@ apply_auth_to_blueprint(api_bp)   # API key check (disabled in dev by default)
 csrf.exempt(api_bp)
 app.register_blueprint(api_bp)
 
-# Allow Vite dev server (localhost:5173) to reach the API
-CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173", "http://127.0.0.1:5173"]}})
+# Allow Vite dev server (localhost:5173) and the Chrome extension
+# (chrome-extension://<id>) to reach the API
+import re
+CORS(app, resources={r"/api/*": {"origins": [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    re.compile(r"chrome-extension://.*"),
+]}})
 
 # Initialize Socket.IO for real-time updates
 from tracker_app.web.realtime import init_socketio
