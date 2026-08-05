@@ -8,11 +8,13 @@
 #   - add_concepts() refactored to use EMA edge weights
 import networkx as nx
 import numpy as np
+import pickle
 import sqlite3
 import threading
 import logging
 from datetime import datetime, timedelta
-from tracker_app.config import DB_PATH
+from pathlib import Path
+from tracker_app.config import DB_PATH, KNOWLEDGE_GRAPH_PATH
 
 logger = logging.getLogger("KnowledgeGraph")
 
@@ -55,16 +57,54 @@ knowledge_graph = nx.Graph()
 
 
 def _ensure_graph_loaded():
-    """Populate the in-memory graph from the DB on first use.
+    """Populate the in-memory graph on first use.
 
-    The graph is process-local: the web app starts with an empty graph, so
-    without this the dashboard's Graph page and quiz would stay empty even
-    though `tracked_concepts` has rows. No-op once loaded (or if already
-    empty of string nodes after a sync attempt).
+    Loads the persisted graph (nodes, embeddings, edges) from
+    KNOWLEDGE_GRAPH_PATH when available, then reconciles any concepts the DB
+    gained since the last save. Falls back to a full DB sync when no persisted
+    graph exists. No-op once loaded. The pkl is a cache: it can always be
+    rebuilt from `tracked_concepts`, so a corrupt/missing file is not fatal.
     """
     with _graph_lock:
-        if knowledge_graph.number_of_nodes() == 0:
-            sync_db_to_graph()
+        if knowledge_graph.number_of_nodes() != 0:
+            return
+        if not _load_graph():
+            logger.info("No persisted knowledge graph; building from DB.")
+        else:
+            logger.info("Knowledge graph loaded from %s", KNOWLEDGE_GRAPH_PATH)
+        sync_db_to_graph()  # reconcile (or first-build) then persist
+
+def _load_graph() -> bool:
+    """Load a persisted graph from KNOWLEDGE_GRAPH_PATH. Returns True on success."""
+    path = Path(KNOWLEDGE_GRAPH_PATH)
+    if not path.exists():
+        return False
+    try:
+        with open(path, 'rb') as f:
+            data = pickle.load(f)
+        if not isinstance(data, nx.Graph) or data.number_of_nodes() == 0:
+            return False
+        with _graph_lock:
+            knowledge_graph.clear()
+            knowledge_graph.add_nodes_from(data.nodes(data=True))
+            knowledge_graph.add_edges_from(data.edges(data=True))
+        return True
+    except Exception as e:
+        logger.warning("Failed to load knowledge graph from %s: %s", path, e)
+        return False
+
+def _save_graph():
+    """Persist the in-memory graph to KNOWLEDGE_GRAPH_PATH (best-effort cache)."""
+    try:
+        path = Path(KNOWLEDGE_GRAPH_PATH)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix('.pkl.tmp')
+        with open(tmp, 'wb') as f:
+            pickle.dump(knowledge_graph, f, protocol=pickle.HIGHEST_PROTOCOL)
+        tmp.replace(path)
+        logger.debug("Knowledge graph saved to %s", path)
+    except Exception as e:
+        logger.warning("Failed to save knowledge graph: %s", e)
 
 def fetch_concepts_from_db():
     """Fetch concepts from tracked_concepts table (NOT window titles)."""
@@ -149,11 +189,20 @@ def add_concepts(concepts):
                         logger.warning(f"Error adding edge between concepts: {e}")
 
 def sync_db_to_graph():
-    """Synchronize database concepts to graph"""
+    """Synchronize database concepts to graph.
+
+    Incremental: only concepts missing from the in-memory graph get new nodes
+    (and embeddings), so a load-from-pkl + reconcile does not re-embed every
+    concept. Persists the graph afterwards.
+    """
     try:
         db_concepts = fetch_concepts_from_db()
-        add_concepts(db_concepts)
-        print(f"Synced {len(db_concepts)} concepts from DB to graph")
+        new_concepts = [c for c in db_concepts if c not in knowledge_graph]
+        if new_concepts:
+            add_concepts(new_concepts)
+        _save_graph()
+        print(f"Synced {len(db_concepts)} concepts from DB to graph "
+              f"({len(new_concepts)} new)")
     except Exception as e:
         print(f"Error syncing DB to graph: {e}")
 
