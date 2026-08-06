@@ -136,7 +136,7 @@ def train(data: dict) -> dict:
     print("Feature importances:")
     for name, imp in sorted(zip(data["feature_names"], importances),
                             key=lambda x: -x[1]):
-        print(f"  {name:<22} {imp:.4f}  {'\u2588'*int(imp*40)}")
+        print(f"  {name:<22} {imp:.4f}  {'#' * int(imp * 40)}")
 
     return {
         "model": model,
@@ -229,9 +229,9 @@ def main():
         with open(MODEL_PATH, "wb") as f:
             pickle.dump(model_data, f)
         size_kb = MODEL_PATH.stat().st_size / 1024
-        logger.info(f"Model saved → {MODEL_PATH} ({size_kb:.1f} KB)")
+        logger.info(f"Model saved -> {MODEL_PATH} ({size_kb:.1f} KB)")
         if args.include_feedback and new_accuracy > old_accuracy:
-            logger.info(f"Improved: {old_accuracy:.4f} → {new_accuracy:.4f}")
+            logger.info(f"Improved: {old_accuracy:.4f} -> {new_accuracy:.4f}")
     else:
         logger.warning(
             f"New model ({new_accuracy:.4f}) worse than existing ({old_accuracy:.4f}). "

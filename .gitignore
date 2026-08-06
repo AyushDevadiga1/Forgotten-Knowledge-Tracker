@@ -38,6 +38,10 @@ tracker_app/data/*.csv
 tracker_app/data/*.pkl
 tracker_app/data/*.json
 
+# ML model artifacts (generated, not committed)
+tracker_app/models/*.pkl
+tracker_app/training_data/
+
 # Logs
 *.log
 tracker_app/logs/
