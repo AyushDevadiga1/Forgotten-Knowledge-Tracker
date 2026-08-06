@@ -85,8 +85,9 @@ A grader, recruiter, or future-you should be able to:
 4. See live data flow from screen/audio capture → knowledge graph → dashboard, including the Graph and Quiz pages.
 5. Run `pytest tracker_app/tests/` and see it pass, with no fake "tests" in the mix.
 6. Read the README/ADRs and find them consistent with what the code actually does.
+7. Trust that a tracked concept in the knowledge graph reflects something they were actually studying, not just something that happened to be on screen — i.e. Phase 9 is done.
 
-**Status: Phase 6 complete (clean-room, import audit, E2E, /ingest, security, README all verified).**
+**Status: Phase 6 complete (clean-room, import audit, E2E, /ingest, security, README all verified).** *Snapshot updated Aug 6, 2026: Phases 7–9 are also complete; the full suite is 99 tests passing and the CI workflow has been repaired (details under Phase 9).*
 
 ---
 
@@ -111,3 +112,28 @@ AST-based dead-code audit (cross-module import map + per-name call-graph) plus r
 - [x] **Redundant comments pruned.** `# FKT 2.0 Phase N` / `# Fixes:` / `# Changes from v1:` changelog headers in ~20 modules replaced with concise module docstrings (AWFC formula, CLe signal list, and intent feature vector kept as documentation). Moji­bake section markers (`Phase 6:`/`Phase 8:`/`Phase 7:`) in `knowledge_graph.py`, `loop.py`, `api.py`, `models.py`, and `ocr_module.py` cleaned. Kept meaningful inline comments (e.g. `# FKT 2.0 fix: read actual tracked concepts, not OS window titles`).
 
 **Status: Phase 8 complete. Full suite: 85 tests passing.**
+
+---
+
+## Phase 9 — Session-gated concept capture (fixes the core relevance gap)
+
+**The problem.** `track_loop()` currently calls `monitor.start_session()` unconditionally the moment the tracker starts, and `process_concepts()` runs on every OCR cycle with no gate on it — intent prediction happens *after* concepts are already saved, and even then only gets logged, never checked. `should_skip_window()` only filters privacy-sensitive titles (password/bank/incognito), not leisure content. Net effect: the tracker currently can't distinguish "material you're learning" from "whatever's on screen." A YouTube title, a Discord message, or a product name is just as coherent and keyword-rich as a textbook passage, so `text_quality_validator.py`'s coherence filter and Phase 7's `is_plausible_concept()` both let it straight through — those catch OCR *noise*, not topic *irrelevance*. Left as-is, the knowledge graph fills with whatever the user looks at all day, not what they're trying to learn.
+
+**Chosen fix: an explicit Study Session toggle**, with intent-gating layered on top of it. Rejected alternatives and why: an app/window allowlist needs reliable in-tab content signals (OS accessibility APIs or the browser extension actually wired up) to distinguish "course material" from "same browser, different tab" — real infrastructure work, not a quick fix. A content/topic classifier is the most interesting option long-term but repeats the exact mistake ADR-002/ADR-003 already documented once (an impressive-looking classifier trained on synthetic assumptions rather than real usage) — good v2 work once the toggle below is generating real labeled data, bad thing to rush now.
+
+- [x] Add a `session_active` flag/state (on `ActivityMonitor` or a small shared state object), defaulting to `False` — not auto-started at loop launch.
+- [x] Add `/api/v1/session/start` and `/api/v1/session/stop` endpoints (or a Socket.IO event) and a Start/Stop Studying control in the frontend (nav bar or Overview page) that calls them.
+- [x] In `track_loop()`, read the shared flag each cycle and gate `monitor.process_concepts()` — and ideally the OCR/audio capture calls themselves, which also strengthens the privacy story — behind `session_active`, instead of running unconditionally.
+- [x] Replace the unconditional `monitor.start_session()` at loop launch with waiting for the toggle; call `monitor.end_session()` when it flips off. Decide whether the loop keeps polling in an idle state between sessions or pauses OCR/audio entirely while inactive.
+- [x] Follow-on (cheap — reuses the intent classifier that's already computed every cycle): within an active session, also skip `process_concepts()` on cycles where `intent_label != 'studying'`, so a mid-session distraction doesn't get captured either.
+- [x] Update README/dashboard copy to the honest new pitch: "FKT builds your knowledge graph automatically while you study — you tell it when," replacing any language that implies fully passive, always-on tracking.
+
+**How it was built.** A dedicated tracker process runs `track_loop()` while the Flask dashboard reads the same SQLite DB, so the shared toggle is a small JSON state file (`tracker_app/data/session_state.json`, written atomically, read once per loop cycle) in `tracker_app/tracking/session_state.py`. The loop now idles (no OCR/audio/concept capture, `monitor.end_session()` called) whenever the session is inactive; when active, concepts persist only on cycles the intent classifier labels `studying` (`SESSION_ALLOWED_INTENTS` env knob, default `studying`). Frontend: **Start Studying / Stop Studying** panel + live elapsed timer on the Overview page, plus a header `SessionIndicator` that polls every 5 s.
+
+**Also repaired along the way** (unblocked by making Phase 9's verification possible):
+- `tracker_app/db/migrations.py` failed on a fresh DB (SQL migrations ran before ORM tables existed → `no such table`). Now calls `Base.metadata.create_all` first via `ensure_base_schema()`; the CLI also prints ASCII-safe status (`[OK]/[--]`, `x`) instead of Unicode glyphs that crashed the cp1252 Windows console. Verified: fresh DB → 6 applied; re-run → 6 skipped.
+- `.github/workflows/ci.yml` was broken (YAML 1.1 `on:` parsing, backend `pip install` used `--no-deps || true` which masked missing deps, frontend steps lost). Rewritten with a reduced-deps backend job (still runs migrations → pytest) and a separate frontend `tsc --noEmit` + build job; validated with `yaml.safe_load`.
+
+**Status: Phase 9 complete. Full suite: 99 tests passing (was 85). README/RUN_WORKFLOW copy updated to the session-gated pitch.**
+
+**Explicitly not doing now:** a content/topic relevance classifier. Revisit as a v2 idea once the toggle has produced real session-labeled usage data to train on.

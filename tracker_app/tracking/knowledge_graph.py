@@ -342,8 +342,11 @@ def find_knowledge_gaps(top_k: int = 5) -> list:
                     if node_c not in gaps or gaps[node_c]['score'] < score:
                         gaps[node_c] = {
                             'gap_concept':     node_c,
+                            'concept':         node_c,
                             'bridge_concepts': [node_a, node_b],
                             'score':           round(score, 4),
+                            'memory_strength': round(score, 4),
+                            'gap_score':       round(score, 4),
                         }
 
         return sorted(gaps.values(), key=lambda x: -x['score'])[:top_k]
@@ -367,12 +370,22 @@ def get_graph_stats() -> dict:
             ]
             avg_memory = sum(scores) / len(scores)
 
+        top_concepts = sorted(
+            (n for n in string_nodes),
+            key=lambda n: knowledge_graph.nodes[n].get('memory_score', 0.5),
+            reverse=True,
+        )[:10]
+
         return {
             'total_nodes':    n_nodes,
             'total_edges':    n_edges,
             'concept_nodes':  len(string_nodes),
             'avg_memory_score': round(avg_memory, 4),
             'density':         round(nx.density(knowledge_graph), 6),
+            # dashboard (frontend) keys
+            'total_concepts':  len(string_nodes),
+            'avg_memory_strength': round(avg_memory, 4),
+            'top_concepts':    top_concepts,
         }
 
 

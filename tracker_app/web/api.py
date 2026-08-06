@@ -287,6 +287,16 @@ def get_knowledge_gaps():
         from tracker_app.tracking.knowledge_graph import find_knowledge_gaps
         limit = int(request.args.get('limit', 5))
         gaps  = find_knowledge_gaps(top_k=limit)
+        if gaps:
+            from tracker_app.db.models import SessionLocal, TrackedConcept
+            with SessionLocal() as db:
+                rows = db.query(TrackedConcept).filter(
+                    TrackedConcept.concept.in_([g['concept'] for g in gaps])
+                ).all()
+                last_seen = {r.concept: r.last_seen for r in rows}
+            for g in gaps:
+                ls = last_seen.get(g['concept'])
+                g['last_seen'] = ls.isoformat() if ls else None
         return jsonify({'success': True, 'data': gaps, 'count': len(gaps)})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -389,6 +399,44 @@ def browser_ingest():
         })
     except Exception as e:
         logger.error(f"browser_ingest: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Study Sessions (Phase 9 — session-gated concept capture)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@api_bp.route('/session/status', methods=['GET'])
+def get_session_status():
+    """Return whether a study session is currently active and when it started."""
+    try:
+        from tracker_app.tracking.session_state import get_status
+        return jsonify({'success': True, 'data': get_status()})
+    except Exception as e:
+        logger.error(f"get_session_status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/session/start', methods=['POST'])
+def start_study_session():
+    """Toggle a study session on — the tracker loop only captures concepts
+    while a session is active."""
+    try:
+        from tracker_app.tracking.session_state import start
+        return jsonify({'success': True, 'data': start()})
+    except Exception as e:
+        logger.error(f"start_study_session: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/session/stop', methods=['POST'])
+def stop_study_session():
+    """Toggle a study session off — capture pauses and analytics are saved."""
+    try:
+        from tracker_app.tracking.session_state import stop
+        return jsonify({'success': True, 'data': stop()})
+    except Exception as e:
+        logger.error(f"stop_study_session: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

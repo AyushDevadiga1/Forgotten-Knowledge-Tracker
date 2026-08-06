@@ -166,10 +166,31 @@ class LearningTracker:
                 'total_items': total_count,
                 'active_items': base_stats['total_active'],
                 'mastered_items': base_stats['mastered'],
-                'due_now': base_stats['total_due'],
+                'items_due_today': base_stats['total_due'],
                 'average_success_rate': avg_success,
+                'total_reviews': total_reviews,
+                'current_streak': self._compute_streak(db),
+                # legacy aliases (kept for backward compatibility)
+                'due_now': base_stats['total_due'],
                 'total_reviews_ever': total_reviews
             }
+
+    @staticmethod
+    def _compute_streak(db: Session) -> int:
+        """Consecutive days with at least one review, counting back from today."""
+        review_days = {
+            row[0]
+            for row in db.query(func.date(ReviewHistory.timestamp)).distinct().all()
+            if row[0]
+        }
+        day = datetime.utcnow().date()
+        if str(day) not in review_days:
+            day -= timedelta(days=1)  # today not reviewed yet — streak may still be alive
+        streak = 0
+        while str(day) in review_days:
+            streak += 1
+            day -= timedelta(days=1)
+        return streak
     
     def get_learning_today(self) -> Dict[str, Any]:
         with models.SessionLocal() as db:

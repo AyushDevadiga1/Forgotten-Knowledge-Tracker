@@ -9,7 +9,7 @@
 [![Status: Active Development](https://img.shields.io/badge/status-active%20development-green.svg)]()
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows%20(primary)-lightgrey.svg)]()
 
-*No manual note-taking. No manual flashcard creation. Just study — FKT handles the rest.*
+*No manual note-taking. No manual flashcard creation. Just tell FKT when you're studying — it handles the rest.*
 
 </div>
 
@@ -25,11 +25,13 @@ Think of it as a spaced-repetition system (like Anki) — but one that fills its
 
 ## Key Features
 
-### Passive Knowledge Capture
-- **Screen OCR** — captures keywords from whatever is on your screen every 20 seconds using Tesseract OCR (auto-installed on first run)
+### Session-Gated Knowledge Capture
+- **Study Session toggle** — FKT only captures while a session is active. Press **Start Studying** on the dashboard when you begin; capture pauses when you press **Stop**. No toggle, no capture — you tell it when.
+- **Intent gating** — even inside an active session, only cycles the intent classifier labels as `studying` persist concepts, so a mid-session distraction (a YouTube tab, a chat message) is not captured.
+- **Screen OCR** — captures keywords from the foreground window every 20 seconds using Tesseract OCR (auto-installed on first run)
 - **Active Window Detection** — only scans the foreground window, not your entire screen
 - **Privacy Filter** — automatically redacts emails, passwords, credit card numbers, and other sensitive data before anything is stored
-- **Browser Extension** *(coming Phase 10)* — send tab text directly to FKT without OCR, as the primary alternative to screen capture
+- **Browser Extension** — send tab text directly to FKT without OCR via the FKT Capture extension
 
 ### Attention Tracking
 - **Webcam Eye-Tracking** (optional, strongly recommended) — MediaPipe FaceMesh measures Eye Aspect Ratio (EAR) to detect focus vs. drowsiness
@@ -138,7 +140,7 @@ Your keyboard──► CLE estimation   ──►│        │                 
                                      └──► SM-2 scheduling ──► Review reminders
 ```
 
-Every 5 seconds, FKT's tracking loop runs one cycle. OCR runs every 20 s, audio every 15 s, webcam every 45 s. All pipelines are lazy-loaded and run asynchronously so the loop never blocks.
+Every 5 seconds, FKT's tracking loop runs one cycle. OCR runs every 20 s, audio every 15 s, webcam every 45 s. All pipelines are lazy-loaded and run asynchronously so the loop never blocks. The loop idles (no capture at all) whenever no study session is active.
 
 ---
 
@@ -216,6 +218,7 @@ All settings are in `.env` (created automatically by `setup.py`). You can also o
 | `AUDIO_INTERVAL` | `15` | How often to classify audio (seconds) |
 | `WEBCAM_INTERVAL` | `45` | How often to check eye-tracking (seconds) |
 | `ALLOW_WEBCAM` | `true` | Enable webcam by default (can be overridden at startup) |
+| `SESSION_ALLOWED_INTENTS` | `studying` | Intent labels allowed to persist concepts inside an active session (e.g. `studying,passive`) |
 | `TESSERACT_PATH` | *(auto-detected)* | Path to Tesseract executable |
 | `DEBUG` | `True` | Flask debug mode |
 
@@ -381,6 +384,6 @@ MIT License — see [LICENSE](LICENSE) for details.
 <div align="center">
 
 **Built for the ambitious learner.**
-*Passive capture. Scientific scheduling. Zero manual effort.*
+*Session-gated capture. Scientific scheduling. Zero manual effort.*
 
 </div>

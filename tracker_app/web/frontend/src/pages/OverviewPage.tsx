@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, Tooltip as RCTooltip, Cell } from 'recharts'
-import { Search, AlertCircle, Loader } from 'lucide-react'
-import { api, Stats, LearningItem } from '../api'
+import { Search, AlertCircle, Loader, Play, Square } from 'lucide-react'
+import { api, Stats, LearningItem, SessionStatus } from '../api'
 
 const tooltipStyle = {
   contentStyle: { backgroundColor: '#0F172A', borderColor: '#1E293B', borderRadius: 0, fontFamily: 'IBM Plex Mono', fontSize: '12px', color: '#F1F5F9' },
@@ -21,23 +21,38 @@ function miniSparkline(base: number): { v: number }[] {
   }))
 }
 
+function formatElapsed(totalSeconds: number | null | undefined): string {
+  if (totalSeconds == null) return '00:00'
+  const s = Math.max(0, Math.floor(totalSeconds))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  const mm = String(m).padStart(2, '0')
+  const ss = String(sec).padStart(2, '0')
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`
+}
+
 export default function OverviewPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [today, setToday] = useState<{ reviews_today: number; concepts_studied: number } | null>(null)
   const [recentItems, setRecentItems] = useState<LearningItem[]>([])
+  const [session, setSession] = useState<SessionStatus | null>(null)
+  const [sessionBusy, setSessionBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     async function load() {
       try {
-        const [statsRes, itemsRes] = await Promise.all([
+        const [statsRes, itemsRes, sessionRes] = await Promise.all([
           api.getStats(),
           api.getItems('active', 6),
+          api.getSessionStatus(),
         ])
         setStats(statsRes.data.stats)
         setToday(statsRes.data.today)
         setRecentItems(itemsRes.data)
+        setSession(sessionRes.data)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load data')
       } finally {
@@ -45,7 +60,28 @@ export default function OverviewPage() {
       }
     }
     load()
+    const poll = setInterval(async () => {
+      try {
+        const sessionRes = await api.getSessionStatus()
+        setSession(sessionRes.data)
+      } catch {
+        /* backend may be down; keep last known state */
+      }
+    }, 5000)
+    return () => clearInterval(poll)
   }, [])
+
+  async function toggleSession() {
+    setSessionBusy(true)
+    try {
+      const res = session?.active ? await api.stopSession() : await api.startSession()
+      setSession(res.data)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to toggle study session')
+    } finally {
+      setSessionBusy(false)
+    }
+  }
 
   if (loading) return (
     <div className="flex items-center justify-center h-full gap-3 text-fkt-text-muted">
@@ -102,6 +138,36 @@ export default function OverviewPage() {
 
   return (
     <div className="grid grid-cols-4 gap-[1px] bg-fkt-elevated">
+
+      {/* STUDY SESSION CONTROL */}
+      <div className="col-span-4 bg-fkt-surface p-4 flex items-center justify-between hover:shadow-[inset_0_0_0_1px_rgba(0,255,163,0.2)] transition-shadow">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[10px] uppercase tracking-[0.12em] text-fkt-text-muted">Study Session</span>
+            <span className={`w-2 h-2 rounded-full ${session?.active ? 'bg-fkt-accent animate-pulse' : 'bg-fkt-text-dim'}`} />
+          </div>
+          <span className="text-[12px] text-fkt-text-muted block">
+            FKT captures concepts only while a study session is active — you tell it when.
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          {session?.active && (
+            <span className="font-mono text-fkt-accent text-lg">{formatElapsed(session.elapsed_seconds)}</span>
+          )}
+          <button
+            onClick={toggleSession}
+            disabled={sessionBusy}
+            className={`flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-[0.12em] border transition-colors disabled:opacity-50 ${
+              session?.active
+                ? 'border-[#EF4444]/40 text-[#EF4444] hover:bg-[#EF4444]/10'
+                : 'border-fkt-accent/40 text-fkt-accent hover:bg-fkt-accent/10'
+            }`}
+          >
+            {session?.active ? <Square size={14} strokeWidth={1.5} /> : <Play size={14} strokeWidth={1.5} />}
+            {session?.active ? 'Stop Studying' : 'Start Studying'}
+          </button>
+        </div>
+      </div>
 
       {/* KPI CARDS */}
       {kpi.map((k, i) => (
@@ -175,7 +241,7 @@ export default function OverviewPage() {
             { svc: 'Flask API', status: 'healthy', lat: ':5000' },
             { svc: 'SQLite DB', status: stats ? 'healthy' : 'critical', lat: 'local' },
             { svc: 'SM-2 Scheduler', status: (stats?.items_due_today ?? 0) > 50 ? 'warning' : 'healthy', lat: `${stats?.items_due_today ?? 0} due` },
-            { svc: 'Background Tracker', status: 'warning', lat: 'check logs' },
+            { svc: 'Background Tracker', status: session?.active ? 'healthy' : 'warning', lat: session?.active ? 'capturing' : 'idle — press Start Studying' },
           ].map((h, i) => (
             <div key={i} className="flex justify-between items-center p-2 border border-fkt-elevated bg-fkt-base">
               <div className="flex items-center gap-2">

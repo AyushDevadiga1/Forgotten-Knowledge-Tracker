@@ -13,7 +13,8 @@ from tracker_app.db.models import (
     TrackingSession,
     IntentPrediction,
     IntentAccuracy,
-    FeedbackTrainingSample
+    FeedbackTrainingSample,
+    TrackedConcept
 )
 
 class LearningRepository:
@@ -81,10 +82,13 @@ class LearningRepository:
         
         total_reviews = len(reviews_today)
         correct_reviews = sum(1 for r in reviews_today if r.quality_rating >= 3)
+        concepts_studied = db.query(TrackedConcept)\
+            .filter(TrackedConcept.last_seen >= today_start).count()
         return {
             'reviews_today': total_reviews,
             'correct_today': correct_reviews,
-            'accuracy_today': (correct_reviews / total_reviews * 100) if total_reviews else 0
+            'accuracy_today': (correct_reviews / total_reviews * 100) if total_reviews else 0,
+            'concepts_studied': concepts_studied
         }
 
     @staticmethod

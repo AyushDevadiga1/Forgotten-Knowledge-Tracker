@@ -68,6 +68,18 @@ WEBCAM_INTERVAL     = int(os.environ.get('WEBCAM_INTERVAL',     45))
 USER_ALLOW_WEBCAM   = os.environ.get('ALLOW_WEBCAM', 'true').lower() == 'true'
 
 # ----------------------------
+# Study-session capture
+# ----------------------------
+# Intent labels allowed to persist concepts inside an active study session.
+# Default: only 'studying'. Re-enable passive reading capture with:
+#   SESSION_ALLOWED_INTENTS=studying,passive
+SESSION_ALLOWED_INTENTS = tuple(
+    x.strip()
+    for x in os.environ.get('SESSION_ALLOWED_INTENTS', 'studying').split(',')
+    if x.strip()
+)
+
+# ----------------------------
 # Model paths
 # ----------------------------
 KNOWLEDGE_GRAPH_PATH = str(DATA_DIR / "knowledge_graph.pkl")

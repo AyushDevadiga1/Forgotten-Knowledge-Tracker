@@ -24,7 +24,7 @@ export interface LearningItem {
     answer: string
     difficulty: 'easy' | 'medium' | 'hard'
     item_type: string
-    tags: string
+    tags: string[]
     total_reviews: number
     correct_count: number
     success_rate: number
@@ -65,6 +65,13 @@ export interface IntentPrediction {
     predicted_intent: string
     confidence: number
     user_feedback: number | null
+}
+
+export interface SessionStatus {
+    active: boolean
+    started_at: string | null
+    stopped_at: string | null
+    elapsed_seconds: number | null
 }
 
 // ── API Functions ────────────────────────────────────────
@@ -110,6 +117,24 @@ export const api = {
         apiFetch<{ success: boolean }>('/intent/feedback', {
             method: 'POST',
             body: JSON.stringify({ prediction_id, is_correct, actual_intent }),
+        }),
+
+    /** GET /api/v1/session/status */
+    getSessionStatus: () =>
+        apiFetch<{ success: boolean; data: SessionStatus }>('/session/status'),
+
+    /** POST /api/v1/session/start */
+    startSession: () =>
+        apiFetch<{ success: boolean; data: SessionStatus }>('/session/start', {
+            method: 'POST',
+            body: JSON.stringify({}),
+        }),
+
+    /** POST /api/v1/session/stop */
+    stopSession: () =>
+        apiFetch<{ success: boolean; data: SessionStatus }>('/session/stop', {
+            method: 'POST',
+            body: JSON.stringify({}),
         }),
 
     /** GET /api/v1/graph/stats */

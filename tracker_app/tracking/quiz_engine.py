@@ -124,6 +124,11 @@ def generate_micro_quiz(graph) -> Optional[dict]:
         'all_options':    all_options,
         'correct_index':  correct_index,
         'memory_score':   round(concept_data.get('memory_score', 0.5), 3),
+        # dashboard (frontend) keys
+        'options':        all_options,
+        'difficulty':     ('easy' if concept_data.get('memory_score', 0.5) >= 0.65
+                           else 'medium' if concept_data.get('memory_score', 0.5) >= 0.4
+                           else 'hard'),
     }
 
 

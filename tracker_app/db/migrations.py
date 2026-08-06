@@ -9,6 +9,25 @@ from tracker_app.config import DB_PATH
 
 logger = logging.getLogger("Migrations")
 
+
+def ensure_base_schema(db_path: str) -> None:
+    """Create the ORM-defined base tables before running SQL migrations.
+
+    Migrations 002/004/005 ALTER/INDEX tables that the SQLAlchemy models define
+    (tracked_concepts, learning_items, review_history, ...). On a truly fresh
+    database (e.g. a clean CI checkout) those tables do not exist yet, so the
+    ALTER/INDEX statements would fail with "no such table". Creating the base
+    schema first makes `python -m tracker_app.db.migrations` self-sufficient.
+    """
+    from sqlalchemy import create_engine
+    from tracker_app.db.models import Base
+    # Path.as_posix() keeps Windows paths portable for sqlite:/// URLs.
+    engine = create_engine(f"sqlite:///{Path(db_path).as_posix()}")
+    try:
+        Base.metadata.create_all(bind=engine)
+    finally:
+        engine.dispose()
+
 # ─── Migration registry ───────────────────────────────────────────────────────
 # Each entry is (migration_id, description, list_of_sql_statements).
 # SQL must be idempotent — use IF NOT EXISTS / IF EXISTS guards everywhere.
@@ -117,6 +136,7 @@ def run_migrations(db_path: str = None) -> dict:
     """
     path = db_path or DB_PATH
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    ensure_base_schema(path)
 
     conn = sqlite3.connect(path)
     conn.execute("PRAGMA foreign_keys=ON")
@@ -199,12 +219,12 @@ def print_status(db_path: str = None):
 
     conn.close()
 
-    print(f"\nMigration status — {path}")
-    print(f"{'─'*55}")
+    print(f"\nMigration status - {path}")
+    print(f"{'-'*55}")
     for mid in all_ids:
-        status = "✅ applied" if mid in applied_ids else "🔲 pending"
+        status = "[OK]    applied" if mid in applied_ids else "[--]    pending"
         print(f"  {status}  {mid}")
-    print(f"{'─'*55}")
+    print(f"{'-'*55}")
     pending = len(all_ids) - len(applied_ids & set(all_ids))
     print(f"  {len(applied_ids & set(all_ids))} applied, {pending} pending\n")
 
@@ -224,7 +244,7 @@ if __name__ == "__main__":
         if result['errors']:
             print("Errors:")
             for e in result['errors']:
-                print(f"  ✗ {e}")
+                print(f"  x {e}")
             sys.exit(1)
         else:
             print("All migrations successful.")

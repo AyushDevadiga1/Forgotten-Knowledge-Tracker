@@ -58,10 +58,11 @@ python -m tracker_app.main
 
 ## 📊 Step 4: Normal Workflow
 
-1. **Work Normally**: Keep the Tracker running while you study or code.
-2. **Auto-Discovery**: Concepts found on your screen will automatically appear in the dashboard.
-3. **Review**: Periodically visit the dashboard to review "Due" items using the SM-2 spaced repetition algorithm.
-4. **Manual Entry**: Use the "Add Item" page for specific facts you want to memorize.
+1. **Start Studying**: Press **Start Studying** in the dashboard before you begin.
+2. **Work Normally**: Keep the Tracker running while you study or code.
+3. **Auto-Discovery**: While the session is active, concepts found on your screen are captured and appear in the dashboard.
+4. **Review**: Periodically visit the dashboard to review "Due" items using the SM-2 spaced repetition algorithm.
+5. **Manual Entry**: Use the "Add Item" page for specific facts you want to memorize.
 
 ---
 

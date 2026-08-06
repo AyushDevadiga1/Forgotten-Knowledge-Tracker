@@ -11,12 +11,14 @@ import psutil
 from pynput import keyboard, mouse
 
 from tracker_app.config import (
-    TRACK_INTERVAL, SCREENSHOT_INTERVAL, AUDIO_INTERVAL, WEBCAM_INTERVAL
+    TRACK_INTERVAL, SCREENSHOT_INTERVAL, AUDIO_INTERVAL, WEBCAM_INTERVAL,
+    SESSION_ALLOWED_INTENTS,
 )
 from tracker_app.db.db_module import init_all_databases
 from tracker_app.tracking.activity_monitor import ActivityMonitor
 from tracker_app.tracking.intent_module import predict_intent
 from tracker_app.tracking.cle_module import get_cle
+from tracker_app.tracking.session_state import is_active as session_is_active
 
 logger = logging.getLogger("TrackerLoop")
 
@@ -262,7 +264,6 @@ def track_loop(
         logger.error("Failed to start input listeners — aborting.")
         return
 
-    monitor.start_session()
     cle.reset()
 
     audio_counter = ocr_counter = webcam_counter = save_counter = 0
@@ -279,6 +280,26 @@ def track_loop(
     try:
         while not stop_event.is_set():
             cycle_start = time.time()
+
+            # ── Study-session gate ────────────────────────────────────────────
+            # Concept capture only runs while the user has toggled a study
+            # session on (via the dashboard). While inactive the loop idles
+            # (no OCR/audio/webcam capture) but keeps watching for the toggle.
+            if not session_is_active():
+                if monitor.is_running:
+                    monitor.end_session()
+                time.sleep(max(0.05, TRACK_INTERVAL - (time.time() - cycle_start)))
+                continue
+
+            if not monitor.is_running:
+                monitor.start_session()
+                # Drop any input counts accumulated while idle so the first
+                # cycle's interaction_rate reflects fresh activity, and restart
+                # the capture cadence for a clean per-session rhythm.
+                monitor.keyboard_counter.get_and_reset()
+                monitor.mouse_counter.get_and_reset()
+                audio_counter = ocr_counter = webcam_counter = save_counter = 0
+
             window_title, interaction_rate = get_active_window(monitor)
 
             # Adaptive intervals based on current CPU
@@ -315,7 +336,8 @@ def track_loop(
                 futures['webcam'] = executor.submit(_safe_run, get_webcam_pipeline())
                 webcam_counter = 0
 
-            # Collect results (with timeout to prevent stalling the loop)
+            # Collect results (with timeout to prevent stalling the loop).
+            # Concepts are NOT persisted here — intent gating happens below.
             for name, future in futures.items():
                 try:
                     result = future.result(timeout=8)
@@ -323,10 +345,6 @@ def track_loop(
                         continue
                     if name == 'ocr':
                         ocr_result = result
-                        monitor.process_concepts(
-                            ocr_result.get('keywords', {}),
-                            attention_score=attention_score,  # AWFC
-                        )
                     elif name == 'webcam':
                         webcam_result = result
                 except Exception as e:
@@ -351,9 +369,20 @@ def track_loop(
             except Exception as e:
                 logger.warning(f"Intent prediction error: {e}")
 
+            # ── Intent-gated concept capture ──────────────────────────────────
+            # Even inside a study session, only persist concepts on cycles the
+            # intent classifier labels as active studying, so a mid-session
+            # distraction (YouTube tab, chat message) is not captured.
+            intent_label = intent_result.get('intent_label', 'unknown')
+            if intent_label in SESSION_ALLOWED_INTENTS:
+                monitor.process_concepts(
+                    ocr_result.get('keywords', {}),
+                    attention_score=attention_score,  # AWFC
+                )
+
             # ── Micro-quiz interrupt ──────────────────────────────────────────
             _maybe_trigger_quiz(
-                intent_result.get('intent_label', 'unknown'),
+                intent_label,
                 webcam_enabled,
                 attention_score,
             )

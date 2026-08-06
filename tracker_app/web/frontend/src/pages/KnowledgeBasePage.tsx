@@ -24,7 +24,7 @@ export default function KnowledgeBasePage() {
                 : items.filter(i =>
                     i.question.toLowerCase().includes(q) ||
                     i.item_type.toLowerCase().includes(q) ||
-                    (i.tags ?? '').toLowerCase().includes(q)
+                    (i.tags ?? []).join(' ').toLowerCase().includes(q)
                 )
         )
     }, [query, items])

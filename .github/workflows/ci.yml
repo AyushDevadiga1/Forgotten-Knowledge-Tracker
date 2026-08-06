@@ -1,6 +1,6 @@
 name: FKT CI
 
-on:
+"on":
   push:
     branches: [ main, dev ]
   pull_request:
@@ -10,6 +10,7 @@ jobs:
   test:
     name: Backend Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
@@ -24,10 +25,13 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Install without the heavy extras that require system libs (tesseract, portaudio)
-          pip install -r requirements.txt --no-deps || true
-          pip install flask flask-wtf flask-cors flask-socketio python-dotenv sqlalchemy \
-                      scikit-learn spacy yake hdbscan sentence-transformers pytest
+          # Reduced Linux test set: only packages the test suite imports,
+          # WITH their dependencies. Heavy runtime-only deps that need system
+          # libs (tesseract, portaudio, opencv, mediapipe, librosa) or that are
+          # only used by the live tracker loop (psutil, pynput) are excluded;
+          # their modules load lazily and degrade gracefully when missing.
+          pip install flask flask-wtf flask-cors flask-socketio python-dotenv \
+                      sqlalchemy numpy networkx scikit-learn spacy yake pytest
 
       - name: Download spaCy model
         run: python -m spacy download en_core_web_sm
@@ -45,6 +49,7 @@ jobs:
   frontend-build:
     name: Frontend Build Check
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -64,3 +69,7 @@ jobs:
       - name: TypeScript type check
         working-directory: tracker_app/web/frontend
         run: npx tsc --noEmit
+
+      - name: Production build
+        working-directory: tracker_app/web/frontend
+        run: npm run build

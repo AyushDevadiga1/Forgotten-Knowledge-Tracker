@@ -1,6 +1,8 @@
 import { NavLink, Outlet } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import { Home, Activity, Database, PlusCircle, Search, Share2, Zap } from 'lucide-react'
 import IntentFeedbackToast from '../components/IntentFeedbackToast'
+import { api } from '../api'
 
 const navItems = [
     { id: '', icon: Home, label: 'Overview' },
@@ -10,6 +12,40 @@ const navItems = [
     { id: 'quiz', icon: Zap, label: 'Micro-Quiz' },
     { id: 'add', icon: PlusCircle, label: 'Add Concept' },
 ]
+
+function SessionIndicator() {
+    const [active, setActive] = useState(false)
+
+    useEffect(() => {
+        let mounted = true
+        async function poll() {
+            try {
+                const res = await api.getSessionStatus()
+                if (mounted) setActive(res.data.active)
+            } catch {
+                /* backend offline — keep last known state */
+            }
+        }
+        poll()
+        const t = setInterval(poll, 5000)
+        return () => {
+            mounted = false
+            clearInterval(t)
+        }
+    }, [])
+
+    return (
+        <span
+            className={`flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest ${
+                active ? 'text-fkt-accent' : 'text-fkt-text-dim'
+            }`}
+            title={active ? 'Study session active — capturing concepts' : 'No active study session'}
+        >
+            <span className={`w-1.5 h-1.5 ${active ? 'bg-fkt-accent animate-pulse' : 'bg-fkt-text-dim'}`} />
+            {active ? 'Capturing' : 'Idle'}
+        </span>
+    )
+}
 
 export default function MainLayout() {
     return (
@@ -60,6 +96,7 @@ export default function MainLayout() {
                         SYS_MONITOR <span className="text-fkt-text-dim">// FKT v1.0</span>
                     </span>
                     <div className="flex items-center gap-4 text-fkt-text-muted">
+                        <SessionIndicator />
                         <Search size={14} strokeWidth={1.5} />
                         <span className="text-[11px] font-mono">CMD+K</span>
                         <div className="w-1.5 h-1.5 bg-fkt-accent" title="System Online" />
