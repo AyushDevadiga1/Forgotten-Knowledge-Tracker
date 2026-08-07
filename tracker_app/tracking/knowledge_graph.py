@@ -7,7 +7,7 @@ import threading
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from tracker_app.config import DB_PATH, KNOWLEDGE_GRAPH_PATH
+from tracker_app.config import DB_PATH, KNOWLEDGE_GRAPH_PATH, DEFAULT_LAMBDA
 
 logger = logging.getLogger("KnowledgeGraph")
 
@@ -114,6 +114,36 @@ def fetch_concepts_from_db():
         logger.error(f"Error fetching concepts from DB: {e}")
         return []
 
+def _memory_score_from_row(row):
+    """Live AWFC retention for a TrackedConcept row (0.05–1.0).
+
+    Uses the concept's personalised lambda and attention-at-encoding, with the
+    decay clock reset at the last encounter/review.
+    """
+    from tracker_app.learning.memory_model import compute_memory_score_awfc
+    last_review = row.last_seen or row.first_seen or datetime.utcnow()
+    return compute_memory_score_awfc(
+        last_review,
+        base_lambda=row.lambda_personalised or DEFAULT_LAMBDA,
+        attention_at_encoding=row.attention_at_encoding or 50.0,
+    )
+
+
+def _fetch_live_memory_scores(concepts):
+    """Return {concept: live AWFC memory_score} for concepts present in the DB."""
+    if not concepts:
+        return {}
+    try:
+        from tracker_app.db.models import SessionLocal, TrackedConcept
+        with SessionLocal() as db:
+            rows = db.query(TrackedConcept).filter(
+                TrackedConcept.concept.in_(concepts)).all()
+        return {r.concept: _memory_score_from_row(r) for r in rows}
+    except Exception as e:
+        logger.debug(f"_fetch_live_memory_scores failed: {e}")
+        return {}
+
+
 def add_concepts(concepts):
     """
     Add concepts to the graph and connect semantically similar nodes.
@@ -140,15 +170,17 @@ def add_concepts(concepts):
         embeddings = _get_spacy_vectors(valid_concepts)
 
     with _graph_lock:
+        # Pull live memory state so new nodes don't start frozen at 0.3 (Phase 11.2).
+        live_scores = _fetch_live_memory_scores(valid_concepts)
         for idx, concept in enumerate(valid_concepts):
             if concept not in knowledge_graph:
                 knowledge_graph.add_node(
                     concept,
                     embedding=embeddings[idx].tolist() if embeddings is not None else [],
                     count=1,
-                    memory_score=0.3,
-                    next_review_time=datetime.now().strftime(DATETIME_FORMAT),
-                    last_review=datetime.now().strftime(DATETIME_FORMAT),
+                    memory_score=live_scores.get(concept, 0.3),
+                    next_review_time=datetime.utcnow().strftime(DATETIME_FORMAT),
+                    last_review=datetime.utcnow().strftime(DATETIME_FORMAT),
                     intent_conf=1.0
                 )
             else:
@@ -181,18 +213,86 @@ def add_concepts(concepts):
                     except Exception as e:
                         logger.warning(f"Error adding edge between concepts: {e}")
 
+def sync_concept_to_graph(concept):
+    """Refresh one graph node's memory fields from the live DB row.
+
+    Called when a concept is re-encountered or reviewed so the in-memory graph
+    stays in step with SM-2/AWFC state. No-op if the node isn't in the graph.
+    """
+    if concept not in knowledge_graph:
+        return
+    try:
+        from tracker_app.db.models import SessionLocal, TrackedConcept
+        with SessionLocal() as db:
+            row = db.query(TrackedConcept).filter(
+                TrackedConcept.concept == concept).first()
+            if row is None:
+                return
+            score      = _memory_score_from_row(row)
+            interval   = getattr(row, "interval", 1) or 1
+            strength   = getattr(row, "memory_strength", 2.5) or 2.5
+            last_seen  = row.last_seen or row.first_seen
+        with _graph_lock:
+            node = knowledge_graph.nodes[concept]
+            node['memory_score']    = round(score, 4)
+            node['interval']        = interval
+            node['memory_strength'] = strength
+            if isinstance(last_seen, datetime):
+                node['last_review'] = last_seen.strftime(DATETIME_FORMAT)
+    except Exception as e:
+        logger.debug(f"sync_concept_to_graph failed for {concept}: {e}")
+
+
+def _refresh_all_memory_scores(concepts):
+    """Batch-refresh graph node memory fields from live DB state (Phase 11.2).
+
+    The graph is a cache; without this its memory_score stays frozen at the
+    value assigned at node creation, so the dashboard's average memory and the
+    micro-quiz's 'weakest concept' selection never reflect real progress.
+    """
+    if not concepts:
+        return
+    try:
+        from tracker_app.db.models import SessionLocal, TrackedConcept
+        with SessionLocal() as db:
+            rows = db.query(TrackedConcept).filter(
+                TrackedConcept.concept.in_(concepts)).all()
+    except Exception as e:
+        logger.debug(f"_refresh_all_memory_scores failed: {e}")
+        return
+    updates = {}
+    for r in rows:
+        if r.concept in knowledge_graph:
+            updates[r.concept] = (
+                _memory_score_from_row(r),
+                getattr(r, "interval", 1) or 1,
+                getattr(r, "memory_strength", 2.5) or 2.5,
+                r.last_seen or r.first_seen,
+            )
+    with _graph_lock:
+        for concept, (score, interval, strength, last_seen) in updates.items():
+            node = knowledge_graph.nodes[concept]
+            node['memory_score']    = round(score, 4)
+            node['interval']        = interval
+            node['memory_strength'] = strength
+            if isinstance(last_seen, datetime):
+                node['last_review'] = last_seen.strftime(DATETIME_FORMAT)
+
+
 def sync_db_to_graph():
     """Synchronize database concepts to graph.
 
     Incremental: only concepts missing from the in-memory graph get new nodes
     (and embeddings), so a load-from-pkl + reconcile does not re-embed every
-    concept. Persists the graph afterwards.
+    concept. Existing nodes get their memory fields refreshed from live DB
+    state. Persists the graph afterwards.
     """
     try:
         db_concepts = fetch_concepts_from_db()
         new_concepts = [c for c in db_concepts if c not in knowledge_graph]
         if new_concepts:
             add_concepts(new_concepts)
+        _refresh_all_memory_scores(db_concepts)
         _save_graph()
         print(f"Synced {len(db_concepts)} concepts from DB to graph "
               f"({len(new_concepts)} new)")
@@ -206,6 +306,42 @@ def get_graph():
 
 
 # ─── Concept Drift Detector ───────────────────────────────────────────────────
+
+def get_session_concepts(limit: int = 50) -> list:
+    """Concepts encountered during the active study session.
+
+    Falls back to the last 15 minutes when no session is active. Drift needs
+    the concepts that actually co-occurred with the target concept while
+    studying; an empty keyword list made every drift call report 'new' with
+    drift_score 0.0. Timestamps are naive UTC, matching ConceptEncounter.
+    """
+    try:
+        from tracker_app.db.models import SessionLocal, ConceptEncounter
+        from tracker_app.tracking.session_state import get_status
+
+        start = None
+        status = get_status()
+        if status.get("active") and status.get("started_at"):
+            try:
+                start = datetime.fromisoformat(status["started_at"])
+            except (ValueError, TypeError):
+                start = None
+        if start is None:
+            start = datetime.utcnow() - timedelta(minutes=15)
+
+        with SessionLocal() as db:
+            rows = (
+                db.query(ConceptEncounter.concept)
+                .filter(ConceptEncounter.timestamp >= start)
+                .order_by(ConceptEncounter.timestamp.desc())
+                .limit(limit)
+                .all()
+            )
+        return [r[0] for r in rows if r[0] and str(r[0]).strip()]
+    except Exception as e:
+        logger.debug(f"get_session_concepts failed: {e}")
+        return []
+
 
 def compute_concept_drift(
     concept: str,
@@ -261,8 +397,6 @@ def compute_concept_drift(
             status = 'stagnant'
         elif drift > 0.6:
             status = 'evolving'
-        elif drift > 0.2:
-            status = 'stable'
         else:
             status = 'stable'
 
@@ -284,7 +418,8 @@ def find_knowledge_gaps(top_k: int = 5) -> list:
     Algorithm:
       For every pair (A, B) with a strong edge (weight > 0.5),
       find concepts C in the graph that:
-        - are semantically similar to both A and B (spaCy similarity > 0.55)
+        - are cosine-similar to both A and B (similarity > 0.55) using the
+          SAME node embeddings that built the edges (stored on each node)
         - are NOT directly connected to either A or B
       Surface C as a 'knowledge gap' with a score = avg(sim(A,C), sim(B,C)).
 
@@ -293,49 +428,47 @@ def find_knowledge_gaps(top_k: int = 5) -> list:
         [{'gap_concept': str, 'bridge_concepts': [str, str], 'score': float}]
     """
     _ensure_graph_loaded()
-    try:
-        import spacy
-        nlp = spacy.load("en_core_web_sm")
-    except Exception as e:
-        logger.warning(f"find_knowledge_gaps: spaCy unavailable — {e}")
-        return []
 
     with _graph_lock:
         nodes = [n for n in knowledge_graph.nodes() if isinstance(n, str) and len(n) > 2]
         if len(nodes) < 4:
             return []
 
-        # Cache spaCy docs (skip zero-vector concepts)
-        node_docs = {}
+        # Reuse the embeddings stored on nodes at add_concepts() time so gap
+        # detection uses the identical representation as edge building
+        # (SentenceTransformer with spaCy fallback) instead of loading spaCy
+        # again independently.
+        node_vecs = {}
         for n in nodes:
-            doc = nlp(n)
-            if doc.vector_norm > 0:
-                node_docs[n] = doc
+            emb = knowledge_graph.nodes[n].get('embedding')
+            if not emb:
+                continue
+            arr = np.asarray(emb, dtype=float)
+            norm = np.linalg.norm(arr)
+            if norm > 0:
+                node_vecs[n] = arr / norm
 
         gaps = {}
         edges = [
             (u, v) for u, v, d in knowledge_graph.edges(data=True)
             if isinstance(u, str) and isinstance(v, str)
             and d.get('weight', 0) > 0.5
-            and u in node_docs and v in node_docs
+            and u in node_vecs and v in node_vecs
         ]
 
         for node_a, node_b in edges:
-            doc_a = node_docs[node_a]
-            doc_b = node_docs[node_b]
+            vec_a = node_vecs[node_a]
+            vec_b = node_vecs[node_b]
 
-            for node_c, doc_c in node_docs.items():
+            for node_c, vec_c in node_vecs.items():
                 if node_c in (node_a, node_b):
                     continue
                 if (knowledge_graph.has_edge(node_a, node_c) or
                         knowledge_graph.has_edge(node_b, node_c)):
                     continue  # already connected
 
-                try:
-                    sim_ac = doc_a.similarity(doc_c)
-                    sim_bc = doc_b.similarity(doc_c)
-                except Exception:
-                    continue
+                sim_ac = float(np.dot(vec_a, vec_c))
+                sim_bc = float(np.dot(vec_b, vec_c))
 
                 if sim_ac > 0.55 and sim_bc > 0.55:
                     score = (sim_ac + sim_bc) / 2.0

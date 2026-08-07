@@ -64,6 +64,8 @@ def test_sync_db_to_graph_is_incremental(isolated_graph_path, clean_graph, monke
 
     monkeypatch.setattr(kg, "fetch_concepts_from_db", lambda: ["neural network", "new concept"])
     monkeypatch.setattr(kg, "add_concepts", fake_add)
+    monkeypatch.setattr(kg, "sync_concept_to_graph", lambda c: None)
+    monkeypatch.setattr(kg, "_refresh_all_memory_scores", lambda concepts: None)
     monkeypatch.setattr(kg, "_save_graph", lambda: None)
 
     with kg._graph_lock:
