@@ -98,6 +98,11 @@ MAX_REVIEW_INTERVAL_HOURS = 720
 REMINDER_COOLDOWN_HOURS = 1
 NOTIFICATION_TIMEOUT    = 10
 
+# Min gap (minutes) between intent-feedback toast prompts. The tracker writes a
+# new intent_predictions row every ~5 s, so without this the toast would nag
+# almost constantly. Tune with INTENT_TOAST_COOLDOWN_MINUTES.
+TOAST_COOLDOWN_MINUTES = int(os.environ.get('INTENT_TOAST_COOLDOWN_MINUTES', 5))
+
 # ----------------------------
 # OCR
 # ----------------------------

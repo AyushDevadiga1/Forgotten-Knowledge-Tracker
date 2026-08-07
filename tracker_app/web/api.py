@@ -221,13 +221,36 @@ def get_stats():
 
 @api_bp.route('/intent/recent', methods=['GET'])
 def get_recent_intent():
-    from tracker_app.db.models import SessionLocal
+    """Return the next feedback-promptable prediction, or null.
+
+    Rate-limited so the toast can't nag every cycle: a row is only surfaced when
+    it is unanswered (no user_feedback), has never been shown (no prompted_at),
+    and at least TOAST_COOLDOWN_MINUTES have passed since the last prompt. When
+    returned, the row is stamped prompted_at so it is never shown twice.
+    """
+    from datetime import datetime, timedelta
+    from tracker_app.config import TOAST_COOLDOWN_MINUTES
+    from tracker_app.db.models import SessionLocal, IntentPrediction
     from tracker_app.db.repository import TrackingRepository
     try:
         with SessionLocal() as db:
             row = TrackingRepository.get_recent_intent_prediction(db)
             if not row:
                 return jsonify({'success': True, 'data': None})
+
+            if row.user_feedback is not None or row.prompted_at is not None:
+                return jsonify({'success': True, 'data': None})
+
+            last_prompt = db.query(IntentPrediction.prompted_at).filter(
+                IntentPrediction.prompted_at.isnot(None)
+            ).order_by(IntentPrediction.prompted_at.desc()).first()
+            if last_prompt and last_prompt[0] is not None:
+                if datetime.utcnow() - last_prompt[0] < timedelta(minutes=TOAST_COOLDOWN_MINUTES):
+                    return jsonify({'success': True, 'data': None})
+
+            row.prompted_at = datetime.utcnow()
+            db.commit()
+
             ts = row.timestamp.isoformat() if isinstance(row.timestamp, datetime) else str(row.timestamp)
             return jsonify({'success': True, 'data': {
                 'id': row.id, 'timestamp': ts,
