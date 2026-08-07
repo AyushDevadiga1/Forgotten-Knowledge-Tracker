@@ -43,15 +43,23 @@ class IntentValidator:
         # now go through the shared SQLAlchemy engine in models.py.
         self.prediction_buffer = []
     
-    def log_prediction(self, predicted_intent: str, confidence: float, context: str):
-        """Log an intent prediction to the shared ORM database"""
+    def log_prediction(self, predicted_intent: str, confidence: float, context: str = "",
+                       features=None):
+        """Log an intent prediction to the shared ORM database.
+
+        context is the active window title (kept for display context).
+        features is the exact 6-element feature vector the classifier saw —
+        JSON-encoded into context_keywords so feedback-driven retraining
+        (ADR-003) gets real inputs, not a window-title string.
+        """
         try:
             with SessionLocal() as db:
                 pred = IntentPrediction(
-                    timestamp=datetime.now(),
+                    timestamp=datetime.utcnow(),
                     predicted_intent=predicted_intent,
                     confidence=confidence,
-                    context_keywords=context
+                    context_keywords=json.dumps(features) if features else (context or ""),
+                    window_title=context or "",
                 )
                 TrackingRepository.log_intent_prediction(db, pred)
         except Exception as e:
@@ -60,7 +68,7 @@ class IntentValidator:
         self.prediction_buffer.append({
             'intent': predicted_intent,
             'confidence': confidence,
-            'timestamp': datetime.now()
+            'timestamp': datetime.utcnow()
         })
     
     def get_accuracy_stats(self) -> Dict[str, Any]:
@@ -109,7 +117,7 @@ class TrackingAnalytics:
                 return TrackingRepository.get_daily_summary(db, date)
         except Exception as e:
             logger.error(f"Failed to get daily summary: {e}")
-            date_str = date.strftime("%Y-%m-%d") if date else datetime.now().strftime("%Y-%m-%d")
+            date_str = date.strftime("%Y-%m-%d") if date else datetime.utcnow().strftime("%Y-%m-%d")
             return {'date': date_str, 'total_minutes': 0, 'concepts': 0, 'avg_attention': 0}
     
     def get_trend_analysis(self, days: int = 7) -> Dict[str, Any]:
@@ -144,7 +152,7 @@ class ActivityMonitor:
     def start_session(self):
         """Start a tracking session"""
         with self._lock:
-            self.session_start = datetime.now()
+            self.session_start = datetime.utcnow()
             self.session_concepts = []
             self.session_attention_scores = []
             self.is_running = True
@@ -156,7 +164,7 @@ class ActivityMonitor:
             if not self.is_running:
                 return
             
-            session_end = datetime.now()
+            session_end = datetime.utcnow()
             
             # Calculate session stats
             concepts_count = len(set(self.session_concepts))
@@ -211,12 +219,19 @@ class ActivityMonitor:
                 logger.error(f"Error processing concept {concept}: {e}")
     
     def process_intent(self, intent_result: Dict[str, Any], context: str = ""):
-        """Process intent prediction with validation"""
+        """Process intent prediction with validation.
+        context is the window title; intent_result['features'] is the exact
+        feature vector used at prediction time (stored for retraining).
+        """
         intent = intent_result.get('intent_label', 'unknown')
         confidence = intent_result.get('confidence', 0.5)
-        
-        # Log for validation
-        self.validator.log_prediction(intent, confidence, context)
+
+        # Log for validation — persists the real feature vector, not the title
+        self.validator.log_prediction(
+            intent, confidence,
+            context=context,
+            features=intent_result.get('features'),
+        )
     
     def update_attention(self, attention_score: float):
         """Track attention/focus levels"""
@@ -228,7 +243,7 @@ class ActivityMonitor:
             if not self.is_running or not self.session_start:
                 return {}
             
-            elapsed = (datetime.now() - self.session_start).total_seconds() / 60
+            elapsed = (datetime.utcnow() - self.session_start).total_seconds() / 60
             
             return {
                 'session_duration_minutes': elapsed,
@@ -248,7 +263,7 @@ class ActivityMonitor:
         trend_stats = self.analytics.get_trend_analysis(30)
 
         export_data = {
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': datetime.utcnow().isoformat(),
             'session_stats': self.get_session_stats(),
             'due_concepts': due_concepts,
             'intent_accuracy': intent_stats,

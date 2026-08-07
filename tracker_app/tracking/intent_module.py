@@ -144,32 +144,40 @@ def predict_intent(
         {
             'intent_label': 'studying' | 'passive' | 'idle',
             'confidence':   float,
-            'source':       'classifier' | 'rules'
+            'source':       'classifier' | 'rules',
+            'features':     [f1, f2, f3, f4, f5, f6],  # exact vector fed to model
         }
     """
+    # Compute the feature vector once so the exact inputs used at prediction
+    # time can be persisted for feedback-driven retraining (ADR-003).
+    feats = extract_features(
+        ocr_keywords, audio_label,
+        attention_score, interaction_rate,
+        audio_confidence
+    )
+    feature_list = [round(float(x), 4) for x in feats[0]]
+
     model_data = _load_model()
 
     if model_data is not None:
         try:
             model = model_data["model"]
-            feats = extract_features(
-                ocr_keywords, audio_label,
-                attention_score, interaction_rate,
-                audio_confidence
-            )
             label = model.predict(feats)[0]
             proba = model.predict_proba(feats)[0]
             confidence = float(np.max(proba))
             return {
                 "intent_label": str(label),
                 "confidence":   round(confidence, 4),
-                "source":       "classifier"
+                "source":       "classifier",
+                "features":     feature_list,
             }
         except Exception as e:
             logger.warning(f"Classifier prediction failed: {e}. Using rules.")
 
     # Fallback to rule-based
-    return _rule_predict(ocr_keywords, audio_label, attention_score, interaction_rate)
+    result = _rule_predict(ocr_keywords, audio_label, attention_score, interaction_rate)
+    result["features"] = feature_list
+    return result
 
 
 if __name__ == "__main__":

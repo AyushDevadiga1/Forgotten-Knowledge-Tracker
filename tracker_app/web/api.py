@@ -55,6 +55,7 @@ class FeedbackService:
                         predicted_label=pred.predicted_intent or "unknown",
                         actual_label=actual_intent,
                         confidence=pred.confidence or 0.0,
+                        window_title=pred.window_title or "",
                     )
                     FeedbackRepository.log_feedback_sample(db, sample)
 
@@ -328,8 +329,11 @@ def get_knowledge_gaps():
 @api_bp.route('/graph/drift/<concept>', methods=['GET'])
 def get_concept_drift(concept):
     try:
-        from tracker_app.tracking.knowledge_graph import compute_concept_drift
-        result = compute_concept_drift(concept, [])
+        from tracker_app.tracking.knowledge_graph import (
+            compute_concept_drift, get_session_concepts)
+        keywords = get_session_concepts()
+        result = compute_concept_drift(concept, keywords)
+        result['session_keywords'] = keywords
         return jsonify({'success': True, 'data': result})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

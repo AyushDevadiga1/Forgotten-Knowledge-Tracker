@@ -153,6 +153,7 @@ def train(data: dict) -> dict:
 def load_feedback_samples() -> tuple:
     """Load user-corrected samples from the DB for augmented retraining."""
     X_fb, y_fb = [], []
+    skipped = 0
     try:
         from tracker_app.db.models import SessionLocal
         from tracker_app.db.repository import FeedbackRepository
@@ -164,8 +165,12 @@ def load_feedback_samples() -> tuple:
                 if len(feats) == 6:
                     X_fb.append([float(f) for f in feats])
                     y_fb.append(s.actual_label)
+                else:
+                    skipped += 1
             except Exception:
-                pass
+                skipped += 1
+        if skipped:
+            logger.warning(f"Skipped {skipped} feedback samples with malformed feature vectors.")
         logger.info(f"Loaded {len(X_fb)} feedback samples for retraining.")
     except Exception as e:
         logger.warning(f"Could not load feedback samples: {e}")
