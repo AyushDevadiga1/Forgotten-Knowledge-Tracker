@@ -83,16 +83,29 @@ class ConceptScheduler:
             db.add(encounter)
             db.commit()
 
+        # Keep the in-memory knowledge graph in step with the live SM-2/AWFC
+        # row (Phase 11.2) — a re-encounter resets the retention clock.
+        try:
+            from tracker_app.tracking.knowledge_graph import sync_concept_to_graph
+            sync_concept_to_graph(concept)
+        except Exception as e:
+            logger.debug(f"Graph sync skipped for {concept}: {e}")
+
         return concept
 
     # ΓöÇΓöÇ SM-2 review scheduling ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
     def schedule_next_review(self, concept_id: str, quality: int = 3):
         """
-        Schedule next review using SM-2 + AWFC-personalised ╬╗.
+        Schedule next review using standard SM-2 shared with sm2_memory_model,
+        plus AWFC-personalised λ.
         concept_id = concept string (PK), not an integer.
-        quality: 0ΓÇô5 (0=fail, 5=perfect recall).
+        quality: 0–5 (0=fail, 5=perfect recall).
         """
+        from tracker_app.learning.sm2_memory_model import (
+            MIN_EASE_FACTOR, MAX_EASE_FACTOR, QUALITY_THRESHOLD,
+            SECOND_REVIEW_INTERVAL_DAYS,
+        )
         with models.SessionLocal() as db:
             tracked = (db.query(TrackedConcept)
                          .filter(TrackedConcept.concept == concept_id)
@@ -102,20 +115,37 @@ class ConceptScheduler:
                 logger.warning(f"schedule_next_review: '{concept_id}' not found.")
                 return
 
-            interval = getattr(tracked, "interval", 1) or 1
-            ease     = getattr(tracked, "memory_strength", 2.5) or 2.5
+            interval    = getattr(tracked, "interval", 1) or 1
+            ease        = getattr(tracked, "memory_strength", 2.5) or 2.5
+            repetitions = getattr(tracked, "repetitions", 0) or 0
 
-            if quality < 3:
+            # Ease factor adjusts on every review (success AND failure) using
+            # the canonical SM-2 formula — the tested implementation applies it
+            # unconditionally, so we do too instead of the old flat -0.2.
+            delta      = 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)
+            new_ease   = max(MIN_EASE_FACTOR, min(ease + delta, MAX_EASE_FACTOR))
+
+            if quality < QUALITY_THRESHOLD:
+                # Failed — reset to first repetition, re-review tomorrow.
+                repetitions = 1
                 new_interval = 1
-                new_ease     = max(1.3, ease - 0.2)
             else:
-                new_interval = 3 if interval <= 1 else round(interval * ease)
-                delta        = 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)
-                new_ease     = max(1.3, min(ease + delta, 3.5))
+                repetitions += 1
+                if repetitions == 1:
+                    new_interval = 1
+                elif repetitions == 2:
+                    new_interval = SECOND_REVIEW_INTERVAL_DAYS
+                else:
+                    new_interval = max(1, round(interval * new_ease))
 
             tracked.interval        = new_interval
             tracked.memory_strength = new_ease
+            tracked.repetitions     = repetitions
             tracked.next_review     = datetime.utcnow() + timedelta(days=new_interval)
+            # A review is a reinforcement event: reset the retention clock so
+            # the AWFC memory score (and the graph's live copy) reflect the
+            # fresh recall rather than the last OCR encounter.
+            tracked.last_seen       = datetime.utcnow()
 
             # Optionally recalibrate ╬╗ after enough reviews
             total = tracked.frequency_count or 0
@@ -136,6 +166,13 @@ class ConceptScheduler:
             db.commit()
             logger.debug(f"Scheduled '{concept_id}' in {new_interval}d "
                          f"(quality={quality}, ╬╗={tracked.lambda_personalised:.4f})")
+
+            # Reflect the fresh review in the knowledge graph (Phase 11.2).
+            try:
+                from tracker_app.tracking.knowledge_graph import sync_concept_to_graph
+                sync_concept_to_graph(concept_id)
+            except Exception as e:
+                logger.debug(f"Graph sync skipped for {concept_id}: {e}")
 
     # ΓöÇΓöÇ Get due concepts ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 

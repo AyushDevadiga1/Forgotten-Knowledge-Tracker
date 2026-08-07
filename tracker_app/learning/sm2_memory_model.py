@@ -19,6 +19,12 @@ MAX_EASE_FACTOR = 3.5              # Never increase above this
 # 5 = Correct (extend interval)
 QUALITY_THRESHOLD = 3
 
+# Deliberate choice (Phase 11.6): canonical SM-2 uses 6 days for the second
+# successful review; we use a gentler 3-day ramp for first-time learners.
+# Shared by sm2_memory_model.py and concept_scheduler.py so both subsystems
+# implement the same schedule.
+SECOND_REVIEW_INTERVAL_DAYS = 3
+
 
 class SM2Item:
     """Single item in spaced repetition system"""
@@ -43,13 +49,13 @@ class SM2Item:
         self.question = question
         self.answer = answer
         self.difficulty = difficulty
-        self.created_at = created_at or datetime.now()
+        self.created_at = created_at or datetime.utcnow()
         
         # SM-2 State Variables
         self.interval = 0              # Days until next review
         self.ease_factor = DEFAULT_EASE_FACTOR
         self.repetitions = 0           # Number of times reviewed
-        self.next_review_date = datetime.now()  # When to review next
+        self.next_review_date = datetime.utcnow()  # When to review next
         self.last_review_date = None   # Last review timestamp
         
         # Statistics
@@ -113,17 +119,17 @@ class SM2Scheduler:
             # First successful review - review in 1 day
             next_interval = 1
         elif item.repetitions == 2:
-            # Second successful review - review in 3 days
-            next_interval = 3
+            # Second successful review - review in N days
+            next_interval = SECOND_REVIEW_INTERVAL_DAYS
         else:
             # Subsequent reviews - use ease factor
             # interval = previous_interval * ease_factor
             next_interval = round(item.interval * item.ease_factor)
         
         # Step 4: Update item state
-        item.last_review_date = datetime.now()
+        item.last_review_date = datetime.utcnow()
         item.interval = next_interval
-        item.next_review_date = datetime.now() + timedelta(days=next_interval)
+        item.next_review_date = datetime.utcnow() + timedelta(days=next_interval)
         item.total_reviews += 1
         
         if quality >= QUALITY_THRESHOLD:
@@ -131,7 +137,7 @@ class SM2Scheduler:
         
         # Log review
         item.review_history.append({
-            'date': datetime.now(),
+            'date': datetime.utcnow(),
             'quality': quality,
             'interval': next_interval,
             'ease_factor': item.ease_factor
@@ -148,7 +154,7 @@ class SM2Scheduler:
     @staticmethod
     def get_items_due(items: list) -> list:
         """Get items that are due for review now"""
-        now = datetime.now()
+        now = datetime.utcnow()
         return [item for item in items if item.next_review_date <= now]
     
     @staticmethod
@@ -226,7 +232,7 @@ class LeitnerSystem:
         
         item.repetitions = next_box - 1
         next_interval = LeitnerSystem.INTERVALS[next_box]
-        item.next_review_date = datetime.now() + timedelta(days=next_interval)
+        item.next_review_date = datetime.utcnow() + timedelta(days=next_interval)
         item.total_reviews += 1
         
         if was_correct:
@@ -241,7 +247,7 @@ class LeitnerSystem:
 
 def format_next_review(next_date: datetime) -> str:
     """Format next review date as human-readable string"""
-    now = datetime.now()
+    now = datetime.utcnow()
     delta = next_date - now
     
     if delta.total_seconds() <= 0:
