@@ -189,6 +189,16 @@ def warm_up_all_pipelines(webcam_enabled: bool = True):
         except Exception as e:
             log.warning(f"  face mesh: {e}")
 
+    try:
+        # Pre-build the knowledge graph here (background thread at startup) so
+        # the micro-quiz hot path never triggers a multi-minute embed+sync while
+        # the tracking loop is mid-session.
+        from tracker_app.tracking.knowledge_graph import get_graph
+        get_graph()
+        log.info("  knowledge graph ready")
+    except Exception as e:
+        log.warning(f"  knowledge graph: {e}")
+
     log.info("Warm-up complete.")
 
 
@@ -215,6 +225,10 @@ def _maybe_trigger_quiz(
 ):
     """Check idle state and broadcast a micro-quiz if conditions are met."""
     global _idle_cycles
+    # Never interrupt outside a study session — nobody is present to answer.
+    if not session_is_active():
+        _idle_cycles = 0
+        return
     if intent_label == 'idle':
         _idle_cycles += 1
     else:
@@ -225,7 +239,10 @@ def _maybe_trigger_quiz(
             should_show_quiz, generate_micro_quiz
         )
         from tracker_app.tracking.knowledge_graph import get_graph
-        if should_show_quiz(_idle_cycles, webcam_enabled, attention_score):
+        if should_show_quiz(
+            _idle_cycles, webcam_enabled, attention_score,
+            session_active=session_is_active(),
+        ):
             graph = get_graph()
             quiz  = generate_micro_quiz(graph)
             if quiz:
