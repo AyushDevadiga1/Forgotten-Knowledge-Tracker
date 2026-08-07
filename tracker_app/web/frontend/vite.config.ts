@@ -14,6 +14,8 @@ export default defineConfig({
             // Also proxy /stats and /search (non-prefixed Flask routes)
             '/stats': { target: 'http://127.0.0.1:5000', changeOrigin: true },
             '/search': { target: 'http://127.0.0.1:5000', changeOrigin: true },
+            // WebSocket transport for the micro-quiz push (Socket.IO)
+            '/socket.io': { target: 'http://127.0.0.1:5000', ws: true },
         },
     },
 })

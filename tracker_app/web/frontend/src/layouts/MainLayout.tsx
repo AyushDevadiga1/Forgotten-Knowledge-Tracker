@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { Home, Activity, Database, PlusCircle, Search, Share2, Zap } from 'lucide-react'
 import IntentFeedbackToast from '../components/IntentFeedbackToast'
+import MicroQuizModal from '../components/MicroQuizModal'
 import { api } from '../api'
 
 const navItems = [
@@ -111,6 +112,9 @@ export default function MainLayout() {
 
             {/* Global floating feedback prompt */}
             <IntentFeedbackToast />
+
+            {/* Live-pushed micro-quiz interrupt */}
+            <MicroQuizModal />
         </div>
     )
 }
