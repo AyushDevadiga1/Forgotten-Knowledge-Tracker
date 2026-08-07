@@ -28,7 +28,7 @@ class LearningRepository:
     def get_items_due(db: Session, limit: int = 20) -> List[LearningItem]:
         return db.query(LearningItem)\
                  .filter(LearningItem.status == 'active')\
-                 .filter(LearningItem.next_review_date <= datetime.now())\
+                 .filter(LearningItem.next_review_date <= datetime.utcnow())\
                  .order_by(LearningItem.next_review_date.asc())\
                  .limit(limit)\
                  .all()
@@ -56,7 +56,7 @@ class LearningRepository:
         
     @staticmethod
     def get_stats(db: Session) -> Dict[str, Any]:
-        now = datetime.now()
+        now = datetime.utcnow()
         total_active = db.query(LearningItem).filter(LearningItem.status == 'active').count()
         total_due = db.query(LearningItem)\
                       .filter(LearningItem.status == 'active')\
@@ -73,8 +73,8 @@ class LearningRepository:
         
     @staticmethod
     def get_learning_today(db: Session) -> Dict[str, Any]:
-        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        today_end = datetime.now()
+        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = datetime.utcnow()
         reviews_today = db.query(ReviewHistory).filter(
             ReviewHistory.timestamp >= today_start,
             ReviewHistory.timestamp <= today_end
@@ -150,7 +150,7 @@ class TrackingRepository:
             acc.correct_predictions += 1
             
         acc.accuracy = acc.correct_predictions / acc.total_predictions
-        acc.last_updated = datetime.now()
+        acc.last_updated = datetime.utcnow()
         db.commit()
 
     @staticmethod
@@ -172,7 +172,7 @@ class TrackingRepository:
     @staticmethod
     def get_daily_summary(db: Session, date: Optional[datetime] = None) -> Dict[str, Any]:
         if date is None:
-            date = datetime.now()
+            date = datetime.utcnow()
         date_str = date.strftime("%Y-%m-%d")
         
         row = db.query(
@@ -193,7 +193,7 @@ class TrackingRepository:
     @staticmethod
     def get_trend_analysis(db: Session, days: int = 7) -> Dict[str, Any]:
         from datetime import timedelta
-        start_date = (datetime.now() - timedelta(days=days)).isoformat()
+        start_date = (datetime.utcnow() - timedelta(days=days)).isoformat()
         
         row = db.query(
             func.count(TrackingSession.id),

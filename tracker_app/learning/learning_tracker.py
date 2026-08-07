@@ -64,7 +64,7 @@ class LearningTracker:
             raise ValueError("difficulty must be easy, medium, or hard")
             
         item_id = str(uuid.uuid4())
-        now = datetime.now()
+        now = datetime.utcnow()
 
         with models.SessionLocal() as db:
             new_item = LearningItem(
@@ -117,7 +117,7 @@ class LearningTracker:
                 was_correct = quality_rating >= 3
                 result = LeitnerSystem.advance_card(item, was_correct)
                 
-            review_date = datetime.now()
+            review_date = datetime.utcnow()
             was_correct = quality_rating >= 3
 
             # Create review history record
@@ -143,7 +143,7 @@ class LearningTracker:
             item_record.correct_count = item.correct_count
             item_record.success_rate = success_rate
             item_record.status = status
-            item_record.updated_at = datetime.now()
+            item_record.updated_at = datetime.utcnow()
 
             LearningRepository.record_review(db, history, item_record)
             
@@ -211,7 +211,7 @@ class LearningTracker:
             item = LearningRepository.get_item(db, item_id)
             if item:
                 item.status = "archived"
-                item.updated_at = datetime.now()
+                item.updated_at = datetime.utcnow()
                 db.commit()
 
     def unarchive_item(self, item_id: str):
@@ -219,7 +219,7 @@ class LearningTracker:
             item = LearningRepository.get_item(db, item_id)
             if item:
                 item.status = "active"
-                item.updated_at = datetime.now()
+                item.updated_at = datetime.utcnow()
                 db.commit()
                 
     def export_items(self, format: str = "json") -> str:

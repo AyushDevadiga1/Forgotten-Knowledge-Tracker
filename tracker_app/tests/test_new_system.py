@@ -64,10 +64,10 @@ class TestLearningTrackerModule(unittest.TestCase):
 
 class TestUtilityFunctions(unittest.TestCase):
     def test_format_next_review(self):
-        now = datetime.now()
+        now = datetime.utcnow()
         self.assertEqual(format_next_review(now), "NOW")
         
-        tomorrow = datetime.now() + timedelta(days=1)
+        tomorrow = datetime.utcnow() + timedelta(days=1)
         # Handle small time drifts 
         text = format_next_review(tomorrow)
         self.assertTrue("tomorrow" in text or "in 23 hours" in text or "in 1 day" in text)

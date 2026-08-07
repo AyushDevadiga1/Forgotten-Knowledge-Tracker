@@ -49,7 +49,7 @@ def start() -> dict:
     """Toggle a study session on (idempotent). Returns the new state."""
     with _lock:
         state = _load()
-        now = datetime.now().isoformat()
+        now = datetime.utcnow().isoformat()
         state["active"] = True
         if not state.get("started_at"):
             state["started_at"] = now
@@ -63,7 +63,7 @@ def stop() -> dict:
     with _lock:
         state = _load()
         state["active"] = False
-        state["stopped_at"] = datetime.now().isoformat()
+        state["stopped_at"] = datetime.utcnow().isoformat()
         _save(state)
         return state
 
@@ -76,7 +76,7 @@ def get_status() -> dict:
     if state.get("active") and state.get("started_at"):
         try:
             started = datetime.fromisoformat(state["started_at"])
-            elapsed = int((datetime.now() - started).total_seconds())
+            elapsed = int((datetime.utcnow() - started).total_seconds())
         except Exception:
             elapsed = None
     return {
