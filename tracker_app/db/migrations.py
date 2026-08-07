@@ -90,6 +90,11 @@ MIGRATIONS = [
         "PRAGMA foreign_keys=ON",
         "PRAGMA synchronous=NORMAL",
     ]),
+
+    # ── 007: Feedback-toast rate limiting ────────────────────────────────────
+    ("007_intent_prompted_at", "Add prompted_at to intent_predictions", [
+        "ALTER TABLE intent_predictions ADD COLUMN prompted_at TEXT",
+    ]),
 ]
 
 

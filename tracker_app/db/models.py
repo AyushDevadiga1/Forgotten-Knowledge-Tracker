@@ -181,6 +181,7 @@ class IntentPrediction(Base):
     user_feedback    = Column(Integer, nullable=True)   # 1=correct 0=wrong
     actual_intent    = Column(String,  nullable=True)
     feedback_timestamp = Column(DateTime, nullable=True)
+    prompted_at      = Column(DateTime, nullable=True)  # when the feedback toast last surfaced this row
 
 
 class IntentAccuracy(Base):
