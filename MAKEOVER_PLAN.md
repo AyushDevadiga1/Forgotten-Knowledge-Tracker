@@ -34,18 +34,124 @@
 
 Phase 9 fixed **what** gets captured. This phase exists because a fresh read of the frontend and both "interrupt" mechanisms — the intent-feedback toast and the micro-quiz push — found that neither is tuned for a human actually trying to study. Everything below was confirmed by reading the current code, not inferred from the architecture looking reasonable on paper.
 
-<!--PHASE10_SLOT_1-->
+### 10.1 — [RESOLVED] The intent-feedback toast was firing roughly every 10 seconds during any study session
 
-- [x] **Feedback toast stops nagging.** `IntentFeedbackToast` polls `/intent/recent` every 10 s and shows a card whenever the latest `intent_predictions` row has `user_feedback IS NULL`. But the tracker writes a new prediction every 5 s during a session, so the toast is effectively always on screen — no cooldown, no dismissal, no "already shown" marker. Fix: add a nullable `prompted_at` column (migration 007, ADD COLUMN is auto-guarded); `/intent/recent` becomes "next promptable prediction" — it only returns a row that is (a) unanswered, (b) never shown before, (c) at least `TOAST_COOLDOWN_MINUTES` (5) after the previous prompt, and it stamps `prompted_at` when returned so the same row is never re-shown. Add a DISMISS (X) on the toast that hides it (the cooldown + `prompted_at` do the rest). Max realistic ask: once per 5 min, only about the newest prediction, never twice about the same one.
-- [x] **Micro-quiz fires at a humane time and never stalls the loop.** `IDLE_CYCLES_REQUIRED = 3` means the quiz interrupt fires after ~15 s of idle — far too aggressive. Raise to 12 (~60 s), and gate `_maybe_trigger_quiz` behind the active study session so no quiz fires while the user isn't in a session at all. The bigger bug (found live): the trigger calls `get_graph()` synchronously in the loop thread, and the first build embeds every tracked concept with SentenceTransformer — a multi-minute stall of all capture. Pre-warm the knowledge graph inside `warm_up_all_pipelines` (already a background thread at tracker startup) so `get_graph()` is a cached call on the hot path.
-- [x] **Micro-quiz actually reaches the browser.** `loop.py` broadcasts `micro_quiz` over Socket.IO (`realtime.py`), and `app.py` does run `socketio.run` — but the frontend has **no socket client at all**, so the interrupt broadcasts into the void and the Quiz page is only manual/polled. Fix: add `socket.io-client`, connect from `MainLayout`, subscribe to `micro_quiz`, and render a modal interrupt (concept, question, 4 options, difficulty) whose answer POSTs to `/quiz/answer` (feeds SM-2). This turns the micro-quiz from dead broadcast into the delivered interrupt Phase 9's capture deserves.
-- [x] **Tests + docs.** Unit tests for the `/intent/recent` cooldown (first call returns and stamps `prompted_at`, immediate second call returns null, answered rows never re-prompt), `should_show_quiz` threshold + session gating, and graph pre-warm. Update README/AGENTS test counts and mark this phase done in the plan.
+**The problem, as found:** `TRACK_INTERVAL = 5` means the loop iterates every 5 s, and `monitor.process_intent()` ran unconditionally every cycle, inserting a fresh unlabeled `IntentPrediction` row each time. `IntentFeedbackToast.tsx` polled every 10 s for *any* unanswered row, with no cooldown or dismissal memory — so the moment one prediction was answered, a newer one (created in the last 5–10 s) was already waiting. During a study session, that meant a "was this correct?" popup roughly every 10 seconds, indefinitely.
+
+**Fix applied:** `IntentPrediction` gained a `prompted_at` column. `GET /intent/recent` now only ever surfaces a row that is (a) unanswered, (b) never previously shown, and (c) at least `TOAST_COOLDOWN_MINUTES` since the last prompt — and it stamps `prompted_at` immediately so the same row is never re-shown. The toast also got a dismiss (✕) button. Verified by reading `web/api.py`'s `get_recent_intent()` and the current `IntentFeedbackToast.tsx` directly — the cooldown and stamping logic is real and matches this description.
+
+### 10.2 — [RESOLVED] The micro-quiz "interrupt" wasn't reaching the user, and the trigger could stall the whole tracker
+
+**The problem, as found:** `quiz_engine.py`'s `should_show_quiz()` was well-tuned on paper (cooldown, idle-cycle threshold, attention gate), but `package.json` had no `socket.io-client` dependency and nothing in `src/` listened for the `micro_quiz` Socket.IO broadcast — it fired into the void. The only path that actually reached a user, `GET /quiz/current`, bypassed `should_show_quiz()` entirely. A second, more serious issue surfaced during this investigation: the trigger's first call to `get_graph()` builds the knowledge graph synchronously, embedding every tracked concept with SentenceTransformer *inside the tracking loop thread* — a multi-minute stall of all capture (OCR/audio/webcam) the first time a quiz condition was met.
+
+**Fix applied:** `socket.io-client` added; `MicroQuizModal.tsx` connects a socket, listens for `micro_quiz`, and renders a real modal interrupt (options, correct/incorrect feedback, posts to `/quiz/answer`) — verified present and mounted in `MainLayout.tsx`. `should_show_quiz()` gained a `session_active` parameter so it can never fire outside a study session. `warm_up_all_pipelines()` (already a background thread at startup) now pre-builds the knowledge graph, so `get_graph()` is a cached call by the time the loop's hot path needs it — verified in `loop.py`.
+
+### 10.3 — Still open: the quiz fires at the moment the user is *least* likely to see it
+
+`IDLE_CYCLES_REQUIRED` was raised from 3 to 12 (~60 s instead of ~15 s) as part of the 10.2 fix — a good change, but it addresses *speed*, not *timing logic*. `should_show_quiz()` still requires `attention_score < 35` ("user is away / zoned out") when webcam is enabled — i.e. it's tuned to catch the moment someone has stepped away or mentally checked out, which is precisely when they won't see or answer a modal interrupt. A quiz timed to catch a brief pause *while attention is still moderate-to-high* (present, between tasks) would actually reach someone able to answer it.
+
+- [ ] Revisit the trigger condition itself, not just its speed: consider firing on a short pause with attention still reasonably high, rather than on sustained idle + low attention. This is a design decision about what "a good moment to interrupt" means, not a number to tune.
+
+### 10.4 — Still open: the feedback toast doesn't give enough context to answer accurately
+
+`IntentFeedbackToast.tsx` still shows only the predicted label and a confidence percentage — no timestamp, no window/context. Predictions are generated every 5 seconds, so a user asked "was this STUDYING?" with no indication of *when* may not remember what they were doing at that exact moment. Since ADR-003's whole premise is retraining the classifier on *real* corrective feedback (as opposed to ADR-002's synthetic-data problem), answers the user can't actually judge accurately quietly reintroduce noisy labels into the exact pipeline that was fixed to avoid that. Separately, the toast's "DATA COLLECTION" header is unchanged — clinical/surveillance-flavored framing that doesn't help someone want to engage with it.
+
+- [ ] Show a timestamp and/or window title alongside the predicted label so the user has enough information to answer accurately.
+- [ ] Reconsider the "DATA COLLECTION" framing — costs nothing to soften, changes how the prompt lands.
+
+---
+
+### 10.5 — Verification still needed
+
+- [ ] Live study-session run confirming the toast cooldown actually feels right in practice (not just correct in code) — 5-minute default may still be too frequent for some, worth using the app to judge, not just reading the number.
+- [ ] Confirm the test suite covers the `/intent/recent` cooldown (first call returns + stamps `prompted_at`, immediate second call returns null, answered rows never re-prompt), `should_show_quiz`'s `session_active` gating, and the graph pre-warm — then update the README/test-count claims to match.
+
+---
+
+## Phase 11 — Core logic correctness (crucial — found via full code audit)
+
+This phase exists because a systematic read of every scheduling/graph/classifier module (not just the frontend-facing pieces) found several places where the code *looks* correct — reasonable variable names, plausible-looking formulas, docstrings that describe the right behavior — but a real bug means it doesn't actually do what it claims. These are prioritized by how much of the app's core value they silently undermine. Everything below is confirmed by reading the current code and tracing the actual call paths, not inferred from structure.
+
+### 11.1 — [CRITICAL] ADR-003's "train on real user feedback" pipeline is completely non-functional
+
+ADR-003 (Phase 5) justifies keeping the RandomForest intent classifier by claiming it now retrains on real user corrections instead of only synthetic data. Tracing the actual data path shows this never happens:
+
+- `activity_monitor.py`'s `IntentValidator.log_prediction()` stores the **window title** in `IntentPrediction.context_keywords` (it's literally passed `context=window_title` from `loop.py`) — not the 6-value feature vector `[ocr_keyword_count, audio_val, attention_score, interaction_rate, keyword_avg_score, audio_confidence]` that was actually fed into the classifier for that prediction.
+- `web/api.py`'s `FeedbackService.record_feedback()` copies that same window-title string directly into `FeedbackTrainingSample.feature_vector` — a column whose own docstring says `# JSON: [f1, f2, f3, f4, f5, f6]`.
+- `scripts/train_models_from_logs.py`'s `load_feedback_samples()` does `feats = json.loads(s.feature_vector)` inside a bare `try/except: pass`. A window title (e.g. `"Chrome - YouTube - some video"`) is not valid JSON, so this raises and is silently swallowed for essentially every single feedback row. `X_fb`/`y_fb` end up empty (or near-empty), so the `--include-feedback` augmentation in `main()` adds nothing, and the auto-retrain triggered every 50 corrections (`FeedbackService.maybe_trigger_retrain`) just re-trains on the same 100% synthetic dataset it always has.
+
+**Net effect:** every "NO, this was wrong" correction a user submits is captured, stored, and then silently discarded at training time. ADR-003's core claim — that this is no longer the synthetic-data problem ADR-002 identified — is not actually true of the running system.
+
+- [x] Store the actual 6-feature vector used at prediction time (not the window title) — e.g. have `predict_intent()` return the feature array alongside the prediction, or recompute it identically at feedback time, and JSON-encode *that* into `IntentPrediction.context_keywords` / `FeedbackTrainingSample.feature_vector`.
+- [x] Add a test that round-trips this: submit feedback, confirm `FeedbackTrainingSample.feature_vector` parses as a 6-element JSON list, confirm `load_feedback_samples()` actually picks it up.
+- [x] Consider keeping the window title too, but in a separate column — it's useful context, just not a substitute for the feature vector.
+
+### 11.2 — [CRITICAL] The knowledge graph's `memory_score` is frozen at 0.3 for every concept, forever
+
+`tracking/knowledge_graph.py`'s `add_concepts()` sets `memory_score=0.3` when a node is first created. Nothing in the codebase ever updates it afterward — confirmed by reading every function in `knowledge_graph.py` and `activity_monitor.py`'s `process_concepts()` (the only place concept-processing happens). The *real* spaced-repetition state — `interval`, `memory_strength`, `lambda_personalised`, `next_review` — is correctly computed and updated in the separate `TrackedConcept` SQL table by `concept_scheduler.py`. The in-memory NetworkX graph and the SQL table have simply diverged: one is live, the other is a frozen snapshot from node-creation time.
+
+**Net effect, both confirmed by tracing the callers:**
+- `get_graph_stats()`'s `avg_memory_score` (shown on the Graph page) will always read ≈0.3 no matter how much real progress has been made, because every node is stuck at its initial value.
+- `generate_micro_quiz()`'s "prefer concepts with `memory_score < 0.65`" filter is trivially true for *every* node (0.3 < 0.65, always), so it provides zero actual prioritization. The quiz doesn't test your weakest concept — it tests whatever `pool.sort()`'s stable-sort tiebreaking happens to put first, which in practice is close to insertion order. The headline "tests you on what you're most likely to forget" feature isn't doing that.
+
+- [x] Sync `TrackedConcept.relevance_score` / an AWFC-computed retention value into the graph node's `memory_score` whenever a concept is reviewed or re-encountered — e.g. inside `ConceptScheduler.add_concept()`/`schedule_next_review()`, or as part of `sync_db_to_graph()`.
+- [x] Add a test asserting `memory_score` actually changes after a review, not just that it exists.
+
+---
+
+### 11.3 — [HIGH] The concept-drift endpoint is called with no data, so it can never report anything but "stagnant"
+
+`web/api.py`'s `/graph/drift/<concept>` route calls `compute_concept_drift(concept, [])` — always an empty list for `current_session_keywords`, the exact input the whole algorithm is built around comparing against historical neighbours. With `current_neighbours` always empty, `compute_concept_drift()`'s own logic (`if not current_neighbours: status = 'stagnant'`) means this endpoint can only ever return `drift_score: 0.0, status: 'stagnant'` (or `'new'`) for literally any concept passed to it. The drift-detection algorithm itself may be reasonable; it's simply never given real data to work with at its one production call site.
+
+- [x] Pass real data: the concepts encountered in the current/recent study session (e.g. `monitor.session_concepts`, already tracked by `ActivityMonitor`), not a hardcoded empty list.
+
+### 11.4 — [MEDIUM] `compute_concept_drift`'s status classifier has a dead branch
+
+Even setting 11.3 aside, the classification logic itself can't produce the 4 statuses its own docstring promises (`'new'|'evolving'|'stable'|'stagnant'`):
+
+```python
+if not current_neighbours:
+    status = 'stagnant'
+elif drift > 0.6:
+    status = 'evolving'
+elif drift > 0.2:
+    status = 'stable'
+else:
+    status = 'stable'          # ← same result as the branch above
+```
+
+The `drift > 0.2` branch and the final `else` both resolve to `'stable'` — reads like an intended fourth category (e.g. distinguishing "drifting a little" from "barely changed") that never got written.
+
+- [x] Decide what the fourth bucket should actually be and give it a distinct condition, or collapse the two branches intentionally and update the docstring to match 3 real statuses instead of 4.
+
+### 11.5 — [MEDIUM] Knowledge-gap detection mixes two incompatible similarity spaces
+
+The graph's edges (what counts as "already connected," used to exclude gap candidates) are built in `add_concepts()` using SentenceTransformer `all-MiniLM-L6-v2` cosine similarity, threshold `0.7`. `find_knowledge_gaps()` computes its *own* similarity independently, using `spacy.load("en_core_web_sm").similarity()`, threshold `0.55`. These are different models producing different, uncalibrated similarity scales — `en_core_web_sm` in particular is spaCy's small English model, which doesn't ship real pretrained word vectors; spaCy's own documentation notes similarity results from this model are unreliable. A 0.55 spaCy-similarity threshold has no principled relationship to the 0.7 MiniLM-cosine threshold used to build the graph it's operating on.
+
+- [x] Use the same embedding source for gap-detection as for edge-building (the MiniLM embeddings are already computed and could be reused/cached from `add_concepts()`), or explicitly document why a second, different similarity metric is intentional and recalibrate its threshold against real data rather than a guessed number.
+
+### 11.6 — [HIGH] Two parallel, inconsistent SM-2 implementations exist in the same codebase
+
+`sm2_memory_model.py`'s `SM2Scheduler.calculate_next_interval()` is a correct, standard SM-2 implementation with real test coverage (`test_sm2.py`) — but it's only used by the separate, manually-added flashcard system (`LearningItem`, via `learning_tracker.py`). The auto-tracked concept system (the actual core feature) uses `concept_scheduler.py`'s `ConceptScheduler.schedule_next_review()`, which reimplements SM-2 by hand instead of calling the tested one, and diverges from it in two concrete ways:
+
+- **No repetition counter.** The only signal for "how far along is this concept" is `interval <= 1`. A brand-new concept's `interval` defaults to `1`, so its *first* successful review jumps straight to a 3-day interval (`new_interval = 3 if interval <= 1 else round(interval * ease)`) — skipping the canonical SM-2 1-day initial-reinforcement step entirely, for every concept, every time. The same collapse happens on recovery from any failure, since a failure also resets `interval` to `1`.
+- **Inconsistent failure penalty.** On failure it applies a flat `ease - 0.2`, while success uses the graduated SM-2 formula (`0.1 - (5-q)*(0.08+(5-q)*0.02)`) computed a few lines below but never applied to the failure case. The two penalty schemes aren't reconciled with each other.
+
+- [x] Either have `concept_scheduler.py` call the tested `SM2Scheduler` directly (adapting it to work off `TrackedConcept` rows), or add an actual repetition counter to `TrackedConcept` and fix the interval/ease logic to match the standard algorithm consistently for both success and failure.
+- [x] `sm2_memory_model.py`'s own `SM2Scheduler` also uses `interval=3` for the second successful review where canonical SM-2 uses `6` — worth a deliberate decision (keep 3, or match the original) rather than an unexplained deviation from an algorithm the docstring calls "research-validated defaults from SuperMemo."
+
+### 11.7 — [MEDIUM] Naive datetime mix-up between UTC and local time across two subsystems
+
+Every `TrackedConcept`/`ConceptEncounter`/`IntentPrediction`/`FeedbackTrainingSample` timestamp (both the SQLAlchemy column defaults in `db/models.py` and every write in `concept_scheduler.py`) uses `datetime.utcnow()`. Every `LearningItem`/`ReviewHistory` timestamp (`learning_tracker.py`, `db/repository.py`'s `LearningRepository`) uses `datetime.now()` (local). Each subsystem is internally self-consistent, but two confirmed places compare across the boundary:
+
+- `LearningRepository.get_learning_today()` computes `today_start`/`today_end` from local `datetime.now()`, then filters `TrackedConcept.last_seen >= today_start` — a UTC-stored column compared against a local-time boundary. "Concepts studied today" will be wrong by the size of the local UTC offset around midnight.
+- `LearningTracker._compute_streak()` computes "today" as `datetime.utcnow().date()`, then checks it against `ReviewHistory.timestamp` values, which were written using local `datetime.now()`. For a user ahead of UTC (e.g. IST, UTC+5:30), a review done in the local early-morning hours can log to "today" locally while UTC still considers it "yesterday," silently breaking the streak count.
+
+- [x] Pick one convention (UTC is the safer default) and use it everywhere timestamps are written or compared — this is the kind of bug that stays invisible in same-timezone testing and only shows up for real users in non-UTC zones.
 
 ---
 
 ## Definition of done
-
-A grader, recruiter, or future-you should be able to:
 1. Clone the repo fresh.
 2. Run `pip install -r requirements.txt` and `npm install` with zero manual fixes.
 3. Run migrations, start `main.py` and `web/app.py`, start the frontend dev server.
@@ -54,5 +160,6 @@ A grader, recruiter, or future-you should be able to:
 6. Read the README/ADRs and find them consistent with what the code actually does.
 7. Trust that a tracked concept in the knowledge graph reflects something they were actually studying, not just something that happened to be on screen.
 8. Use the app through a real study session and find that neither the feedback toast nor the quiz interrupt fires more often, or at a worse moment, than a human would actually tolerate — verified by using it, not just by reading the trigger code.
+9. Trust that the numbers on screen are real: a concept's memory score actually reflects its review history, a "wrong" click on the feedback toast actually improves the next model retrain, and the drift/gap features report something other than a hardcoded default.
 
-**Status: Phase 10 implemented (115 tests, CI pending). Remaining: live study-session E2E of the toast cooldown + quiz push, then finalize.**
+**Status: Phase 10 resolved 10.1/10.2 (verified); 10.3/10.4 remain open design decisions; 10.5 wrap-up pending. Phase 11 fully fixed (11.1–11.7) — all 7 audit bugs are resolved with tests: 11.1 feedback pipeline now stores the real 6-feature vector (`IntentPrediction.context_keywords` JSON + `window_title` column, migration 008); 11.2 graph `memory_score` syncs live AWFC state from the DB (`sync_concept_to_graph`/`_refresh_all_memory_scores`, migration 007); 11.3 drift endpoint now passes real session concepts via `get_session_concepts()`; 11.4 dead `stable` branch collapsed (3 real statuses + `new`); 11.5 gap detection reuses the node embeddings that built the edges (MiniLM cosine, no second spaCy similarity space); 11.6 unified SM-2 via a real `repetitions` counter + `SECOND_REVIEW_INTERVAL_DAYS=3` shared constant (migration 009); 11.7 all timestamps normalized to UTC across learning/tracking/repository/session-state. Suite is now 138 tests.**
