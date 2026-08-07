@@ -5,6 +5,7 @@ export default function IntentFeedbackToast() {
     const [prediction, setPrediction] = useState<IntentPrediction | null>(null)
     const [submitted, setSubmitted] = useState(false)
     const [actualIntent, setActualIntent] = useState('')
+    const [dismissed, setDismissed] = useState(false)
 
     useEffect(() => {
         // Poll every 10 seconds for the latest prediction
@@ -12,8 +13,10 @@ export default function IntentFeedbackToast() {
             try {
                 const res = await api.getRecentIntent()
                 const data = res.data
-                // Only prompt if it exists and hasn't been given feedback yet
-                if (data && data.user_feedback === null) {
+                // Only prompt if it exists and hasn't been given feedback yet.
+                // The backend rate-limits (prompted_at + cooldown) so we only
+                // get something worth showing here.
+                if (!dismissed && data && data.user_feedback === null) {
                     setPrediction(data)
                     setSubmitted(false)
                     setActualIntent('')
@@ -28,7 +31,7 @@ export default function IntentFeedbackToast() {
         checkRecent()
         const interval = setInterval(checkRecent, 10000)
         return () => clearInterval(interval)
-    }, [submitted]) // Re-run if submitted changes, though interval handles it
+    }, [submitted, dismissed]) // Re-run if submitted changes, though interval handles it
 
     const handleFeedback = async (isCorrect: boolean) => {
         if (!prediction) return
@@ -51,7 +54,16 @@ export default function IntentFeedbackToast() {
                     <div className="w-1.5 h-1.5 bg-fkt-accent animate-pulse" />
                     DATA COLLECTION
                 </span>
-                <span className="text-[9px] text-fkt-text-dim font-mono">{Math.round(prediction.confidence * 100)}% CONF</span>
+                <div className="flex items-center gap-3">
+                    <span className="text-[9px] text-fkt-text-dim font-mono">{Math.round(prediction.confidence * 100)}% CONF</span>
+                    <button
+                        onClick={() => setDismissed(true)}
+                        title="Dismiss"
+                        className="text-fkt-text-dim hover:text-fkt-text-primary transition-colors text-sm leading-none"
+                    >
+                        ✕
+                    </button>
+                </div>
             </div>
 
             <div className="p-4">
