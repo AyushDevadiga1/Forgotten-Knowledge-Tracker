@@ -177,11 +177,12 @@ class IntentPrediction(Base):
     timestamp        = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     predicted_intent = Column(String)
     confidence       = Column(Float)
-    context_keywords = Column(String)
+    context_keywords = Column(String)   # JSON: [f1, f2, f3, f4, f5, f6] feature vector
     user_feedback    = Column(Integer, nullable=True)   # 1=correct 0=wrong
     actual_intent    = Column(String,  nullable=True)
     feedback_timestamp = Column(DateTime, nullable=True)
     prompted_at      = Column(DateTime, nullable=True)  # when the feedback toast last surfaced this row
+    window_title     = Column(String,  nullable=True)   # what was on screen when predicted
 
 
 class IntentAccuracy(Base):
@@ -236,6 +237,7 @@ class TrackedConcept(Base):
     interval         = Column(Integer, default=1)
     memory_strength  = Column(Float,   default=2.5)
     next_review      = Column(DateTime, index=True)   # ← DateTime + index (critical query path)
+    repetitions      = Column(Integer, default=0)     # consecutive successful reviews
 
     # AWFC fields — attention at time of first learning
     attention_at_encoding = Column(Float, default=50.0)   # 0–100 scale

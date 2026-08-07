@@ -95,6 +95,21 @@ MIGRATIONS = [
     ("007_intent_prompted_at", "Add prompted_at to intent_predictions", [
         "ALTER TABLE intent_predictions ADD COLUMN prompted_at TEXT",
     ]),
+
+    # ── 008: Intent feedback retraining data ─────────────────────────────────
+    # context_keywords becomes the JSON 6-feature vector; the window title moves
+    # to its own column so it is context, not a substitute for the features.
+    ("008_intent_window_title", "Add window_title to intent_predictions", [
+        "ALTER TABLE intent_predictions ADD COLUMN window_title TEXT",
+    ]),
+
+    # ── 009: SM-2 repetition counter ─────────────────────────────────────────
+    # TrackedConcept previously re-implemented SM-2 by hand off `interval <= 1`,
+    # which collapsed the canonical 1-day / 3-day ramp into a straight 3-day
+    # jump. A real repetition counter fixes that (Phase 11.6).
+    ("009_tracked_repetitions", "Add repetitions to tracked_concepts", [
+        "ALTER TABLE tracked_concepts ADD COLUMN repetitions INTEGER DEFAULT 0",
+    ]),
 ]
 
 
