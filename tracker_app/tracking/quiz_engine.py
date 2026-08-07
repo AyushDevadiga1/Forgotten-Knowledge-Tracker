@@ -12,7 +12,7 @@ from typing import Optional
 logger = logging.getLogger("QuizEngine")
 
 QUIZ_COOLDOWN_MINUTES = 20   # minimum gap between quizzes
-IDLE_CYCLES_REQUIRED  = 3    # how many consecutive idle cycles before trigger
+IDLE_CYCLES_REQUIRED  = 12   # consecutive idle cycles (~60 s at 5 s cadence) before trigger
 MIN_GRAPH_SIZE        = 4    # need at least this many concepts to quiz
 
 _last_quiz_time: Optional[datetime] = None
@@ -24,17 +24,22 @@ def should_show_quiz(
     idle_cycles: int,
     webcam_enabled: bool,
     attention_score: float,
+    session_active: bool = True,
 ) -> bool:
     """
     Return True when a micro-quiz interrupt should fire.
 
     Conditions:
+      - A study session is active (nobody is at the keyboard otherwise)
       - User has been idle for IDLE_CYCLES_REQUIRED+ consecutive cycles
       - At least QUIZ_COOLDOWN_MINUTES since the last quiz
       - If webcam enabled: attention score < 35 (user is away / zoned out)
       - If webcam disabled: idle_cycles is sufficient signal on its own
     """
     global _last_quiz_time
+
+    if not session_active:
+        return False   # never interrupt outside a study session
 
     if idle_cycles < IDLE_CYCLES_REQUIRED:
         return False
