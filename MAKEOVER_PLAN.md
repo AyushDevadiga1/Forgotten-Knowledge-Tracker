@@ -46,25 +46,29 @@ Phase 9 fixed **what** gets captured. This phase exists because a fresh read of 
 
 **Fix applied:** `socket.io-client` added; `MicroQuizModal.tsx` connects a socket, listens for `micro_quiz`, and renders a real modal interrupt (options, correct/incorrect feedback, posts to `/quiz/answer`) — verified present and mounted in `MainLayout.tsx`. `should_show_quiz()` gained a `session_active` parameter so it can never fire outside a study session. `warm_up_all_pipelines()` (already a background thread at startup) now pre-builds the knowledge graph, so `get_graph()` is a cached call by the time the loop's hot path needs it — verified in `loop.py`.
 
-### 10.3 — Still open: the quiz fires at the moment the user is *least* likely to see it
+### 10.3 — [RESOLVED] Quiz timing redesigned: interrupt on a pause while the user is present
 
-`IDLE_CYCLES_REQUIRED` was raised from 3 to 12 (~60 s instead of ~15 s) as part of the 10.2 fix — a good change, but it addresses *speed*, not *timing logic*. `should_show_quiz()` still requires `attention_score < 35` ("user is away / zoned out") when webcam is enabled — i.e. it's tuned to catch the moment someone has stepped away or mentally checked out, which is precisely when they won't see or answer a modal interrupt. A quiz timed to catch a brief pause *while attention is still moderate-to-high* (present, between tasks) would actually reach someone able to answer it.
+`IDLE_CYCLES_REQUIRED` was raised from 3 to 12 (~60 s instead of ~15 s) as part of the 10.2 fix — a good change, but it addresses *speed*, not *timing logic*. `should_show_quiz()` still required `attention_score < 35` ("user is away / zoned out") when webcam is enabled — i.e. it was tuned to catch the moment someone has stepped away or mentally checked out, precisely when they won't see or answer a modal interrupt.
 
-- [ ] Revisit the trigger condition itself, not just its speed: consider firing on a short pause with attention still reasonably high, rather than on sustained idle + low attention. This is a design decision about what "a good moment to interrupt" means, not a number to tune.
+**Fix applied:** flipped the attention gate to the opposite convention. The trigger now fires on a short pause (idle ≥ 12 cycles) *while attention is still at least `ATTENTION_PRESENT_MIN` (35)* — the user is present and between tasks, so the interrupt actually reaches someone able to answer it. When attention drops below 35 the quiz is suppressed (stepped away / zoned out → modal would be missed). Webcam-disabled path is unchanged (idle cycles are sufficient signal). Verified by `test_quiz_trigger.py` (10 tests incl. the new floor guard).
 
-### 10.4 — Still open: the feedback toast doesn't give enough context to answer accurately
+- [x] Revisit the trigger condition itself, not just its speed: consider firing on a short pause with attention still reasonably high, rather than on sustained idle + low attention. This is a design decision about what "a good moment to interrupt" means, not a number to tune.
 
-`IntentFeedbackToast.tsx` still shows only the predicted label and a confidence percentage — no timestamp, no window/context. Predictions are generated every 5 seconds, so a user asked "was this STUDYING?" with no indication of *when* may not remember what they were doing at that exact moment. Since ADR-003's whole premise is retraining the classifier on *real* corrective feedback (as opposed to ADR-002's synthetic-data problem), answers the user can't actually judge accurately quietly reintroduce noisy labels into the exact pipeline that was fixed to avoid that. Separately, the toast's "DATA COLLECTION" header is unchanged — clinical/surveillance-flavored framing that doesn't help someone want to engage with it.
+### 10.4 — [RESOLVED] The feedback toast now shows enough context to answer accurately
 
-- [ ] Show a timestamp and/or window title alongside the predicted label so the user has enough information to answer accurately.
-- [ ] Reconsider the "DATA COLLECTION" framing — costs nothing to soften, changes how the prompt lands.
+`IntentFeedbackToast.tsx` showed only the predicted label and a confidence percentage — no timestamp, no window/context. Predictions are generated every 5 seconds, so a user asked "was this STUDYING?" with no indication of *when* may not remember what they were doing at that exact moment. Since ADR-003's whole premise is retraining the classifier on *real* corrective feedback, answers the user can't actually judge accurately quietly reintroduce noisy labels into the exact pipeline that was fixed to avoid that. Separately, the toast's "DATA COLLECTION" header was clinical/surveillance-flavored.
+
+**Fix applied:** the toast now shows a relative timestamp ("just now", "2 min ago") derived from the prediction's UTC timestamp and the active window title (truncated, with full title on hover), right above the "Was this correct?" prompt. The header was softened from "DATA COLLECTION" to "Quick Check". `GET /intent/recent` now returns `window_title` alongside the existing `timestamp`.
+
+- [x] Show a timestamp and/or window title alongside the predicted label so the user has enough information to answer accurately.
+- [x] Reconsider the "DATA COLLECTION" framing — costs nothing to soften, changes how the prompt lands.
 
 ---
 
-### 10.5 — Verification still needed
+### 10.5 — Verification & wrap-up
 
-- [ ] Live study-session run confirming the toast cooldown actually feels right in practice (not just correct in code) — 5-minute default may still be too frequent for some, worth using the app to judge, not just reading the number.
-- [ ] Confirm the test suite covers the `/intent/recent` cooldown (first call returns + stamps `prompted_at`, immediate second call returns null, answered rows never re-prompt), `should_show_quiz`'s `session_active` gating, and the graph pre-warm — then update the README/test-count claims to match.
+- [ ] **Live study-session run** confirming the toast cooldown actually feels right in practice (not just correct in code) — 5-minute default may still be too frequent for some, worth using the app to judge, not just reading the number. *Code-level verification done; the remaining judgment is a manual "use it for a real session" check.*
+- [x] Test-suite coverage confirmed: `/intent/recent` cooldown (first call returns + stamps `prompted_at`, immediate second call returns null, answered rows never re-prompt — `test_intent_toast_cooldown.py`), `should_show_quiz`'s `session_active` gating + attention/cooldown logic (`test_quiz_trigger.py`), and the graph pre-warm (`test_warmup.py`, added — `warm_up_all_pipelines` calls `get_graph()`). Suite is now **145 tests**; README/AGENTS claims updated to match.
 
 ---
 
@@ -149,6 +153,12 @@ Every `TrackedConcept`/`ConceptEncounter`/`IntentPrediction`/`FeedbackTrainingSa
 
 - [x] Pick one convention (UTC is the safer default) and use it everywhere timestamps are written or compared — this is the kind of bug that stays invisible in same-timezone testing and only shows up for real users in non-UTC zones.
 
+### 11.8 — [FIXED] Passive re-encounters were silently discarding recalibrated lambda
+
+Found while independently re-verifying the 11.2 fix (not part of the original audit). `ConceptScheduler.add_concept()`'s existing-concept branch unconditionally recomputed `lambda_personalised` from `compute_awfc_lambda(DEFAULT_LAMBDA, attention_at_encoding)` on *every* passive re-encounter. `schedule_next_review()` separately calls `recalibrate_lambda()` after 5+ real reviews to personalise the decay rate based on actual observed recall — but that personalisation got wiped the next time the same concept was simply re-seen on screen via OCR, which happens far more often than it gets quizzed. The recalibration survived only until the next passive encounter.
+
+**Fix applied directly:** `add_concept()` now only does the full attention-based recompute for a concept with zero repetitions (nothing to protect yet). Once `repetitions > 0` — meaning `schedule_next_review()` has personalised it at least once — a passive re-encounter nudges lambda 90/10 toward the attention-based estimate instead of replacing it outright, so the review-based personalisation persists rather than resetting on the next OCR pass.
+
 ---
 
 ## Definition of done
@@ -162,4 +172,4 @@ Every `TrackedConcept`/`ConceptEncounter`/`IntentPrediction`/`FeedbackTrainingSa
 8. Use the app through a real study session and find that neither the feedback toast nor the quiz interrupt fires more often, or at a worse moment, than a human would actually tolerate — verified by using it, not just by reading the trigger code.
 9. Trust that the numbers on screen are real: a concept's memory score actually reflects its review history, a "wrong" click on the feedback toast actually improves the next model retrain, and the drift/gap features report something other than a hardcoded default.
 
-**Status: Phase 10 resolved 10.1/10.2 (verified); 10.3/10.4 remain open design decisions; 10.5 wrap-up pending. Phase 11 fully fixed (11.1–11.7) — all 7 audit bugs are resolved with tests: 11.1 feedback pipeline now stores the real 6-feature vector (`IntentPrediction.context_keywords` JSON + `window_title` column, migration 008); 11.2 graph `memory_score` syncs live AWFC state from the DB (`sync_concept_to_graph`/`_refresh_all_memory_scores`, migration 007); 11.3 drift endpoint now passes real session concepts via `get_session_concepts()`; 11.4 dead `stable` branch collapsed (3 real statuses + `new`); 11.5 gap detection reuses the node embeddings that built the edges (MiniLM cosine, no second spaCy similarity space); 11.6 unified SM-2 via a real `repetitions` counter + `SECOND_REVIEW_INTERVAL_DAYS=3` shared constant (migration 009); 11.7 all timestamps normalized to UTC across learning/tracking/repository/session-state. Suite is now 138 tests.**
+**Status: Phase 10 fully resolved (10.1–10.5; only the manual live-session feel-check under 10.5 remains — everything code-verifiable is done and tested; 10.3 quiz timing flipped to interrupt on a pause while the user is present, 10.4 toast shows timestamp + window title and drops the "DATA COLLECTION" framing). Phase 11 independently re-verified end-to-end — all 7 audit bugs (11.1–11.7) traced through their actual call paths and confirmed genuinely fixed, including their test coverage: 11.1 feedback pipeline stores the real 6-feature vector and `train_models_from_logs.py` picks it up (legacy bad rows skip gracefully); 11.2 graph `memory_score` syncs live AWFC state on every add_concept/schedule_next_review, not just at load time; 11.3 drift endpoint uses real session concepts; 11.4 dead `stable` branch gone; 11.5 gap detection reuses the same embeddings as edge-building; 11.6 shared SM-2 constants + real `repetitions` counter, deliberate 3-day second interval documented; 11.7 UTC everywhere, cross-subsystem comparisons confirmed correct. One additional bug (11.8) found during this re-verification and fixed directly: passive OCR re-encounters were overwriting `recalibrate_lambda()`'s personalisation on every sighting — now only replaces it before any reviews exist, nudges gently afterward (regression-tested in `test_concept_scheduler.py`). Suite is now 145 tests.**
