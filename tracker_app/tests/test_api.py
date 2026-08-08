@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from tracker_app.web.app import app
 from tracker_app.db import models
 from tracker_app.db.models import Base, IntentPrediction
+import tracker_app.learning.concept_scheduler as cs_mod
 
 class TestAPIBase(unittest.TestCase):
     def setUp(self):
@@ -31,6 +32,13 @@ class TestAPIBase(unittest.TestCase):
         self.orig_session = models.SessionLocal
         models.engine = self.test_engine
         models.SessionLocal = self.TestingSessionLocal
+        
+        # ConceptScheduler captures SessionLocal at import time (db/models import
+        # in concept_scheduler.py), so it must be re-bound here too or ingest
+        # writes leak into the real data/sessions.db (this breaks once the real
+        # DB lags the ORM schema, e.g. migration 010's review_count).
+        self._orig_cs_session = cs_mod.SessionLocal
+        cs_mod.SessionLocal = self.TestingSessionLocal
         
         Base.metadata.create_all(bind=self.test_engine)
 
@@ -52,6 +60,7 @@ class TestAPIBase(unittest.TestCase):
         Base.metadata.drop_all(bind=self.test_engine)
         models.engine = self.orig_engine
         models.SessionLocal = self.orig_session
+        cs_mod.SessionLocal = self._orig_cs_session
 
 class TestAPIGetItems(TestAPIBase):
     def test_get_items_returns_200(self):
