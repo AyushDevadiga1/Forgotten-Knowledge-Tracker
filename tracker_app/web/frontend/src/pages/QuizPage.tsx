@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Zap, CheckCircle, XCircle, AlertTriangle, Loader, RefreshCw } from 'lucide-react'
 import { api, QuizQuestion } from '../api'
-
-type AnswerState = 'idle' | 'correct' | 'wrong'
+import { useQuizAnswer } from '../hooks/useQuizAnswer'
+import QuizResultBanner from '../components/QuizResultBanner'
 
 function BackendDown() {
     return (
@@ -41,8 +41,7 @@ export default function QuizPage() {
     const [loading, setLoading] = useState(true)
     const [backendDown, setBackendDown] = useState(false)
     const [refreshing, setRefreshing] = useState(false)
-    const [selected, setSelected] = useState<string | null>(null)
-    const [answerState, setAnswerState] = useState<AnswerState>('idle')
+    const { answerState, reset, handleSelect, optionClass } = useQuizAnswer()
     const [score, setScore] = useState({ correct: 0, wrong: 0 })
 
     const fetchQuiz = useCallback(async (isRefresh = false) => {
@@ -50,8 +49,7 @@ export default function QuizPage() {
         try {
             const res = await api.getQuiz()
             setQuiz(res.data)
-            setSelected(null)
-            setAnswerState('idle')
+            reset()
             setBackendDown(false)
         } catch {
             setBackendDown(true)
@@ -59,35 +57,19 @@ export default function QuizPage() {
             setLoading(false)
             setRefreshing(false)
         }
-    }, [])
+    }, [reset])
 
     useEffect(() => { fetchQuiz() }, [fetchQuiz])
 
-    const handleSelect = async (option: string) => {
-        if (answerState !== 'idle' || !quiz) return
-        setSelected(option)
-        const correct = option === quiz.correct_answer
-        setAnswerState(correct ? 'correct' : 'wrong')
-        setScore(s => correct ? { ...s, correct: s.correct + 1 } : { ...s, wrong: s.wrong + 1 })
-        try {
-            await api.submitQuizAnswer(quiz.concept, correct)
-        } catch {
-            // fire-and-forget — don't block the UI
+    const onSelect = async (option: string) => {
+        if (!quiz) return
+        const correct = await handleSelect(quiz, option)
+        if (correct !== undefined) {
+            setScore(s => correct ? { ...s, correct: s.correct + 1 } : { ...s, wrong: s.wrong + 1 })
         }
     }
 
     const handleNext = () => fetchQuiz(true)
-
-    const optionClass = (option: string) => {
-        const base = 'w-full text-left px-4 py-3 border font-mono text-xs transition-all duration-200 '
-        if (answerState === 'idle')
-            return base + 'border-fkt-elevated text-fkt-text-primary hover:border-fkt-accent hover:text-fkt-accent bg-fkt-base cursor-pointer'
-        if (option === quiz?.correct_answer)
-            return base + 'border-fkt-accent text-fkt-accent bg-fkt-accent/5 cursor-default'
-        if (option === selected && answerState === 'wrong')
-            return base + 'border-[#EF4444] text-[#EF4444] bg-[#EF4444]/5 cursor-default'
-        return base + 'border-fkt-elevated text-fkt-text-dim cursor-default opacity-50'
-    }
 
     if (loading) return (
         <div className="flex items-center justify-center h-64 gap-3 text-fkt-text-muted">
@@ -147,8 +129,8 @@ export default function QuizPage() {
                                     <button
                                         key={i}
                                         id={`quiz-option-${i}`}
-                                        className={optionClass(opt)}
-                                        onClick={() => handleSelect(opt)}
+                                        className={optionClass(quiz, opt)}
+                                        onClick={() => onSelect(opt)}
                                         disabled={answerState !== 'idle'}
                                     >
                                         <span className="text-fkt-text-dim mr-3">{String.fromCharCode(65 + i)}.</span>
@@ -158,23 +140,10 @@ export default function QuizPage() {
                             </div>
 
                             {/* Result banner */}
-                            {answerState !== 'idle' && (
-                                <div className={`mt-5 p-3 border flex items-center gap-3 ${
-                                    answerState === 'correct'
-                                        ? 'border-fkt-accent bg-fkt-accent/5'
-                                        : 'border-[#EF4444] bg-[#EF4444]/5'
-                                }`}>
-                                    {answerState === 'correct'
-                                        ? <CheckCircle size={16} className="text-fkt-accent shrink-0" />
-                                        : <XCircle size={16} className="text-[#EF4444] shrink-0" />
-                                    }
-                                    <div className="flex-1">
-                                        <p className="text-xs font-mono text-fkt-text-primary">
-                                            {answerState === 'correct'
-                                                ? 'Correct! SM-2 interval extended.'
-                                                : `Incorrect. Correct answer: ${quiz.correct_answer}`}
-                                        </p>
-                                    </div>
+                            <QuizResultBanner
+                                quiz={quiz}
+                                answerState={answerState}
+                                action={
                                     <button
                                         id="quiz-next-btn"
                                         onClick={handleNext}
@@ -185,8 +154,8 @@ export default function QuizPage() {
                                         <RefreshCw size={10} className={refreshing ? 'animate-spin' : ''} />
                                         Next
                                     </button>
-                                </div>
-                            )}
+                                }
+                            />
                         </div>
                     </div>
                 )
