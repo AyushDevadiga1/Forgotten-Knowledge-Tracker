@@ -4,33 +4,24 @@ This directory contains trained machine learning models for the Forgotten Knowle
 
 ## Model Files
 
-- **intent_classifier.pkl** (740KB) - Intent classification model
-- **intent_label_map.pkl** (271B) - Label mapping for intent classifier
-- **audio_classifier.pkl** (343KB) - Audio context classification
-- **audio_label_encoder.pkl** (348B) - Audio label encoder
-- **audio_scaler.pkl** (930B) - Audio feature scaler
+- **intent_classifier.pkl** (~3 MB) — Intent classification model (RandomForest,
+  6-feature vector, ADR-003). Trained via:
 
-## Retraining Models
+  ```bash
+  python -m tracker_app.scripts.train_models_from_logs
+  ```
 
-If you need to retrain the models with new data:
+  If it is absent, `intent_module.py` falls back to rule-based classification —
+  a missing model is expected, not a bug.
 
-```bash
-python scripts/train_models.py
-```
+## Audio Classification
 
-## Model Details
-
-### Intent Classifier
-- **Algorithm**: Logistic Regression
-- **Features**: TF-IDF vectorization
-- **Classes**: learning, working, browsing, idle
-- **Training Data**: `tracker_app/data/intent_training_data.csv`
-
-### Audio Classifier  
-- **Algorithm**: Random Forest
-- **Features**: MFCC, spectral features (librosa)
-- **Classes**: speech, music, noise, silence
-- **Training Data**: Audio feature logs
+There is **no** audio model, by design. FKT previously shipped a "trained"
+`audio_classifier.pkl` generated from synthetic random MFCC vectors — a stub
+that created a false sense of model quality (see ADR-002 and the makeover
+audit's C-4). The synthetic trainer and its model-loading path were removed;
+`audio_module.py` classifies audio with deterministic energy/RMS/ZCR heuristics.
+If a real audio training pipeline is ever built, the loader can be re-added.
 
 ## Adding New Models
 
