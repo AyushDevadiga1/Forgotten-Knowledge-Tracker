@@ -110,6 +110,16 @@ MIGRATIONS = [
     ("009_tracked_repetitions", "Add repetitions to tracked_concepts", [
         "ALTER TABLE tracked_concepts ADD COLUMN repetitions INTEGER DEFAULT 0",
     ]),
+
+    # ── 010: Cumulative review counters for lambda recalibration ─────────────
+    # recalibrate_lambda() expects a cumulative success rate over n_reviews, but
+    # schedule_next_review was passing a single review's quality/5 while also
+    # claiming n_reviews = frequency_count (OCR re-encounters, not reviews). The
+    # real counters make the success rate a true historical average (M-6).
+    ("010_tracked_review_counts", "Add review_count and correct_count to tracked_concepts", [
+        "ALTER TABLE tracked_concepts ADD COLUMN review_count  INTEGER DEFAULT 0",
+        "ALTER TABLE tracked_concepts ADD COLUMN correct_count INTEGER DEFAULT 0",
+    ]),
 ]
 
 

@@ -238,6 +238,8 @@ class TrackedConcept(Base):
     memory_strength  = Column(Float,   default=2.5)
     next_review      = Column(DateTime, index=True)   # ← DateTime + index (critical query path)
     repetitions      = Column(Integer, default=0)     # consecutive successful reviews
+    review_count     = Column(Integer, default=0)     # total quiz reviews (recalibration denominator)
+    correct_count    = Column(Integer, default=0)     # total correct quiz reviews
 
     # AWFC fields — attention at time of first learning
     attention_at_encoding = Column(Float, default=50.0)   # 0–100 scale

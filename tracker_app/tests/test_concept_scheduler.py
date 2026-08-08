@@ -138,6 +138,93 @@ def test_reexposure_nudges_not_overwrites_lambda_after_reviews(db, scheduler, no
     assert abs(row.lambda_personalised - expected) < 1e-9
 
 
+def test_matches_tested_sm2_scheduler_across_quality_sequence(db, scheduler, no_graph_sync):
+    # H-1 verification: concept_scheduler must produce the SAME interval,
+    # ease, and repetition results as the tested SM2Scheduler for any review
+    # sequence, not just the happy path. Drive both through a mixed sequence
+    # (successes and failures) and compare after every single step.
+    from tracker_app.learning.sm2_memory_model import SM2Item, SM2Scheduler
+
+    item = SM2Item(item_id="probe", question="?", answer=".")
+
+    sequence = [5, 5, 5, 2, 5, 4, 0, 5, 3, 1]
+    for quality in sequence:
+        result = SM2Scheduler.calculate_next_interval(item, quality)
+        scheduler.schedule_next_review("backpropagation", quality=quality)
+        row = _row(db)
+
+        assert row.interval == result["next_interval_days"]
+        assert row.repetitions == result["repetitions"]
+        assert abs(row.memory_strength - result["ease_factor"]) < 1e-9
+
+
+def test_review_counters_track_quizzes(db, scheduler, no_graph_sync):
+    # M-6: every schedule_next_review call is one quiz review. Verify the
+    # cumulative counters that feed recalibration.
+    scheduler.schedule_next_review("backpropagation", quality=5)
+    scheduler.schedule_next_review("backpropagation", quality=5)
+    scheduler.schedule_next_review("backpropagation", quality=2)
+    row = _row(db)
+    assert row.review_count == 3
+    assert row.correct_count == 2
+
+
+def test_recalibration_waits_for_five_reviews(db, scheduler, no_graph_sync):
+    # M-6: no lambda recalibration before 5 quiz reviews, no matter how many
+    # OCR re-encounters the concept had.
+    from tracker_app.config import DEFAULT_LAMBDA
+
+    with db() as session:
+        row = session.query(TrackedConcept).filter(
+            TrackedConcept.concept == "backpropagation"
+        ).first()
+        row.lambda_personalised = 0.42
+        row.frequency_count = 99  # old proxy must NOT trigger recalibration
+        session.commit()
+
+    for _ in range(4):
+        scheduler.schedule_next_review("backpropagation", quality=5)
+
+    row = _row(db)
+    assert row.review_count == 4
+    assert abs(row.lambda_personalised - 0.42) < 1e-12
+
+
+def test_recalibration_uses_cumulative_success_rate(db, scheduler, no_graph_sync):
+    # M-6: at the 5th review, lambda must be recalibrated from the CUMULATIVE
+    # success rate (4/5), not the last review's single rating (quality 2 -> 0.4).
+    from datetime import datetime, timedelta
+    import math
+
+    first_seen = datetime.utcnow() - timedelta(days=2)
+    with db() as session:
+        row = session.query(TrackedConcept).filter(
+            TrackedConcept.concept == "backpropagation"
+        ).first()
+        row.first_seen = first_seen
+        row.lambda_personalised = 0.1
+        session.commit()
+
+    for _ in range(4):
+        scheduler.schedule_next_review("backpropagation", quality=5)
+    scheduler.schedule_next_review("backpropagation", quality=2)
+
+    row = _row(db)
+    t_hours = (datetime.utcnow() - row.first_seen).total_seconds() / 3600.0
+    predicted = math.exp(-0.1 * t_hours)  # predicted at recalibration time (λ was 0.1)
+
+    # Recompute with the corrected inputs to prove what was passed: n=5,
+    # actual_success_rate = correct_count/review_count = 4/5, NOT quality/5.
+    assert row.review_count == 5
+    assert row.correct_count == 4
+    expected = 0.1 + 0.05 * (predicted - 0.8)
+    assert abs(row.lambda_personalised - expected) < 1e-6
+    # And the old buggy value (quality/5 = 0.4) would have produced a
+    # measurably different lambda than (4/5 = 0.8).
+    buggy = 0.1 + 0.05 * (predicted - 0.4)
+    assert abs(row.lambda_personalised - buggy) > 1e-3
+
+
 if __name__ == '__main__':
     import sys
     sys.exit(pytest.main([__file__, '-v']))

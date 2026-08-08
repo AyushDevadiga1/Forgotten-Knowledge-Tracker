@@ -165,17 +165,25 @@ class ConceptScheduler:
             # fresh recall rather than the last OCR encounter.
             tracked.last_seen       = datetime.utcnow()
 
-            # Optionally recalibrate ╬╗ after enough reviews
-            total = tracked.frequency_count or 0
-            if total >= 5:
+            # Cumulative review history (M-6): every schedule_next_review call
+            # is one quiz review, so review_count/correct_count give a true
+            # cumulative success rate for recalibration instead of the old
+            # "single rating / 5" approximation.
+            tracked.review_count  = (tracked.review_count or 0) + 1
+            if quality >= QUALITY_THRESHOLD:
+                tracked.correct_count = (tracked.correct_count or 0) + 1
+
+            # Recalibrate ╬╗ from actual vs predicted recall after enough reviews.
+            review_count = tracked.review_count or 0
+            if review_count >= 5:
                 try:
                     from tracker_app.learning.memory_model import recalibrate_lambda
-                    correct_rate = (quality / 5.0)  # approximate from single rating
+                    correct_rate = (tracked.correct_count or 0) / review_count
                     tracked.lambda_personalised = recalibrate_lambda(
                         concept_id,
                         tracked.lambda_personalised or DEFAULT_LAMBDA,
                         actual_success_rate=correct_rate,
-                        n_reviews=total,
+                        n_reviews=review_count,
                         first_seen=tracked.first_seen,
                     )
                 except Exception as e:
