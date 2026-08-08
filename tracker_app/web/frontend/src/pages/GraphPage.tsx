@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Network, AlertTriangle, RefreshCw, Loader, TrendingDown, Cpu, Share2 } from 'lucide-react'
-import { api, GraphStats, KnowledgeGap } from '../api'
+import { api, GraphStats, KnowledgeGap, GraphEdge } from '../api'
 
 // ── tiny shared helpers ───────────────────────────────────
 function MemBar({ v, max = 1 }: { v: number; max?: number }) {
@@ -34,7 +34,7 @@ function BackendDown() {
 }
 
 // ── Force-layout mini graph rendered on an SVG canvas ────
-function BubbleGraph({ concepts }: { concepts: string[] }) {
+function BubbleGraph({ concepts, edges }: { concepts: string[]; edges: GraphEdge[] }) {
     if (concepts.length === 0) return <EmptyState label="No concepts in graph yet" />
 
     const W = 480, H = 260, CX = W / 2, CY = H / 2
@@ -44,18 +44,23 @@ function BubbleGraph({ concepts }: { concepts: string[] }) {
         const rx = CX * 0.72, ry = CY * 0.72
         return { label: c, x: CX + rx * Math.cos(angle), y: CY + ry * Math.sin(angle) }
     })
+    const pos = new Map(nodes.map(n => [n.label, n]))
+
+    // Real semantic edges (M-7): draw only links that exist in the backend
+    // graph, with stroke width/opacity scaled by weight — no fabricated HUB.
+    const lines = edges.map((e, i) => {
+        const a = pos.get(e.source), b = pos.get(e.target)
+        if (!a || !b) return null
+        return (
+            <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}
+                stroke="#00FFA3" strokeWidth={0.6 + e.weight * 2}
+                opacity={0.25 + e.weight * 0.6} />
+        )
+    })
 
     return (
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full">
-            {/* spokes to centre */}
-            {nodes.map((n, i) => (
-                <line key={i} x1={CX} y1={CY} x2={n.x} y2={n.y}
-                    stroke="#1E293B" strokeWidth={1} />
-            ))}
-            {/* centre node */}
-            <circle cx={CX} cy={CY} r={14} fill="#00FFA315" stroke="#00FFA3" strokeWidth={1.5} />
-            <text x={CX} y={CY + 4} textAnchor="middle" fontSize={9}
-                fill="#00FFA3" fontFamily="IBM Plex Mono">HUB</text>
+            {lines}
             {/* concept nodes */}
             {nodes.map((n, i) => (
                 <g key={i}>
@@ -67,6 +72,12 @@ function BubbleGraph({ concepts }: { concepts: string[] }) {
                     </text>
                 </g>
             ))}
+            {edges.length === 0 && (
+                <text x={CX} y={CY} textAnchor="middle" fontSize={9}
+                    fill="#475569" fontFamily="IBM Plex Mono">
+                    no semantic links among top concepts yet
+                </text>
+            )}
         </svg>
     )
 }
@@ -160,7 +171,7 @@ export default function GraphPage() {
                         Concept Map — top {Math.min(20, topConcepts.length)} nodes
                     </p>
                     <div className="h-[260px]">
-                        <BubbleGraph concepts={topConcepts} />
+                        <BubbleGraph concepts={topConcepts} edges={stats?.edges ?? []} />
                     </div>
                 </div>
 

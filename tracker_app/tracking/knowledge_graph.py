@@ -509,6 +509,20 @@ def get_graph_stats() -> dict:
             reverse=True,
         )[:10]
 
+        # Real edges among the visible top concepts (M-7). The frontend used to
+        # fabricate spoke lines from a fake "HUB"; return the actual weighted
+        # semantic edges so the map draws the true graph structure.
+        top_set = set(top_concepts)
+        edges = sorted(
+            (
+                [u, v, round(data.get('weight', 1.0), 4)]
+                for u, v, data in knowledge_graph.edges(data=True)
+                if u in top_set and v in top_set
+            ),
+            key=lambda e: e[2],
+            reverse=True,
+        )
+
         return {
             'total_nodes':    n_nodes,
             'total_edges':    n_edges,
@@ -519,6 +533,7 @@ def get_graph_stats() -> dict:
             'total_concepts':  len(string_nodes),
             'avg_memory_strength': round(avg_memory, 4),
             'top_concepts':    top_concepts,
+            'edges':           edges,  # [source, target, weight]
         }
 
 

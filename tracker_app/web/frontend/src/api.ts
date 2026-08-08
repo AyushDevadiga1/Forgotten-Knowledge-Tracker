@@ -174,11 +174,18 @@ export const api = {
 }
 
 // ── Graph + Quiz Types ────────────────────────────────────
+export interface GraphEdge {
+    source: string
+    target: string
+    weight: number
+}
+
 export interface GraphStats {
     total_concepts: number
     total_edges: number
     avg_memory_strength: number
     top_concepts: string[]
+    edges: GraphEdge[]
 }
 
 export interface KnowledgeGap {

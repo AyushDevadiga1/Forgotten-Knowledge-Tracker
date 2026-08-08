@@ -74,3 +74,33 @@ def test_sync_db_to_graph_is_incremental(isolated_graph_path, clean_graph, monke
 
     kg.sync_db_to_graph()
     assert added == ["new concept"]
+
+
+def test_graph_stats_includes_real_edges(clean_graph):
+    """M-7: /graph/stats must return the actual weighted edges among the top
+    concepts (the frontend drew fabricated spokes before). Edges to concepts
+    outside the visible top set are excluded."""
+    with kg._graph_lock:
+        kg.knowledge_graph.clear()
+        kg.knowledge_graph.add_node("alpha", memory_score=0.9)
+        kg.knowledge_graph.add_node("beta", memory_score=0.8)
+        kg.knowledge_graph.add_node("gamma", memory_score=0.7)
+        # 7 filler nodes at 0.1 + one at 0.0 -> 11 nodes total, so the 0.0
+        # node falls outside the top-10 set.
+        for i in range(7):
+            kg.knowledge_graph.add_node(f"filler{i}", memory_score=0.1)
+        kg.knowledge_graph.add_node("low", memory_score=0.0)
+        kg.knowledge_graph.add_edge("alpha", "beta", weight=0.98)
+        kg.knowledge_graph.add_edge("alpha", "gamma", weight=0.71)
+        # edge into a node that is NOT in the top set
+        kg.knowledge_graph.add_edge("gamma", "low", weight=0.95)
+
+    stats = kg.get_graph_stats()
+    assert stats["top_concepts"][:3] == ["alpha", "beta", "gamma"]
+    assert "low" not in stats["top_concepts"]
+    assert sorted(stats["edges"]) == sorted([
+        ["alpha", "beta", 0.98],
+        ["alpha", "gamma", 0.71],
+    ])
+    # the strongest edge is listed first
+    assert stats["edges"][0] == ["alpha", "beta", 0.98]
