@@ -10,6 +10,7 @@ import logging
 from tracker_app.tracking.knowledge_graph import get_graph
 from tracker_app.tracking.keyword_extractor import get_keyword_extractor
 from tracker_app.learning.text_quality_validator import validate_and_clean_extraction
+from tracker_app.tracking.privacy_filter import sanitize_text_for_storage, is_sensitive_window
 import re
 from functools import lru_cache
 
@@ -57,17 +58,9 @@ _last_screenshot_hash = None
 # Screenshot hashing helpers
 # ----------------------------
 
-SENSITIVE_WINDOW_KEYWORDS = [
-    'password', 'login', 'sign in', 'bank', 'paypal',
-    'credit card', 'private', 'incognito', 'inprivate', 'medical'
-]
-
 def should_skip_window(title: str) -> bool:
     """Return True if the window title suggests sensitive/private content."""
-    if not title:
-        return False
-    title_lower = title.lower()
-    return any(kw in title_lower for kw in SENSITIVE_WINDOW_KEYWORDS)
+    return is_sensitive_window(title)
 
 def capture_active_window():
     """
@@ -202,22 +195,19 @@ def extract_keywords(text, top_n=15, boost_repeats=True):
     if not text or len(text.strip()) < 10:
         return {}
     
-    # Privacy filter FIRST
-    try:
-        from tracker_app.tracking.privacy_filter import sanitize_text_for_storage
-        sanitized = sanitize_text_for_storage(text)
-        
-        if not sanitized['safe_to_store']:
-            print("[PRIVACY] Text rejected due to sensitive content")
-            return {}
-        
-        # Use sanitized text
-        text = sanitized['text']
-        
-        if sanitized['is_sanitized']:
-            print(f"[PRIVACY] Redacted {sanitized['num_redactions']} sensitive items")
-    except ImportError:
-        pass  # Privacy filter not available
+    # Privacy filter FIRST (mandatory structural gate — imported at module load,
+    # so this can never silently disappear)
+    sanitized = sanitize_text_for_storage(text)
+
+    if not sanitized['safe_to_store']:
+        print("[PRIVACY] Text rejected due to sensitive content")
+        return {}
+
+    # Use sanitized text
+    text = sanitized['text']
+
+    if sanitized['is_sanitized']:
+        print(f"[PRIVACY] Redacted {sanitized['num_redactions']} sensitive items")
     
     # Quality validation
     validation = validate_and_clean_extraction(text)
