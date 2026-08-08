@@ -189,6 +189,96 @@ class TestAPISessions(TestAPIBase):
         status = json.loads(self.client.get('/api/v1/session/status').data)
         self.assertGreaterEqual(status['data']['elapsed_seconds'], 0)
 
+class TestAPIStatsTrend(TestAPIBase):
+    """Real per-day time-series backing the Overview sparklines (H-2)."""
+
+    def test_trend_defaults_to_7_day_buckets(self):
+        resp = self.client.get('/api/v1/stats/trend')
+        self.assertEqual(resp.status_code, 200)
+        data = json.loads(resp.data)
+        self.assertTrue(data['success'])
+        self.assertEqual(len(data['data']), 7)
+        self.assertEqual(
+            set(data['data'][0].keys()),
+            {'date', 'reviews', 'correct', 'added', 'mastered', 'due', 'accuracy'})
+
+    def test_trend_empty_db_is_all_zeros(self):
+        data = json.loads(self.client.get('/api/v1/stats/trend?days=3').data)
+        self.assertEqual(len(data['data']), 3)
+        for day in data['data']:
+            self.assertEqual(day['reviews'], 0)
+            self.assertEqual(day['added'], 0)
+            self.assertEqual(day['mastered'], 0)
+            self.assertEqual(day['due'], 0)
+            self.assertEqual(day['accuracy'], 0)
+
+    def test_trend_reflects_real_reviews_and_additions(self):
+        resp = self.client.post('/api/v1/items',
+            data=json.dumps({'question': 'What is ATP?', 'answer': 'Energy currency.'}),
+            content_type='application/json')
+        item_id = json.loads(resp.data)['data']['id']
+
+        self.client.post('/api/v1/reviews',
+            data=json.dumps({'item_id': item_id, 'quality': 5}),
+            content_type='application/json')
+
+        trend = json.loads(self.client.get('/api/v1/stats/trend?days=1').data)['data']
+        self.assertEqual(len(trend), 1)
+        self.assertEqual(trend[0]['added'], 1)
+        self.assertEqual(trend[0]['reviews'], 1)
+        self.assertEqual(trend[0]['correct'], 1)
+        self.assertEqual(trend[0]['accuracy'], 100)
+
+    def test_trend_rejects_invalid_days(self):
+        self.assertEqual(self.client.get('/api/v1/stats/trend?days=0').status_code, 400)
+        self.assertEqual(self.client.get('/api/v1/stats/trend?days=abc').status_code, 400)
+        self.assertEqual(self.client.get('/api/v1/stats/trend?days=1000').status_code, 400)
+
+class TestDailySummaryRange(TestAPIBase):
+    """M-4: date filter must be a range, not a string LIKE."""
+
+    def test_daily_summary_uses_range_boundaries(self):
+        from datetime import datetime, timedelta
+        from tracker_app.db.models import TrackingSession
+        from tracker_app.db.repository import TrackingRepository
+
+        now = datetime.utcnow()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        yesterday_evening = today_start - timedelta(seconds=1)
+        tomorrow_morning = today_start + timedelta(days=1, seconds=1)
+
+        with self.TestingSessionLocal() as db:
+            for label, ts, minutes in (
+                ("inside-1", today_start, 30.0),
+                ("inside-2", today_start + timedelta(hours=12), 20.0),
+                ("yesterday", yesterday_evening, 90.0),
+                ("tomorrow", tomorrow_morning, 60.0),
+            ):
+                db.add(TrackingSession(
+                    start_time=ts, duration_minutes=minutes,
+                    concepts_encountered=1, avg_attention=0.5))
+            db.commit()
+
+            summary = TrackingRepository.get_daily_summary(db, date=now)
+        self.assertEqual(summary['date'], now.strftime("%Y-%m-%d"))
+        self.assertAlmostEqual(summary['total_minutes'], 50.0)
+        self.assertEqual(summary['concepts'], 2)
+
+    def test_daily_summary_empty_day_is_zero(self):
+        from datetime import datetime, timedelta
+        from tracker_app.db.models import TrackingSession
+        from tracker_app.db.repository import TrackingRepository
+
+        old = datetime.utcnow() - timedelta(days=30)
+        with self.TestingSessionLocal() as db:
+            db.add(TrackingSession(
+                start_time=old, duration_minutes=99.0,
+                concepts_encountered=9, avg_attention=0.9))
+            db.commit()
+            summary = TrackingRepository.get_daily_summary(db, date=datetime.utcnow())
+        self.assertEqual(summary['total_minutes'], 0)
+        self.assertEqual(summary['concepts'], 0)
+
 if __name__ == '__main__':
     unittest.main()
 

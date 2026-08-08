@@ -47,6 +47,16 @@ export interface StatsResponse {
     data: { stats: Stats; today: { reviews_today: number; concepts_studied: number } }
 }
 
+export interface TrendDay {
+    date: string
+    reviews: number
+    correct: number
+    added: number
+    mastered: number
+    due: number
+    accuracy: number
+}
+
 export interface ItemsResponse {
     success: boolean
     data: LearningItem[]
@@ -79,6 +89,10 @@ export interface SessionStatus {
 export const api = {
     /** GET /api/v1/stats */
     getStats: () => apiFetch<StatsResponse>('/stats'),
+
+    /** GET /api/v1/stats/trend?days=N — real per-day time-series for sparklines */
+    getStatsTrend: (days = 7) =>
+        apiFetch<{ success: boolean; data: TrendDay[] }>(`/stats/trend?days=${days}`),
 
     /** GET /api/v1/items?status=all&limit=100 */
     getItems: (status = 'all', limit = 100) =>

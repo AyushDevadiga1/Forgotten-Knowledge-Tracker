@@ -213,6 +213,31 @@ def get_stats():
         today = get_tracker().get_learning_today()
         return jsonify({'success': True, 'data': {'stats': stats, 'today': today}})
     except Exception as e:
+        logger.error(f"get_stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/stats/trend', methods=['GET'])
+def get_stats_trend():
+    """Real per-day time-series (reviews, accuracy, additions, mastery, due).
+
+    Backs the Overview page sparklines — these replace the previously random,
+    fabricated trend data with values derived from stored timestamps.
+    """
+    try:
+        days = int(request.args.get('days', 7))
+        if not (1 <= days <= 90):
+            return jsonify({'success': False, 'error': 'days must be 1–90'}), 400
+    except (ValueError, TypeError):
+        return jsonify({'success': False, 'error': 'days must be an integer'}), 400
+    try:
+        from tracker_app.db import models
+        from tracker_app.db.repository import LearningRepository
+        with models.SessionLocal() as db:
+            trend = LearningRepository.get_review_trend(db, days=days)
+        return jsonify({'success': True, 'data': trend})
+    except Exception as e:
+        logger.error(f"get_stats_trend: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

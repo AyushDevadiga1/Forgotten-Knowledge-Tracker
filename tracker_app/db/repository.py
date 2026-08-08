@@ -92,6 +92,78 @@ class LearningRepository:
         }
 
     @staticmethod
+    def get_review_trend(db: Session, days: int = 7) -> List[Dict[str, Any]]:
+        """Real per-day time-series over the last N days (oldest → newest).
+
+        Every figure is derived from stored timestamps — reviews/correctness
+        from `review_history`, items added from `learning_items.created_at`,
+        mastery from the first review where the stored mastery rule holds, and
+        due items from `next_review_date`. Nothing is simulated.
+        """
+        from datetime import timedelta
+
+        today = datetime.utcnow().date()
+        dates = [today - timedelta(days=i) for i in range(days - 1, -1, -1)]
+        by_day = {d: {"date": d.isoformat(), "reviews": 0, "correct": 0,
+                      "added": 0, "mastered": 0, "due": 0} for d in dates}
+
+        reviews = db.query(ReviewHistory.timestamp, ReviewHistory.quality_rating).all()
+        for ts, quality in reviews:
+            if ts is None:
+                continue
+            day = ts.date()
+            if day in by_day:
+                by_day[day]["reviews"] += 1
+                if quality is not None and quality >= 3:
+                    by_day[day]["correct"] += 1
+
+        items = db.query(
+            LearningItem.id,
+            LearningItem.created_at,
+            LearningItem.status,
+            LearningItem.next_review_date,
+        ).all()
+        for item_id, created, status, next_review in items:
+            if created is not None and created.date() in by_day:
+                by_day[created.date()]["added"] += 1
+            if status == "active" and next_review is not None and next_review.date() in by_day:
+                by_day[next_review.date()]["due"] += 1
+
+        for item_id, created, status, _next in items:
+            if status != "mastered":
+                continue
+            item_reviews = (
+                db.query(ReviewHistory.timestamp, ReviewHistory.quality_rating)
+                .filter(ReviewHistory.item_id == item_id)
+                .order_by(ReviewHistory.timestamp.asc())
+                .all()
+            )
+            if not item_reviews:
+                day = created.date() if created is not None else None
+            else:
+                total = correct = 0
+                day = None
+                for ts, quality in item_reviews:
+                    if ts is None:
+                        continue
+                    total += 1
+                    if quality is not None and quality >= 3:
+                        correct += 1
+                    if total > 5 and (correct / total) > 0.95:
+                        day = ts.date()
+                        break
+                if day is None:
+                    day = item_reviews[-1][0].date()
+            if day is not None and day in by_day:
+                by_day[day]["mastered"] += 1
+
+        out = list(by_day.values())
+        for entry in out:
+            entry["accuracy"] = round(
+                entry["correct"] / entry["reviews"] * 100) if entry["reviews"] else 0
+        return out
+
+    @staticmethod
     def search_items(db: Session, query: str) -> List[LearningItem]:
         from sqlalchemy import or_
         search_term = f"%{query}%"
@@ -171,16 +243,20 @@ class TrackingRepository:
         
     @staticmethod
     def get_daily_summary(db: Session, date: Optional[datetime] = None) -> Dict[str, Any]:
+        from datetime import timedelta
         if date is None:
             date = datetime.utcnow()
         date_str = date.strftime("%Y-%m-%d")
-        
+        day_start = date.replace(hour=0, minute=0, second=0, microsecond=0)
+        next_day = day_start + timedelta(days=1)
+
         row = db.query(
             func.sum(TrackingSession.duration_minutes),
             func.sum(TrackingSession.concepts_encountered),
             func.avg(TrackingSession.avg_attention)
         ).filter(
-            TrackingSession.start_time.like(f"{date_str}%")
+            TrackingSession.start_time >= day_start,
+            TrackingSession.start_time < next_day
         ).first()
         
         return {

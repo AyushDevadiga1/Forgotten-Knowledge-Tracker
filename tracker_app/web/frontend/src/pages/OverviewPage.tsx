@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, Tooltip as RCTooltip, Cell } from 'recharts'
 import { Search, AlertCircle, Loader, Play, Square } from 'lucide-react'
-import { api, Stats, LearningItem, SessionStatus } from '../api'
+import { api, Stats, LearningItem, SessionStatus, TrendDay } from '../api'
 
 const tooltipStyle = {
   contentStyle: { backgroundColor: '#0F172A', borderColor: '#1E293B', borderRadius: 0, fontFamily: 'IBM Plex Mono', fontSize: '12px', color: '#F1F5F9' },
@@ -14,11 +14,10 @@ const statusColor: Record<string, string> = {
   critical: 'bg-[#EF4444]',
 }
 
-// Build sparkline from a single number (simulated trend)
-function miniSparkline(base: number): { v: number }[] {
-  return Array.from({ length: 7 }, (_, i) => ({
-    v: Math.max(0, base + Math.round((Math.random() - 0.5) * base * 0.2) + i),
-  }))
+// Sparkline from the real per-day trend series (last 7 days). Each KPI card
+// shows its own metric: additions, mastery, success rate, and the due forecast.
+function miniSparkline(trend: TrendDay[], pick: (d: TrendDay) => number): { v: number }[] {
+  return trend.map((d) => ({ v: pick(d) }))
 }
 
 function formatElapsed(totalSeconds: number | null | undefined): string {
@@ -36,6 +35,7 @@ export default function OverviewPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [today, setToday] = useState<{ reviews_today: number; concepts_studied: number } | null>(null)
   const [recentItems, setRecentItems] = useState<LearningItem[]>([])
+  const [trend, setTrend] = useState<TrendDay[]>([])
   const [session, setSession] = useState<SessionStatus | null>(null)
   const [sessionBusy, setSessionBusy] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -44,15 +44,17 @@ export default function OverviewPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [statsRes, itemsRes, sessionRes] = await Promise.all([
+        const [statsRes, itemsRes, sessionRes, trendRes] = await Promise.all([
           api.getStats(),
           api.getItems('active', 6),
           api.getSessionStatus(),
+          api.getStatsTrend(7).catch(() => ({ data: [] as TrendDay[] })),
         ])
         setStats(statsRes.data.stats)
         setToday(statsRes.data.today)
         setRecentItems(itemsRes.data)
         setSession(sessionRes.data)
+        setTrend(trendRes.data)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to load data')
       } finally {
@@ -103,28 +105,28 @@ export default function OverviewPage() {
       value: stats.total_items.toLocaleString(),
       delta: `${stats.active_items} active`,
       up: true,
-      spark: miniSparkline(stats.total_items),
+      spark: miniSparkline(trend, (d) => d.added),
     },
     {
       title: 'MASTERED',
       value: stats.mastered_items.toLocaleString(),
       delta: `${Math.round((stats.mastered_items / Math.max(stats.total_items, 1)) * 100)}%`,
       up: true,
-      spark: miniSparkline(stats.mastered_items),
+      spark: miniSparkline(trend, (d) => d.mastered),
     },
     {
       title: 'AVG SUCCESS',
       value: `${Math.round(stats.average_success_rate)}%`,
       delta: `${stats.total_reviews} total reviews`,
       up: stats.average_success_rate >= 70,
-      spark: miniSparkline(stats.average_success_rate),
+      spark: miniSparkline(trend, (d) => d.accuracy),
     },
     {
       title: 'DUE TODAY',
       value: stats.items_due_today.toLocaleString(),
       delta: `${today?.reviews_today ?? 0} reviewed`,
       up: stats.items_due_today === 0,
-      spark: miniSparkline(stats.items_due_today + 1),
+      spark: miniSparkline(trend, (d) => d.due),
     },
   ] : []
 
