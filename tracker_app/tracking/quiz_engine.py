@@ -14,6 +14,11 @@ logger = logging.getLogger("QuizEngine")
 QUIZ_COOLDOWN_MINUTES = 20   # minimum gap between quizzes
 IDLE_CYCLES_REQUIRED  = 12   # consecutive idle cycles (~60 s at 5 s cadence) before trigger
 MIN_GRAPH_SIZE        = 4    # need at least this many concepts to quiz
+# With webcam enabled, only interrupt when attention is at least this high:
+# the user has paused but is still at the desk, so they can actually see and
+# answer the modal. Firing on *low* attention would hit someone who zoned out
+# or stepped away — the exact moment they will not see the question (10.3).
+ATTENTION_PRESENT_MIN = 35
 
 _last_quiz_time: Optional[datetime] = None
 
@@ -32,8 +37,13 @@ def should_show_quiz(
     Conditions:
       - A study session is active (nobody is at the keyboard otherwise)
       - User has been idle for IDLE_CYCLES_REQUIRED+ consecutive cycles
+        (a real pause, ~60 s — not between keystrokes)
       - At least QUIZ_COOLDOWN_MINUTES since the last quiz
-      - If webcam enabled: attention score < 35 (user is away / zoned out)
+      - If webcam enabled: attention is at least ATTENTION_PRESENT_MIN —
+        the user paused but is still present. A quiz timed to a brief pause
+        while attention stays moderate-to-high reaches someone able to answer
+        it, instead of the old condition (attention < 35) which interrupted
+        exactly when the user was away or mentally checked out.
       - If webcam disabled: idle_cycles is sufficient signal on its own
     """
     global _last_quiz_time
@@ -49,8 +59,8 @@ def should_show_quiz(
         if elapsed < QUIZ_COOLDOWN_MINUTES:
             return False
 
-    if webcam_enabled and attention_score > 35:
-        return False   # user is actually paying attention
+    if webcam_enabled and attention_score < ATTENTION_PRESENT_MIN:
+        return False   # user stepped away / zoned out — won't see the modal
 
     return True
 
