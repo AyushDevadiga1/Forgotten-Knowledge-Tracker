@@ -258,6 +258,7 @@ def get_recent_intent():
                 'predicted_intent': row.predicted_intent,
                 'confidence': row.confidence,
                 'user_feedback': row.user_feedback,
+                'window_title': row.window_title or '',
             }})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

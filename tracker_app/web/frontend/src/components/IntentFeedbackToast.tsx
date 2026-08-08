@@ -1,6 +1,24 @@
 import { useEffect, useState } from 'react'
 import { api, IntentPrediction } from '../api'
 
+function formatAgo(iso: string): string {
+    try {
+        const utc = iso.endsWith('Z') ? iso : iso + 'Z'
+        const then = new Date(utc).getTime()
+        const secs = Math.max(0, Math.round((Date.now() - then) / 1000))
+        if (secs < 60) return 'just now'
+        if (secs < 3600) return `${Math.floor(secs / 60)} min ago`
+        if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`
+        return new Date(utc).toLocaleString()
+    } catch {
+        return ''
+    }
+}
+
+function truncate(s: string, max: number): string {
+    return s.length > max ? s.slice(0, max) + '…' : s
+}
+
 export default function IntentFeedbackToast() {
     const [prediction, setPrediction] = useState<IntentPrediction | null>(null)
     const [submitted, setSubmitted] = useState(false)
@@ -52,7 +70,7 @@ export default function IntentFeedbackToast() {
             <div className="p-3 border-b border-fkt-elevated bg-fkt-base flex justify-between items-center">
                 <span className="text-[10px] uppercase tracking-widest text-fkt-text-muted font-mono flex items-center gap-2">
                     <div className="w-1.5 h-1.5 bg-fkt-accent animate-pulse" />
-                    DATA COLLECTION
+                    Quick Check
                 </span>
                 <div className="flex items-center gap-3">
                     <span className="text-[9px] text-fkt-text-dim font-mono">{Math.round(prediction.confidence * 100)}% CONF</span>
@@ -67,12 +85,27 @@ export default function IntentFeedbackToast() {
             </div>
 
             <div className="p-4">
-                <p className="text-xs text-fkt-text-muted mb-3 font-sans">
+                <p className="text-xs text-fkt-text-muted mb-1 font-sans">
                     The system predicted your recent activity as:
                 </p>
-                <div className="text-center font-mono text-fkt-accent text-lg mb-4 uppercase">
+                <div className="text-center font-mono text-fkt-accent text-lg mb-3 uppercase">
                     {prediction.predicted_intent}
                 </div>
+
+                {(prediction.timestamp || prediction.window_title) && (
+                    <div className="flex items-center justify-center gap-2 text-[10px] font-mono text-fkt-text-dim mb-3">
+                        {prediction.timestamp && <span>{formatAgo(prediction.timestamp)}</span>}
+                        {prediction.timestamp && prediction.window_title && <span>•</span>}
+                        {prediction.window_title && (
+                            <span
+                                className="truncate max-w-[200px]"
+                                title={prediction.window_title}
+                            >
+                                {truncate(prediction.window_title, 42)}
+                            </span>
+                        )}
+                    </div>
+                )}
 
                 <p className="text-[10px] text-fkt-text-muted mb-2 uppercase tracking-wide">Was this correct?</p>
                 <div className="flex gap-2 mb-3">

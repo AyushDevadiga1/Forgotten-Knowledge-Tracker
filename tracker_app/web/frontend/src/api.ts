@@ -65,6 +65,7 @@ export interface IntentPrediction {
     predicted_intent: string
     confidence: number
     user_feedback: number | null
+    window_title: string | null
 }
 
 export interface SessionStatus {
