@@ -41,6 +41,29 @@ def test_start_stop_idempotent(isolated_state):
     assert ss.is_active() is False
 
 
+def test_restart_resets_started_at(isolated_state):
+    ss.start()
+    first_started = ss.get_status()["started_at"]
+    ss.stop()
+    ss.start()
+    second_started = ss.get_status()["started_at"]
+    assert second_started != first_started
+    # Elapsed clock counts from the NEW session, not the previous one.
+    assert ss.get_status()["elapsed_seconds"] < 5
+
+
+def test_start_after_crash_resets_stale_clock(isolated_state):
+    # Simulate a crashed session: file stuck active with an old started_at.
+    isolated_state.write_text(
+        '{"active": true, "started_at": "2026-01-01T00:00:00", "stopped_at": null}',
+        encoding="utf-8",
+    )
+    ss.start()
+    status = ss.get_status()
+    assert status["started_at"] != "2026-01-01T00:00:00"
+    assert status["elapsed_seconds"] < 5
+
+
 def test_status_reports_elapsed_seconds(isolated_state):
     ss.start()
     status = ss.get_status()

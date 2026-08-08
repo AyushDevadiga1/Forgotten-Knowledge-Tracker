@@ -46,13 +46,18 @@ def is_active() -> bool:
 
 
 def start() -> dict:
-    """Toggle a study session on (idempotent). Returns the new state."""
+    """Toggle a study session on (idempotent). Returns the new state.
+
+    `started_at` is always stamped with the current time, so a session
+    restarted after `stop()` (or after a crash that left `active=true` in the
+    file) starts a fresh clock rather than counting elapsed time from the
+    previous session's start.
+    """
     with _lock:
         state = _load()
         now = datetime.utcnow().isoformat()
         state["active"] = True
-        if not state.get("started_at"):
-            state["started_at"] = now
+        state["started_at"] = now
         state["stopped_at"] = None
         _save(state)
         return state
