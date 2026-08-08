@@ -19,11 +19,31 @@ function truncate(s: string, max: number): string {
     return s.length > max ? s.slice(0, max) + '…' : s
 }
 
+// Dismissal is persisted per prediction (L-4). The backend also stamps
+// prompted_at on first serve, so a dismissed prediction never resurfaces even
+// after the toast unmounts (navigation) or the page reloads.
+const DISMISS_PREFIX = 'fkt:dismissed-intent:'
+
+function isDismissed(id: number): boolean {
+    try {
+        return localStorage.getItem(DISMISS_PREFIX + id) === '1'
+    } catch {
+        return false
+    }
+}
+
+function markDismissed(id: number): void {
+    try {
+        localStorage.setItem(DISMISS_PREFIX + id, '1')
+    } catch {
+        // storage unavailable — the backend prompted_at claim still prevents re-show
+    }
+}
+
 export default function IntentFeedbackToast() {
     const [prediction, setPrediction] = useState<IntentPrediction | null>(null)
     const [submitted, setSubmitted] = useState(false)
     const [actualIntent, setActualIntent] = useState('')
-    const [dismissed, setDismissed] = useState(false)
 
     useEffect(() => {
         // Poll every 10 seconds for the latest prediction
@@ -34,7 +54,7 @@ export default function IntentFeedbackToast() {
                 // Only prompt if it exists and hasn't been given feedback yet.
                 // The backend rate-limits (prompted_at + cooldown) so we only
                 // get something worth showing here.
-                if (!dismissed && data && data.user_feedback === null) {
+                if (data && data.user_feedback === null && !isDismissed(data.id)) {
                     setPrediction(data)
                     setSubmitted(false)
                     setActualIntent('')
@@ -49,7 +69,7 @@ export default function IntentFeedbackToast() {
         checkRecent()
         const interval = setInterval(checkRecent, 10000)
         return () => clearInterval(interval)
-    }, [submitted, dismissed]) // Re-run if submitted changes, though interval handles it
+    }, [submitted]) // Re-run if submitted changes, though interval handles it
 
     const handleFeedback = async (isCorrect: boolean) => {
         if (!prediction) return
@@ -61,6 +81,11 @@ export default function IntentFeedbackToast() {
         } catch (e) {
             console.error('Failed to submit feedback', e)
         }
+    }
+
+    const dismiss = () => {
+        if (prediction) markDismissed(prediction.id)
+        setPrediction(null)
     }
 
     if (!prediction) return null
@@ -75,7 +100,7 @@ export default function IntentFeedbackToast() {
                 <div className="flex items-center gap-3">
                     <span className="text-[9px] text-fkt-text-dim font-mono">{Math.round(prediction.confidence * 100)}% CONF</span>
                     <button
-                        onClick={() => setDismissed(true)}
+                        onClick={dismiss}
                         title="Dismiss"
                         className="text-fkt-text-dim hover:text-fkt-text-primary transition-colors text-sm leading-none"
                     >

@@ -124,5 +124,68 @@ class TestToastCooldown(ToastCooldownTestBase):
         self.assertEqual(data['predicted_intent'], 'studying')
 
 
+class TestAtomicClaim(ToastCooldownTestBase):
+    """H-3: the prompted_at stamp must be an atomic claim.
+
+    Two concurrent requests can both read the same eligible row before either
+    writes (TOCTOU). The conditional UPDATE makes exactly one of them win; the
+    loser's UPDATE matches zero rows and must return null.
+    """
+
+    def test_only_one_request_can_claim_a_prediction(self):
+        pid = self._add_prediction()
+
+        # Both requests read the row while it is still eligible.
+        with self.TestingSessionLocal() as db:
+            row_a = db.query(IntentPrediction).filter(IntentPrediction.id == pid).first()
+        with self.TestingSessionLocal() as db:
+            row_b = db.query(IntentPrediction).filter(IntentPrediction.id == pid).first()
+        self.assertIsNone(row_a.prompted_at)
+        self.assertIsNone(row_b.prompted_at)
+
+        from datetime import datetime
+        from sqlalchemy import update
+        now = datetime.utcnow()
+
+        with self.TestingSessionLocal() as db:
+            r1 = db.execute(
+                update(IntentPrediction)
+                .where(
+                    IntentPrediction.id == row_a.id,
+                    IntentPrediction.prompted_at.is_(None),
+                    IntentPrediction.user_feedback.is_(None),
+                )
+                .values(prompted_at=now))
+            db.commit()
+        with self.TestingSessionLocal() as db:
+            r2 = db.execute(
+                update(IntentPrediction)
+                .where(
+                    IntentPrediction.id == row_b.id,
+                    IntentPrediction.prompted_at.is_(None),
+                    IntentPrediction.user_feedback.is_(None),
+                )
+                .values(prompted_at=now))
+            db.commit()
+
+        self.assertEqual(r1.rowcount, 1)
+        self.assertEqual(r2.rowcount, 0)
+        with self.TestingSessionLocal() as db:
+            self.assertIsNotNone(
+                db.query(IntentPrediction).filter(IntentPrediction.id == pid).first().prompted_at)
+
+    def test_endpoint_respects_already_claimed_row(self):
+        pid = self._add_prediction()
+        from datetime import datetime
+        from sqlalchemy import update
+        with self.TestingSessionLocal() as db:
+            db.execute(
+                update(IntentPrediction)
+                .where(IntentPrediction.id == pid)
+                .values(prompted_at=datetime.utcnow()))
+            db.commit()
+        self.assertIsNone(self._get_recent())
+
+
 if __name__ == '__main__':
     unittest.main()

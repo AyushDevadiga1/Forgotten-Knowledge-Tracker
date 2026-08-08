@@ -230,6 +230,7 @@ def get_recent_intent():
     returned, the row is stamped prompted_at so it is never shown twice.
     """
     from datetime import datetime, timedelta
+    from sqlalchemy import update
     from tracker_app.config import TOAST_COOLDOWN_MINUTES
     from tracker_app.db.models import SessionLocal, IntentPrediction
     from tracker_app.db.repository import TrackingRepository
@@ -249,8 +250,23 @@ def get_recent_intent():
                 if datetime.utcnow() - last_prompt[0] < timedelta(minutes=TOAST_COOLDOWN_MINUTES):
                     return jsonify({'success': True, 'data': None})
 
-            row.prompted_at = datetime.utcnow()
+            now = datetime.utcnow()
+            # Atomic claim: the conditional UPDATE flips prompted_at from NULL,
+            # and only one concurrent request can do that. A second request that
+            # read the same eligible row (the TOCTOU window) gets rowcount 0 and
+            # returns null instead of double-firing the toast.
+            result = db.execute(
+                update(IntentPrediction)
+                .where(
+                    IntentPrediction.id == row.id,
+                    IntentPrediction.prompted_at.is_(None),
+                    IntentPrediction.user_feedback.is_(None),
+                )
+                .values(prompted_at=now)
+            )
             db.commit()
+            if result.rowcount == 0:
+                return jsonify({'success': True, 'data': None})
 
             ts = row.timestamp.isoformat() if isinstance(row.timestamp, datetime) else str(row.timestamp)
             return jsonify({'success': True, 'data': {
