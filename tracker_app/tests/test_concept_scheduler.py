@@ -24,6 +24,12 @@ def db(monkeypatch):
     Base.metadata.create_all(bind=engine)
     monkeypatch.setattr(models, "engine", engine)
     monkeypatch.setattr(models, "SessionLocal", TestingSessionLocal)
+    # add_concept uses the SessionLocal bound at import time in
+    # concept_scheduler, not models.SessionLocal attribute lookup.
+    monkeypatch.setattr(
+        "tracker_app.learning.concept_scheduler.SessionLocal",
+        TestingSessionLocal,
+    )
     return TestingSessionLocal
 
 
@@ -86,6 +92,50 @@ def test_ease_factor_stays_above_minimum(db, scheduler):
     scheduler.schedule_next_review("backpropagation", quality=0)
     row = _row(db)
     assert row.memory_strength >= 1.3
+
+
+@pytest.fixture
+def no_graph_sync(monkeypatch):
+    monkeypatch.setattr(
+        "tracker_app.tracking.knowledge_graph.sync_concept_to_graph",
+        lambda concept: None,
+    )
+
+
+def test_reexposure_recomputes_lambda_before_any_reviews(db, scheduler, no_graph_sync):
+    # repetitions == 0: nothing personalised to protect, so a re-encounter
+    # still fully recomputes lambda from the fresh attention EMA.
+    from tracker_app.config import DEFAULT_LAMBDA
+    from tracker_app.learning.memory_model import compute_awfc_lambda
+
+    scheduler.add_concept("backpropagation", attention_at_encoding=90.0)
+    row = _row(db)
+    # EMA: 0.8*50 (default) + 0.2*90 = 58
+    expected = compute_awfc_lambda(DEFAULT_LAMBDA, 58.0)
+    assert abs(row.lambda_personalised - expected) < 1e-9
+
+
+def test_reexposure_nudges_not_overwrites_lambda_after_reviews(db, scheduler, no_graph_sync):
+    # Once reviews exist (repetitions > 0) lambda may have been recalibrated
+    # from real recall. A passive OCR re-encounter must nudge toward the
+    # attention-based estimate, not replace the personalised value.
+    from tracker_app.config import DEFAULT_LAMBDA
+    from tracker_app.learning.memory_model import compute_awfc_lambda
+
+    scheduler.schedule_next_review("backpropagation", quality=5)
+    with db() as session:
+        row = session.query(TrackedConcept).filter(
+            TrackedConcept.concept == "backpropagation"
+        ).first()
+        row.lambda_personalised = 0.42  # simulate recalibrated personalisation
+        session.commit()
+
+    scheduler.add_concept("backpropagation", attention_at_encoding=90.0)
+    row = _row(db)
+    attention_lambda = compute_awfc_lambda(DEFAULT_LAMBDA, 58.0)
+    expected = 0.9 * 0.42 + 0.1 * attention_lambda
+    assert row.lambda_personalised != 0.42
+    assert abs(row.lambda_personalised - expected) < 1e-9
 
 
 if __name__ == '__main__':

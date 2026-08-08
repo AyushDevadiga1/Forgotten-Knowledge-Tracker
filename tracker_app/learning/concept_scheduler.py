@@ -52,9 +52,27 @@ class ConceptScheduler:
                     0.8 * (existing.attention_at_encoding or 50.0)
                     + 0.2 * attention_at_encoding
                 )
-                existing.lambda_personalised = compute_awfc_lambda(
-                    DEFAULT_LAMBDA, existing.attention_at_encoding
-                )
+                # Once schedule_next_review() has recalibrated lambda from real
+                # recall performance (repetitions > 0), a passive re-encounter
+                # must not overwrite that with a fresh attention-only estimate
+                # off the global DEFAULT_LAMBDA — that silently discards the
+                # personalisation every time the concept is re-seen on screen,
+                # which happens far more often than it gets quizzed. Before any
+                # reviews exist there's nothing to protect, so recompute freely;
+                # afterwards, nudge gently toward the attention-based estimate
+                # instead of replacing it outright.
+                if (existing.repetitions or 0) == 0:
+                    existing.lambda_personalised = compute_awfc_lambda(
+                        DEFAULT_LAMBDA, existing.attention_at_encoding
+                    )
+                else:
+                    attention_lambda = compute_awfc_lambda(
+                        DEFAULT_LAMBDA, existing.attention_at_encoding
+                    )
+                    existing.lambda_personalised = (
+                        0.9 * (existing.lambda_personalised or DEFAULT_LAMBDA)
+                        + 0.1 * attention_lambda
+                    )
                 existing.last_seen       = now
                 existing.frequency_count = (existing.frequency_count or 0) + 1
                 existing.relevance_score = (
