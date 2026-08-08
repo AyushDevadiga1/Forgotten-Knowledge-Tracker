@@ -1,175 +1,535 @@
-# FKT Makeover Plan
+# FKT Makeover Plan — Evidence-Based Architectural Audit
 
-**Goal:** Take FKT from "impressive code that doesn't fully run" to a working, demoable system with a frontend that actually surfaces what the backend already does — and that behaves the way a human actually using it would want it to.
-
-**Status as of this rewrite:** Phases 0–9 are done and verified (the system runs, is tested, has a working frontend, and correctly gates concept capture to explicit study sessions). This rewrite exists because a deeper look at the frontend and the two "interrupt" mechanisms (intent-feedback toast, micro-quiz push) found the human-facing layer is untuned to the point of actively working against the app's own purpose. **Phase 10 below is the current priority** — everything else is real, working infrastructure that this phase needs to actually put to good use.
-
----
-
-## Resolved (Phases 0–9) — condensed record
-
-**Phase 0 — Runtime restored.** `concept_scheduler.py` recovered from git history; `db/repository.py` rebuilt (`LearningRepository`/`TrackingRepository` were missing entirely, blocking both `main.py` and `web/app.py` from starting). OpenCV duplicate install resolved; Tesseract path now checked at startup instead of failing silently.
-
-**Phase 1 — Dependencies cleaned.** Removed `paddleocr`, `streamlit`, `streamlit-autorefresh`, and a dead commented-out `dlib` line from `requirements.txt`. A later fresh-install test caught `sounddevice`/`librosa` missing (used directly by `audio_module.py`) — added back.
-
-**Phase 2 — Data layer verified.** `tools/populate.py` seed run confirmed working; all 6 migrations confirmed idempotent; `db/repository.py` methods cross-checked against every caller in `learning_tracker.py` and `activity_monitor.py`.
-
-**Phase 3 — Frontend parity built.** Graph page (`/graph/stats`, `/graph/gaps`) and Quiz page (`/quiz/current`, `/quiz/answer`) built and wired into `MainLayout` nav, with empty/loading/backend-down states.
-
-**Phase 4 — Testing & CI.** Three files masquerading as tests (`test_db.py`, `test_memory_graph.py`, `test_audio.py` — none had real assertions, one triggered a live microphone recording on import) moved out of `tests/`. GitHub Actions CI added. Real test count grew from 74 to 85 through Phase 8.
-
-**Phase 5 — Docs reconciled.** `ADR-003` supersedes `ADR-002`: the RandomForest intent classifier is kept, now justified by training on real user feedback (`FeedbackRepository`) rather than the synthetic data ADR-002 correctly criticized. `tech_stack.md` corrected (MediaPipe, not `dlib`). `documentation/` deduplicated into an `archive/`.
-
-**Phase 6 — Clean-room verified.** A truly fresh `venv` + `npm install` confirmed the install path works with zero manual fixes; an import audit caught a few more gaps (`numpy`, `networkx`, `psutil`, `pywin32`); a live end-to-end run confirmed OCR → keyword extraction → concept scheduler → DB → dashboard actually flows.
-
-**Phase 7 — Concept-quality & persistence fixes.** `is_plausible_concept()` added to reject OCR-artifact fragments (`"ano"`, `"hty"`) — this addresses *garbled* text, not *irrelevant* text; see Phase 10 for the latter. Knowledge graph now persists to `knowledge_graph.pkl` instead of rebuilding from scratch on every start. A Chrome extension (`FKT Capture`) was built for the `/ingest` path.
-
-**Phase 8 — Dead code removed.** Legacy/broken modules moved to a git-ignored `legacy/` folder; ~15 confirmed-zero-caller functions removed; changelog-style comments replaced with real docstrings.
-
-**Phase 9 — Session-gated capture (the core relevance fix).** `tracking/session_state.py` implements a file-based Start/Stop Study Session toggle shared between the web process and the tracker process. `track_loop()` now gates *all* capture — not just concept-saving, but OCR/audio/webcam themselves — behind `session_active`, and even within an active session only persists concepts on cycles the intent classifier labels as `studying` (`SESSION_ALLOWED_INTENTS` in `config.py`). Verified correct by reading `loop.py`, `session_state.py`, and `config.py` directly: this is real, and it's wired up properly.
+> **Ground rules for this document:**
+> - *Working behavior* is documented as-is.
+> - *Broken behavior* is distinguished from *unclear/accidental behavior*.
+> - No recommendations are made unless a real problem was observed.
+> - Every finding cites the file and line range where it was confirmed.
+> - This plan is a living document — earlier assumptions will be corrected as investigation deepens.
 
 ---
 
-## Phase 10 — Frontend & notification integrity (current priority)
+## 1. System Map — What the System Actually Does
 
-Phase 9 fixed **what** gets captured. This phase exists because a fresh read of the frontend and both "interrupt" mechanisms — the intent-feedback toast and the micro-quiz push — found that neither is tuned for a human actually trying to study. Everything below was confirmed by reading the current code, not inferred from the architecture looking reasonable on paper.
+FKT is a two-process application:
 
-### 10.1 — [RESOLVED] The intent-feedback toast was firing roughly every 10 seconds during any study session
+| Process | Entry point | Purpose |
+|---|---|---|
+| Tracking loop | `tracker_app/main.py` → `tracking/loop.py` | Background data collection |
+| Dashboard | `tracker_app/web/app.py` | Flask + React UI |
 
-**The problem, as found:** `TRACK_INTERVAL = 5` means the loop iterates every 5 s, and `monitor.process_intent()` ran unconditionally every cycle, inserting a fresh unlabeled `IntentPrediction` row each time. `IntentFeedbackToast.tsx` polled every 10 s for *any* unanswered row, with no cooldown or dismissal memory — so the moment one prediction was answered, a newer one (created in the last 5–10 s) was already waiting. During a study session, that meant a "was this correct?" popup roughly every 10 seconds, indefinitely.
+### Data flow (confirmed, not assumed)
 
-**Fix applied:** `IntentPrediction` gained a `prompted_at` column. `GET /intent/recent` now only ever surfaces a row that is (a) unanswered, (b) never previously shown, and (c) at least `TOAST_COOLDOWN_MINUTES` since the last prompt — and it stamps `prompted_at` immediately so the same row is never re-shown. The toast also got a dismiss (✕) button. Verified by reading `web/api.py`'s `get_recent_intent()` and the current `IntentFeedbackToast.tsx` directly — the cooldown and stamping logic is real and matches this description.
+```
+Screen  ──► OCR pipeline      ──► keywords dict
+Mic     ──► audio pipeline    ──► {audio_label, confidence}
+Webcam  ──► webcam_pipeline   ──► {attentiveness_score, …}
+KB/Mouse ─► CLE module        ──► cle_score
 
-### 10.2 — [RESOLVED] The micro-quiz "interrupt" wasn't reaching the user, and the trigger could stall the whole tracker
+All 4 feeds ──► predict_intent() ──► intent_label
 
-**The problem, as found:** `quiz_engine.py`'s `should_show_quiz()` was well-tuned on paper (cooldown, idle-cycle threshold, attention gate), but `package.json` had no `socket.io-client` dependency and nothing in `src/` listened for the `micro_quiz` Socket.IO broadcast — it fired into the void. The only path that actually reached a user, `GET /quiz/current`, bypassed `should_show_quiz()` entirely. A second, more serious issue surfaced during this investigation: the trigger's first call to `get_graph()` builds the knowledge graph synchronously, embedding every tracked concept with SentenceTransformer *inside the tracking loop thread* — a multi-minute stall of all capture (OCR/audio/webcam) the first time a quiz condition was met.
+If session_active AND intent_label in SESSION_ALLOWED_INTENTS:
+    ──► ActivityMonitor.process_concepts()
+        ──► ConceptScheduler.add_concept()
+            ──► TrackedConcept (SQLite)
+            ──► ConceptEncounter (SQLite)
+            ──► sync_concept_to_graph()
+                ──► knowledge_graph (networkx, in-memory + .pkl cache)
 
-**Fix applied:** `socket.io-client` added; `MicroQuizModal.tsx` connects a socket, listens for `micro_quiz`, and renders a real modal interrupt (options, correct/incorrect feedback, posts to `/quiz/answer`) — verified present and mounted in `MainLayout.tsx`. `should_show_quiz()` gained a `session_active` parameter so it can never fire outside a study session. `warm_up_all_pipelines()` (already a background thread at startup) now pre-builds the knowledge graph, so `get_graph()` is a cached call by the time the loop's hot path needs it — verified in `loop.py`.
-
-### 10.3 — [RESOLVED] Quiz timing redesigned: interrupt on a pause while the user is present
-
-`IDLE_CYCLES_REQUIRED` was raised from 3 to 12 (~60 s instead of ~15 s) as part of the 10.2 fix — a good change, but it addresses *speed*, not *timing logic*. `should_show_quiz()` still required `attention_score < 35` ("user is away / zoned out") when webcam is enabled — i.e. it was tuned to catch the moment someone has stepped away or mentally checked out, precisely when they won't see or answer a modal interrupt.
-
-**Fix applied:** flipped the attention gate to the opposite convention. The trigger now fires on a short pause (idle ≥ 12 cycles) *while attention is still at least `ATTENTION_PRESENT_MIN` (35)* — the user is present and between tasks, so the interrupt actually reaches someone able to answer it. When attention drops below 35 the quiz is suppressed (stepped away / zoned out → modal would be missed). Webcam-disabled path is unchanged (idle cycles are sufficient signal). Verified by `test_quiz_trigger.py` (10 tests incl. the new floor guard).
-
-- [x] Revisit the trigger condition itself, not just its speed: consider firing on a short pause with attention still reasonably high, rather than on sustained idle + low attention. This is a design decision about what "a good moment to interrupt" means, not a number to tune.
-
-### 10.4 — [RESOLVED] The feedback toast now shows enough context to answer accurately
-
-`IntentFeedbackToast.tsx` showed only the predicted label and a confidence percentage — no timestamp, no window/context. Predictions are generated every 5 seconds, so a user asked "was this STUDYING?" with no indication of *when* may not remember what they were doing at that exact moment. Since ADR-003's whole premise is retraining the classifier on *real* corrective feedback, answers the user can't actually judge accurately quietly reintroduce noisy labels into the exact pipeline that was fixed to avoid that. Separately, the toast's "DATA COLLECTION" header was clinical/surveillance-flavored.
-
-**Fix applied:** the toast now shows a relative timestamp ("just now", "2 min ago") derived from the prediction's UTC timestamp and the active window title (truncated, with full title on hover), right above the "Was this correct?" prompt. The header was softened from "DATA COLLECTION" to "Quick Check". `GET /intent/recent` now returns `window_title` alongside the existing `timestamp`.
-
-- [x] Show a timestamp and/or window title alongside the predicted label so the user has enough information to answer accurately.
-- [x] Reconsider the "DATA COLLECTION" framing — costs nothing to soften, changes how the prompt lands.
-
----
-
-### 10.5 — Verification & wrap-up
-
-- [ ] **Live study-session run** confirming the toast cooldown actually feels right in practice (not just correct in code) — 5-minute default may still be too frequent for some, worth using the app to judge, not just reading the number. *Code-level verification done; the remaining judgment is a manual "use it for a real session" check.*
-- [x] Test-suite coverage confirmed: `/intent/recent` cooldown (first call returns + stamps `prompted_at`, immediate second call returns null, answered rows never re-prompt — `test_intent_toast_cooldown.py`), `should_show_quiz`'s `session_active` gating + attention/cooldown logic (`test_quiz_trigger.py`), and the graph pre-warm (`test_warmup.py`, added — `warm_up_all_pipelines` calls `get_graph()`). Suite is now **145 tests**; README/AGENTS claims updated to match.
-
----
-
-## Phase 11 — Core logic correctness (crucial — found via full code audit)
-
-This phase exists because a systematic read of every scheduling/graph/classifier module (not just the frontend-facing pieces) found several places where the code *looks* correct — reasonable variable names, plausible-looking formulas, docstrings that describe the right behavior — but a real bug means it doesn't actually do what it claims. These are prioritized by how much of the app's core value they silently undermine. Everything below is confirmed by reading the current code and tracing the actual call paths, not inferred from structure.
-
-### 11.1 — [CRITICAL] ADR-003's "train on real user feedback" pipeline is completely non-functional
-
-ADR-003 (Phase 5) justifies keeping the RandomForest intent classifier by claiming it now retrains on real user corrections instead of only synthetic data. Tracing the actual data path shows this never happens:
-
-- `activity_monitor.py`'s `IntentValidator.log_prediction()` stores the **window title** in `IntentPrediction.context_keywords` (it's literally passed `context=window_title` from `loop.py`) — not the 6-value feature vector `[ocr_keyword_count, audio_val, attention_score, interaction_rate, keyword_avg_score, audio_confidence]` that was actually fed into the classifier for that prediction.
-- `web/api.py`'s `FeedbackService.record_feedback()` copies that same window-title string directly into `FeedbackTrainingSample.feature_vector` — a column whose own docstring says `# JSON: [f1, f2, f3, f4, f5, f6]`.
-- `scripts/train_models_from_logs.py`'s `load_feedback_samples()` does `feats = json.loads(s.feature_vector)` inside a bare `try/except: pass`. A window title (e.g. `"Chrome - YouTube - some video"`) is not valid JSON, so this raises and is silently swallowed for essentially every single feedback row. `X_fb`/`y_fb` end up empty (or near-empty), so the `--include-feedback` augmentation in `main()` adds nothing, and the auto-retrain triggered every 50 corrections (`FeedbackService.maybe_trigger_retrain`) just re-trains on the same 100% synthetic dataset it always has.
-
-**Net effect:** every "NO, this was wrong" correction a user submits is captured, stored, and then silently discarded at training time. ADR-003's core claim — that this is no longer the synthetic-data problem ADR-002 identified — is not actually true of the running system.
-
-- [x] Store the actual 6-feature vector used at prediction time (not the window title) — e.g. have `predict_intent()` return the feature array alongside the prediction, or recompute it identically at feedback time, and JSON-encode *that* into `IntentPrediction.context_keywords` / `FeedbackTrainingSample.feature_vector`.
-- [x] Add a test that round-trips this: submit feedback, confirm `FeedbackTrainingSample.feature_vector` parses as a 6-element JSON list, confirm `load_feedback_samples()` actually picks it up.
-- [x] Consider keeping the window title too, but in a separate column — it's useful context, just not a substitute for the feature vector.
-
-### 11.2 — [CRITICAL] The knowledge graph's `memory_score` is frozen at 0.3 for every concept, forever
-
-`tracking/knowledge_graph.py`'s `add_concepts()` sets `memory_score=0.3` when a node is first created. Nothing in the codebase ever updates it afterward — confirmed by reading every function in `knowledge_graph.py` and `activity_monitor.py`'s `process_concepts()` (the only place concept-processing happens). The *real* spaced-repetition state — `interval`, `memory_strength`, `lambda_personalised`, `next_review` — is correctly computed and updated in the separate `TrackedConcept` SQL table by `concept_scheduler.py`. The in-memory NetworkX graph and the SQL table have simply diverged: one is live, the other is a frozen snapshot from node-creation time.
-
-**Net effect, both confirmed by tracing the callers:**
-- `get_graph_stats()`'s `avg_memory_score` (shown on the Graph page) will always read ≈0.3 no matter how much real progress has been made, because every node is stuck at its initial value.
-- `generate_micro_quiz()`'s "prefer concepts with `memory_score < 0.65`" filter is trivially true for *every* node (0.3 < 0.65, always), so it provides zero actual prioritization. The quiz doesn't test your weakest concept — it tests whatever `pool.sort()`'s stable-sort tiebreaking happens to put first, which in practice is close to insertion order. The headline "tests you on what you're most likely to forget" feature isn't doing that.
-
-- [x] Sync `TrackedConcept.relevance_score` / an AWFC-computed retention value into the graph node's `memory_score` whenever a concept is reviewed or re-encountered — e.g. inside `ConceptScheduler.add_concept()`/`schedule_next_review()`, or as part of `sync_db_to_graph()`.
-- [x] Add a test asserting `memory_score` actually changes after a review, not just that it exists.
-
----
-
-### 11.3 — [HIGH] The concept-drift endpoint is called with no data, so it can never report anything but "stagnant"
-
-`web/api.py`'s `/graph/drift/<concept>` route calls `compute_concept_drift(concept, [])` — always an empty list for `current_session_keywords`, the exact input the whole algorithm is built around comparing against historical neighbours. With `current_neighbours` always empty, `compute_concept_drift()`'s own logic (`if not current_neighbours: status = 'stagnant'`) means this endpoint can only ever return `drift_score: 0.0, status: 'stagnant'` (or `'new'`) for literally any concept passed to it. The drift-detection algorithm itself may be reasonable; it's simply never given real data to work with at its one production call site.
-
-- [x] Pass real data: the concepts encountered in the current/recent study session (e.g. `monitor.session_concepts`, already tracked by `ActivityMonitor`), not a hardcoded empty list.
-
-### 11.4 — [MEDIUM] `compute_concept_drift`'s status classifier has a dead branch
-
-Even setting 11.3 aside, the classification logic itself can't produce the 4 statuses its own docstring promises (`'new'|'evolving'|'stable'|'stagnant'`):
-
-```python
-if not current_neighbours:
-    status = 'stagnant'
-elif drift > 0.6:
-    status = 'evolving'
-elif drift > 0.2:
-    status = 'stable'
-else:
-    status = 'stable'          # ← same result as the branch above
+session_state.json ──► shared toggle (write: Flask API; read: tracking loop)
 ```
 
-The `drift > 0.2` branch and the final `else` both resolve to `'stable'` — reads like an intended fourth category (e.g. distinguishing "drifting a little" from "barely changed") that never got written.
+### SM-2 / AWFC model (confirmed)
 
-- [x] Decide what the fourth bucket should actually be and give it a distinct condition, or collapse the two branches intentionally and update the docstring to match 3 real statuses instead of 4.
+Two distinct SM-2-capable subsystems exist:
 
-### 11.5 — [MEDIUM] Knowledge-gap detection mixes two incompatible similarity spaces
+1. **`LearningItem`** (manual flashcards) — reviewed via `ReviewPage`, uses
+   `learning/learning_tracker.py` which drives `sm2_memory_model.py`.
+2. **`TrackedConcept`** (auto-captured) — reviewed via `QuizPage` /
+   `MicroQuizModal`, uses `concept_scheduler.py:schedule_next_review()`.
 
-The graph's edges (what counts as "already connected," used to exclude gap candidates) are built in `add_concepts()` using SentenceTransformer `all-MiniLM-L6-v2` cosine similarity, threshold `0.7`. `find_knowledge_gaps()` computes its *own* similarity independently, using `spacy.load("en_core_web_sm").similarity()`, threshold `0.55`. These are different models producing different, uncalibrated similarity scales — `en_core_web_sm` in particular is spaCy's small English model, which doesn't ship real pretrained word vectors; spaCy's own documentation notes similarity results from this model are unreliable. A 0.55 spaCy-similarity threshold has no principled relationship to the 0.7 MiniLM-cosine threshold used to build the graph it's operating on.
-
-- [x] Use the same embedding source for gap-detection as for edge-building (the MiniLM embeddings are already computed and could be reused/cached from `add_concepts()`), or explicitly document why a second, different similarity metric is intentional and recalibrate its threshold against real data rather than a guessed number.
-
-### 11.6 — [HIGH] Two parallel, inconsistent SM-2 implementations exist in the same codebase
-
-`sm2_memory_model.py`'s `SM2Scheduler.calculate_next_interval()` is a correct, standard SM-2 implementation with real test coverage (`test_sm2.py`) — but it's only used by the separate, manually-added flashcard system (`LearningItem`, via `learning_tracker.py`). The auto-tracked concept system (the actual core feature) uses `concept_scheduler.py`'s `ConceptScheduler.schedule_next_review()`, which reimplements SM-2 by hand instead of calling the tested one, and diverges from it in two concrete ways:
-
-- **No repetition counter.** The only signal for "how far along is this concept" is `interval <= 1`. A brand-new concept's `interval` defaults to `1`, so its *first* successful review jumps straight to a 3-day interval (`new_interval = 3 if interval <= 1 else round(interval * ease)`) — skipping the canonical SM-2 1-day initial-reinforcement step entirely, for every concept, every time. The same collapse happens on recovery from any failure, since a failure also resets `interval` to `1`.
-- **Inconsistent failure penalty.** On failure it applies a flat `ease - 0.2`, while success uses the graduated SM-2 formula (`0.1 - (5-q)*(0.08+(5-q)*0.02)`) computed a few lines below but never applied to the failure case. The two penalty schemes aren't reconciled with each other.
-
-- [x] Either have `concept_scheduler.py` call the tested `SM2Scheduler` directly (adapting it to work off `TrackedConcept` rows), or add an actual repetition counter to `TrackedConcept` and fix the interval/ease logic to match the standard algorithm consistently for both success and failure.
-- [x] `sm2_memory_model.py`'s own `SM2Scheduler` also uses `interval=3` for the second successful review where canonical SM-2 uses `6` — worth a deliberate decision (keep 3, or match the original) rather than an unexplained deviation from an algorithm the docstring calls "research-validated defaults from SuperMemo."
-
-### 11.7 — [MEDIUM] Naive datetime mix-up between UTC and local time across two subsystems
-
-Every `TrackedConcept`/`ConceptEncounter`/`IntentPrediction`/`FeedbackTrainingSample` timestamp (both the SQLAlchemy column defaults in `db/models.py` and every write in `concept_scheduler.py`) uses `datetime.utcnow()`. Every `LearningItem`/`ReviewHistory` timestamp (`learning_tracker.py`, `db/repository.py`'s `LearningRepository`) uses `datetime.now()` (local). Each subsystem is internally self-consistent, but two confirmed places compare across the boundary:
-
-- `LearningRepository.get_learning_today()` computes `today_start`/`today_end` from local `datetime.now()`, then filters `TrackedConcept.last_seen >= today_start` — a UTC-stored column compared against a local-time boundary. "Concepts studied today" will be wrong by the size of the local UTC offset around midnight.
-- `LearningTracker._compute_streak()` computes "today" as `datetime.utcnow().date()`, then checks it against `ReviewHistory.timestamp` values, which were written using local `datetime.now()`. For a user ahead of UTC (e.g. IST, UTC+5:30), a review done in the local early-morning hours can log to "today" locally while UTC still considers it "yesterday," silently breaking the streak count.
-
-- [x] Pick one convention (UTC is the safer default) and use it everywhere timestamps are written or compared — this is the kind of bug that stays invisible in same-timezone testing and only shows up for real users in non-UTC zones.
-
-### 11.8 — [FIXED] Passive re-encounters were silently discarding recalibrated lambda
-
-Found while independently re-verifying the 11.2 fix (not part of the original audit). `ConceptScheduler.add_concept()`'s existing-concept branch unconditionally recomputed `lambda_personalised` from `compute_awfc_lambda(DEFAULT_LAMBDA, attention_at_encoding)` on *every* passive re-encounter. `schedule_next_review()` separately calls `recalibrate_lambda()` after 5+ real reviews to personalise the decay rate based on actual observed recall — but that personalisation got wiped the next time the same concept was simply re-seen on screen via OCR, which happens far more often than it gets quizzed. The recalibration survived only until the next passive encounter.
-
-**Fix applied directly:** `add_concept()` now only does the full attention-based recompute for a concept with zero repetitions (nothing to protect yet). Once `repetitions > 0` — meaning `schedule_next_review()` has personalised it at least once — a passive re-encounter nudges lambda 90/10 toward the attention-based estimate instead of replacing it outright, so the review-based personalisation persists rather than resetting on the next OCR pass.
+Both systems implement the same canonical SM-2 formula but in separate classes,
+with no shared base class.
 
 ---
 
-## Definition of done
-1. Clone the repo fresh.
-2. Run `pip install -r requirements.txt` and `npm install` with zero manual fixes.
-3. Run migrations, start `main.py` and `web/app.py`, start the frontend dev server.
-4. See live data flow from screen/audio capture → knowledge graph → dashboard, including the Graph and Quiz pages.
-5. Run `pytest tracker_app/tests/` and see it pass, with no fake "tests" in the mix.
-6. Read the README/ADRs and find them consistent with what the code actually does.
-7. Trust that a tracked concept in the knowledge graph reflects something they were actually studying, not just something that happened to be on screen.
-8. Use the app through a real study session and find that neither the feedback toast nor the quiz interrupt fires more often, or at a worse moment, than a human would actually tolerate — verified by using it, not just by reading the trigger code.
-9. Trust that the numbers on screen are real: a concept's memory score actually reflects its review history, a "wrong" click on the feedback toast actually improves the next model retrain, and the drift/gap features report something other than a hardcoded default.
+## 2. Issues by Severity
 
-**Status: Phase 10 fully resolved (10.1–10.5; only the manual live-session feel-check under 10.5 remains — everything code-verifiable is done and tested; 10.3 quiz timing flipped to interrupt on a pause while the user is present, 10.4 toast shows timestamp + window title and drops the "DATA COLLECTION" framing). Phase 11 independently re-verified end-to-end — all 7 audit bugs (11.1–11.7) traced through their actual call paths and confirmed genuinely fixed, including their test coverage: 11.1 feedback pipeline stores the real 6-feature vector and `train_models_from_logs.py` picks it up (legacy bad rows skip gracefully); 11.2 graph `memory_score` syncs live AWFC state on every add_concept/schedule_next_review, not just at load time; 11.3 drift endpoint uses real session concepts; 11.4 dead `stable` branch gone; 11.5 gap detection reuses the same embeddings as edge-building; 11.6 shared SM-2 constants + real `repetitions` counter, deliberate 3-day second interval documented; 11.7 UTC everywhere, cross-subsystem comparisons confirmed correct. One additional bug (11.8) found during this re-verification and fixed directly: passive OCR re-encounters were overwriting `recalibrate_lambda()`'s personalisation on every sighting — now only replaces it before any reviews exist, nudges gently afterward (regression-tested in `test_concept_scheduler.py`). Suite is now 145 tests.**
+### 2.1 CRITICAL
+
+---
+
+#### [C-1] Privacy filter is cosmetic, not structural
+
+**Status: RESOLVED** — `ocr_module.py` now hard-imports `sanitize_text_for_storage`
+and `is_sensitive_window` at module level; the `try/except ImportError` silent pass
+is gone and `should_skip_window()` delegates to `privacy_filter.is_sensitive_window()`.
+Regression coverage: `tests/test_ocr_privacy_gate.py`.
+
+**File:** `tracking/privacy_filter.py`, `tracking/ocr_module.py:206-220`
+
+**Behavior observed:** `sanitize_text_for_storage()` catches credit cards, SSNs,
+emails, IPs, and API keys using regex — good. But the threshold to **skip** an
+entire capture is `> 3` sensitive items (`should_skip_capture` line 101). This
+means a page with 1-3 credit card numbers is **sanitized but still stored**, not
+rejected entirely.
+
+More critically, `privacy_filter.py` is imported inside a `try/except ImportError`
+block in `ocr_module.py` (line 207). If the import fails for any reason, the
+**entire privacy layer is silently skipped** with no log. A user would have no
+indication their data is being stored unredacted.
+
+**Actual impact:** An OCR capture containing a password typed in plain text on
+screen (e.g., a notes app) will be stored unless the word `password` also appears
+in the **window title**. The content-level filter only acts after capture.
+
+**What should happen:** Privacy checks should be a mandatory structural gate, not
+a best-effort import. The `ImportError` silent pass is the most dangerous pattern
+in the codebase.
+
+---
+
+#### [C-2] `session_state.json` — `started_at` never resets on restart
+
+**Status: RESOLVED** — `start()` now always stamps `started_at = now` and clears
+`stopped_at`, so restarts and crash-recovery both reset the clock.
+Regression coverage: `test_session_state.py::test_restart_resets_started_at` and
+`test_start_after_crash_resets_stale_clock`.
+
+**File:** `tracking/session_state.py:48-58`
+
+```python
+def start() -> dict:
+    with _lock:
+        state = _load()
+        now = datetime.utcnow().isoformat()
+        state["active"] = True
+        if not state.get("started_at"):   # ← only sets if currently None
+            state["started_at"] = now
+        state["stopped_at"] = None
+        _save(state)
+        return state
+```
+
+**Behavior observed:** `started_at` is only written on the **first** start. If a
+session is stopped (which sets `stopped_at` but does NOT clear `started_at`) and
+then restarted, the new session's elapsed timer will count from the *previous*
+session's start time. After a crash that leaves `stopped_at = None`,
+`elapsed_seconds` in `get_status()` will report wall-clock time since the
+crashed session began — potentially hours or days.
+
+The threading `_lock` only protects within-process writes; the two processes share
+no OS-level lock. On Windows `Path.replace()` is atomic, so reads are safe in
+practice, but the semantics aren't documented.
+
+---
+
+#### [C-3] Authentication exists but is never activated
+
+**File:** `web/auth.py:15`, `web/app.py` (entire file)
+
+```python
+_NO_AUTH = os.getenv("NO_AUTH", "true").lower() == "true"  # Default: no auth in dev
+```
+
+`apply_auth_to_blueprint()` is never called in `app.py`. The entire auth module
+is inert. For a personal localhost tool this is a deliberate tradeoff, but:
+
+- The JSON mutation endpoints (`POST /items`, `POST /reviews`, `POST /session/start`)
+  have no CSRF protection on the JSON paths (Flask-WTF CSRF only fires on form
+  submissions, not JSON `Content-Type` bodies).
+- Any web page the user has open can silently trigger these endpoints via fetch.
+
+---
+
+#### [C-4] Audio training data is entirely synthetic
+
+**Status: RESOLVED** — the synthetic GaussianNB trainer (`train_audio_classifier`),
+its model loading, and its training `__main__` block were removed from
+`audio_module.py`; `classify_audio()` always uses the energy-based heuristic. The
+removed trainer is documented in `models/README.md`. Regression coverage:
+`tests/test_audio_heuristics.py`.
+
+**File:** `tracking/audio_module.py:180-234`
+
+`train_audio_classifier()` generates 600 samples per class from `numpy.random`.
+The "speech" distribution is hardcoded MFCC shapes with no real audio. The trained
+model will generalize poorly to real-world microphone input. The energy-based
+fallback (`energy_based_classification`) is actually more honest. The training
+function is a stub that creates a false sense of "trained" classifier quality.
+
+---
+
+### 2.2 HIGH
+
+---
+
+#### [H-1] Two parallel SM-2 implementations with diverging semantics
+
+**Status: RESOLVED (verified)** — Phase 11.6 gave `TrackedConcept` a real
+`repetitions` counter and unified all constants/formulas between the two
+subsystems. The remaining divergence was closed and locked in with
+`test_concept_scheduler.py::test_matches_tested_sm2_scheduler_across_quality_sequence`,
+which drives the same mixed success/failure quality sequence through both
+`SM2Scheduler` and `concept_scheduler.schedule_next_review()` and asserts
+identical interval, ease, and repetitions at every step. Correction to the audit
+below: `LeitnerSystem` is **not** dead code — it is imported by
+`learning/learning_tracker.py:8` and invoked at `:118` for the
+`algorithm="leitner"` path (see [L-1]).
+
+**Files:** `learning/sm2_memory_model.py:67-152`, `learning/concept_scheduler.py:116-193`
+
+Both implement SM-2. `concept_scheduler.py` imports constants from
+`sm2_memory_model.py` but re-implements the loop body. The ease factor field
+is stored as `TrackedConcept.memory_strength` in the database but is read with
+`getattr(tracked, "memory_strength", 2.5)` — a silent default of 2.5 means a
+concept with a NULL ease factor in the DB will always start with DEFAULT ease,
+silently discarding any previous calibration.
+
+The `LeitnerSystem` class (lines 196–245 of `sm2_memory_model.py`) is dead code —
+fully implemented, never imported, never called.
+
+---
+
+#### [H-2] Sparklines on Overview page display random fabricated data
+
+**Status: RESOLVED** — new `GET /api/v1/stats/trend?days=N` backed by
+`LearningRepository.get_review_trend()` (real per-day reviews/correct/added/
+mastered/due from stored timestamps). `OverviewPage.tsx` fetches the trend and
+`miniSparkline(trend, pick)` renders it; the fabricated random `miniSparkline()`
+is gone. Regression coverage: `test_api.py::TestAPIStatsTrend`.
+
+**File:** `web/frontend/src/pages/OverviewPage.tsx:18-22`
+
+```tsx
+function miniSparkline(base: number): { v: number }[] {
+  return Array.from({ length: 7 }, (_, i) => ({
+    v: Math.max(0, base + Math.round((Math.random() - 0.5) * base * 0.2) + i),
+  }))
+}
+```
+
+Every component render (triggered every 5 seconds by the session poll) calls
+`miniSparkline()` and gets a **different** random array. The sparklines flicker
+and display fabricated trends. This is misleading UX — a user who watches their
+"mastery trend" go up and down is watching noise. There is no real time-series
+endpoint to back this up.
+
+---
+
+#### [H-3] `FeedbackService` intent cooldown has a TOCTOU race
+
+**Status: RESOLVED** — `/intent/recent` now claims the prompt with an atomic
+`UPDATE ... WHERE prompted_at IS NULL AND user_feedback IS NULL` (SQLAlchemy
+`update()` + rowcount check); the losing concurrent request gets a null result
+instead of double-firing the toast. Regression coverage:
+`test_intent_toast_cooldown.py::TestAtomicClaim`.
+
+**File:** `web/api.py:33-104`
+
+`GET /intent/recent` reads `prompted_at`, decides if the prediction is eligible,
+and then writes `prompted_at` — all in the same HTTP handler but without a
+database row lock. Two simultaneous requests (two open browser tabs) can both
+read the eligible state before either writes, causing the toast to fire twice.
+
+---
+
+#### [H-4] `_idle_cycles` and `_last_quiz_time` are module-level globals not reset between runs
+
+**Files:** `tracking/loop.py:218`, `tracking/quiz_engine.py:23`
+
+If `track_loop()` is called more than once in the same process (test restarts,
+signal-based reloads), these counters carry state from the previous run. The
+quiz trigger could fire prematurely in the second run, or be suppressed for the
+full cooldown period from the previous session.
+
+---
+
+#### [H-5] Knowledge graph grows without bound; no eviction
+
+**File:** `tracking/knowledge_graph.py`
+
+No node limit, no TTL, no low-relevance pruning. After months of use the `.pkl`
+file can be large enough that `get_graph()` noticeably blocks the tracking loop.
+Each node also stores a 384-dimensional float32 embedding (1.5 KB per node);
+10,000 nodes = ~15 MB resident just for embeddings.
+
+---
+
+### 2.3 MEDIUM
+
+---
+
+#### [M-1] `ActivityMonitor.session_concepts` is an unbounded list
+
+**File:** `tracking/activity_monitor.py:145, 217`
+
+Every processed concept is appended to a list. For `end_session()` only a
+`Counter` and a `len(set(...))` are needed. Over a long session this list can
+hold thousands of duplicated strings. A `Counter` accumulator would avoid the
+issue entirely.
+
+---
+
+#### [M-2] `extract_keywords()` discards compound keyword forms
+
+**File:** `tracking/ocr_module.py:268-286`
+
+The camelCase splitter (step 3) destroys the original compound token and replaces
+it with its parts. `backPropagation` → `back`, `propagation`. If TF-IDF scored
+the compound highly, that score is now split across two lower-value tokens. The
+compound form — which is often the better concept label — is lost.
+
+---
+
+#### [M-3] `QuizPage.tsx` and `MicroQuizModal.tsx` duplicate identical UI logic
+
+**Status: RESOLVED** — the duplicated `handleSelect()`/`optionClass()`/result
+banner were extracted into a shared `hooks/useQuizAnswer.ts` (guard + selected/
+answerState + fire-and-forget SM-2 submission + option styling) and a shared
+`components/QuizResultBanner.tsx` (banner JSX; the Next/Close action button is
+passed as a `ReactNode`). Both pages now call the hook; `QuizPage` adds its
+score tally from the hook's returned correctness value. Verified: `npx tsc --noEmit`.
+
+**Files:** `web/frontend/src/pages/QuizPage.tsx:66-90`,
+`web/frontend/src/components/MicroQuizModal.tsx:28-51`
+
+`handleSelect()`, `optionClass()`, and the result banner are character-for-character
+identical in both components. Any fix or style change must be applied in both.
+
+---
+
+#### [M-4] Date filter in `TrackingRepository` uses `LIKE` instead of range
+
+**Status: RESOLVED** — `get_daily_summary` now filters
+`start_time >= day_start` and `< next_day` (real datetime range). Regression
+coverage: `test_api.py::TestDailySummaryRange`.
+
+**File:** `db/repository.py:183`
+
+```python
+.filter(TrackingSession.start_time.like(f"{date_str}%"))
+```
+
+String `LIKE` for date filtering is fragile (breaks if format changes) and
+prevents SQLite from using an index. A `>= today_start` and `< tomorrow_start`
+range filter is correct.
+
+---
+
+#### [M-5] Two independent definitions of `SENSITIVE_WINDOW_KEYWORDS`
+
+**Status: RESOLVED** — resolved as part of [C-1]: the local list and local
+`should_skip_window()` were removed from `ocr_module.py`; `privacy_filter.py`
+holds the single canonical keyword list and `ocr_module` delegates to it.
+Regression coverage: `test_ocr_privacy_gate.py` asserts union coverage of both
+old lists (`authentication`, `payment`, `health`, `prescription`, ...).
+
+**Files:** `tracking/ocr_module.py:60-63`, `tracking/privacy_filter.py:28-33`
+
+The lists differ: `privacy_filter.py` includes `authentication`, `payment`,
+`medical`, `health`, `prescription` which the OCR module omits.
+`should_skip_window()` in `ocr_module.py` is a local reimplementation of
+`is_sensitive_window()` in `privacy_filter.py`. One should call the other.
+
+---
+
+#### [M-6] Lambda recalibration uses a single review's quality as cumulative success rate
+
+**Status: RESOLVED** — migration 010 adds `review_count`/`correct_count` to
+`tracked_concepts`; `schedule_next_review()` increments them on every quiz review
+and recalibration now passes the true cumulative
+`correct_count / review_count` with `n_reviews = review_count` (gate raised from
+the old `frequency_count` OCR-encounter proxy to `review_count >= 5`). Regression
+coverage: `test_concept_scheduler.py` — counters test, "no recalibration before 5
+reviews" test, and a deterministic test proving the cumulative rate (4/5) is used
+instead of the last rating (quality 2 → 0.4).
+
+**File:** `learning/concept_scheduler.py:172-174`
+
+```python
+correct_rate = (quality / 5.0)  # approximate from single rating
+```
+
+`recalibrate_lambda()` expects a cumulative success rate over `n_reviews`.
+Passing the last review's quality (0–1 scaled) conflates one data point with
+a historical average. The comment acknowledges it's approximate but doesn't
+fix the semantic error.
+
+---
+
+#### [M-7] `BubbleGraph` in `GraphPage.tsx` renders a spoke diagram, not a graph
+
+**Status: RESOLVED** — `get_graph_stats()` now returns a real `edges` list
+(`[source, target, weight]` among the visible top concepts). `BubbleGraph`
+receives it and draws only actual semantic links, with stroke width/opacity
+scaled by weight; the fabricated "HUB" node and spokes are gone (the backend
+graph has no such node). An honest "no semantic links" caption shows when the
+visible set has no edges. Backend regression coverage:
+`test_knowledge_graph.py::test_graph_stats_includes_real_edges` (verifies
+exclusion of edges to out-of-set nodes and weight ordering). Frontend:
+`npx tsc --noEmit`.
+
+**File:** `web/frontend/src/pages/GraphPage.tsx:37-72`
+
+The visualization draws all concepts as equidistant spokes from a central "HUB"
+node. It does not use edge data (the API returns `top_concepts: string[]` with no
+edges). The total_edges counter is displayed but the edges are never drawn. The
+graph misleadingly implies all concepts are equally and directly related to a
+central hub, which contradicts the actual weighted semantic graph in the backend.
+
+---
+
+### 2.4 LOW / DEAD CODE / STYLE
+
+---
+
+#### [L-1] Dead code: `LeitnerSystem` class
+
+**Status: NOT A BUG (audit corrected)** — the audit's claim that `LeitnerSystem`
+is "never imported or called" is wrong. It is imported by
+`learning/learning_tracker.py:8` and invoked at `:118` for the
+`algorithm="leitner"` path (and imported by `tests/test_new_system.py`). It is
+live code for an alternate review algorithm; no action taken.
+
+**File:** `learning/sm2_memory_model.py:196-245`
+
+Fully implemented, never imported or called.
+
+---
+
+#### [L-2] Dead code: entire `web/auth.py` module
+
+**File:** `web/auth.py:1-60`
+
+Both `@require_api_key` decorator and `apply_auth_to_blueprint()` are defined.
+Neither is called anywhere in `app.py`. The module is entirely inert.
+
+---
+
+#### [L-3] Misleading log message in `db_module.py`
+
+**File:** `db/db_module.py:18`
+
+```python
+logger.info("SQLAlchemy tables constructed: sessions, multi_modal_logs, memory_decay, etc.")
+```
+
+`multi_modal_logs` and `memory_decay` do not exist as table names in `models.py`.
+These are artifacts from a previous schema.
+
+---
+
+#### [L-4] `IntentFeedbackToast` dismissed state resets on unmount
+
+**Status: RESOLVED** — dismissal is now persisted per prediction in
+`localStorage` (`fkt:dismissed-intent:<id>`), so a dismissed prediction stays
+hidden across navigation and page reloads. The backend already stamps
+`prompted_at` on first serve (atomic claim), so the same prediction can never be
+surfaced twice anyway — the local store is belt-and-suspenders for the toast's
+own display window. Verified: `npx tsc --noEmit`.
+
+**File:** `web/frontend/src/components/IntentFeedbackToast.tsx:26`
+
+`const [dismissed, setDismissed] = useState(false)` — dismiss state is component-local.
+Navigating away and back causes the same prediction to reappear. No backend
+persistence for "user has seen and dismissed this prediction".
+
+---
+
+#### [L-5] `export_tracking_data()` can fail with an empty dirname
+
+**File:** `tracking/activity_monitor.py:274`
+
+```python
+os.makedirs(os.path.dirname(output_file), exist_ok=True)
+```
+
+If `output_file` has no directory component, `os.path.dirname()` returns `''`
+and `os.makedirs('')` raises `FileNotFoundError`. Harmless with the default
+`DATA_DIR`-based path, but breaks on any manually provided bare filename.
+
+---
+
+#### [L-6] Frontend sends unnecessary `{}` body on session toggle
+
+**File:** `web/frontend/src/api.ts:131, 138`
+
+`POST /session/start` and `POST /session/stop` ignore the request body. Sending
+`JSON.stringify({})` implies future parameterization that doesn't exist.
+
+---
+
+## 3. Architecture Observations
+
+### What works well and should be preserved
+
+| Pattern | Why it works |
+|---|---|
+| Lazy pipeline loaders (`loop.py` `get_ocr_pipeline()` etc.) | No heavy imports at startup; cold-start stays fast |
+| `ThreadPoolExecutor` with 8-second timeout | Slow pipeline can't block the tracking cycle |
+| CPU-adaptive sampling intervals | Reduces tracker footprint during user-intensive work |
+| `session_state.json` atomic write (tmp→replace) | Safe single-writer IPC; correct for this use case |
+| `is_plausible_concept()` quality filter | Real, tested OCR noise gate |
+| Session-gated + intent-gated concept capture | Prevents noise from non-study activity |
+| Background warm-up thread | Moves model cold-start latency away from first cycle |
+
+### Structural risks (not bugs, but design constraints)
+
+1. **JSON file IPC does not scale.** The Start/Stop toggle works via file IPC.
+   Any new cross-process signal (flush buffers, quiz answered, etc.) would need
+   another file or a proper IPC channel (pipe, socket, Redis).
+
+2. **Knowledge graph and database can diverge.** The graph is the quiz engine's
+   source of truth for memory scores; the database is the SM-2 engine's source
+   of truth. External DB edits (e.g., DB browser) are not reflected in the graph
+   until `sync_all_from_db()` runs.
+
+3. **`track_loop()` itself has no tests.** The 145-test suite covers SM-2 logic,
+   API endpoints, and NLP utilities, but the main loop and `_maybe_trigger_quiz()`
+   are untested. These contain the most stateful logic (globals, session gating,
+   inter-thread counters).
+
+4. **Flask serves the built Vite bundle.** Frontend changes require a rebuild
+   (`npm run build`) before they appear at `:5000`. The recommended dev mode
+   (Vite at `:5173` + Flask at `:5000`) works but doubles process management.
+
+---
+
+## 4. Recommended Fix Priority
+
+| Pri | Issue | Effort | Impact |
+|---|---|---|---|
+| 1 | [C-1] Privacy filter silently disabled on import error (resolved) | Low | Critical |
+| 2 | [C-2] `started_at` not reset on session restart (resolved) | Low | High correctness |
+| 3 | [H-2] Sparklines display random fabricated data (resolved) | Medium | User trust |
+| 4 | [H-3] Intent feedback cooldown race condition (resolved) | Low | Data integrity |
+| 5 | [C-4] Audio training data is entirely synthetic (resolved) | Medium | Model quality |
+| 6 | [H-1] Duplicate SM-2 implementations (resolved) | Medium | Maintainability |
+| 7 | [M-3] Duplicate quiz UI logic (resolved) | Low | Maintainability |
+| 8 | [M-4] Date filter uses LIKE instead of range (resolved) | Low | Correctness |
+| 9 | [M-5] Duplicate sensitive keyword lists (resolved) | Low | Correctness |
+| 10 | [M-6] Lambda recalibration wrong success rate (resolved) | Low | Model accuracy |
+| 11 | [M-7] BubbleGraph doesn't use edge data (resolved) | High | UX accuracy |
+| 12 | [L-4] Toast dismiss state not persisted (resolved) | Low | UX polish |
+
+---
+
+## 5. What Was Explicitly NOT Flagged
+
+The following patterns were investigated and found to be **intentional or acceptable**:
+
+- `_LazySessionProxy` in `db/models.py` — correct lazy DB init pattern.
+- `FKT_TEST_DB` env-var-must-be-set-before-import — documented in AGENTS.md, respected by tests.
+- `concept_scheduler.py` `pass` in `__init__` — intentional; `SessionLocal` is the singleton.
+- `db_path` backward-compat params in `ActivityMonitor` / `IntentValidator` — harmless, documented.
+- `SECOND_REVIEW_INTERVAL_DAYS = 3` (not SM-2's canonical 6) — documented deliberate choice.
+- `NO_AUTH=true` default — documented design decision for local dev; acceptable tradeoff.
+- Audio `_audio_result_cache` module-level dict — intentional ring-buffer pattern for async cache.
+
+---
+
+*Investigation depth: all files in `tracker_app/tracking/`, `tracker_app/learning/`, `tracker_app/db/`,
+`tracker_app/web/`, `tracker_app/web/frontend/src/`. Pending deeper review: `ReviewPage.tsx`,
+`KnowledgeBasePage.tsx`, `AddConceptPage.tsx`, `webcam_module.py`, `keyword_extractor.py`,
+full test suite.*
