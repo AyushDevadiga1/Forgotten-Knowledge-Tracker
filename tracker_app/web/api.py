@@ -381,6 +381,24 @@ def get_concept_drift(concept):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@api_bp.route('/graph/concept/<concept>', methods=['GET'])
+def get_concept_detail(concept):
+    """Live memory score + encounter history for a concept — backs the
+    frontend's click-to-drill-in on a graph node."""
+    try:
+        from tracker_app.learning.concept_scheduler import ConceptScheduler
+        from tracker_app.tracking.knowledge_graph import get_graph
+        history = ConceptScheduler().get_concept_history(concept)
+        memory = get_graph().nodes.get(concept, {}).get('memory_score', 0.5)
+        return jsonify({'success': True, 'data': {
+            'concept': concept,
+            'memory_score': round(float(memory), 4),
+            'history': history,
+        }})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Micro-Quiz
 # ══════════════════════════════════════════════════════════════════════════════

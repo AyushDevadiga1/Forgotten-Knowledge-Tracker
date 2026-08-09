@@ -523,6 +523,16 @@ def get_graph_stats() -> dict:
             reverse=True,
         )
 
+        # Per-node live memory scores for the visible top set — the frontend
+        # force-layout sizes/colours nodes from these (weak = small/dim).
+        nodes = [
+            {
+                'concept': n,
+                'memory_score': knowledge_graph.nodes[n].get('memory_score', 0.5),
+            }
+            for n in top_concepts
+        ]
+
         return {
             'total_nodes':    n_nodes,
             'total_edges':    n_edges,
@@ -533,6 +543,7 @@ def get_graph_stats() -> dict:
             'total_concepts':  len(string_nodes),
             'avg_memory_strength': round(avg_memory, 4),
             'top_concepts':    top_concepts,
+            'nodes':           nodes,
             'edges':           edges,  # [source, target, weight]
         }
 

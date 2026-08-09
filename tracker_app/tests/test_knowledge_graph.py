@@ -104,3 +104,24 @@ def test_graph_stats_includes_real_edges(clean_graph):
     ])
     # the strongest edge is listed first
     assert stats["edges"][0] == ["alpha", "beta", 0.98]
+
+
+def test_graph_stats_includes_node_memory_scores(clean_graph):
+    """The visible top set must ship per-node live memory scores so the
+    frontend force-layout can size/colour nodes honestly (Phase D)."""
+    with kg._graph_lock:
+        kg.knowledge_graph.clear()
+        kg.knowledge_graph.add_node("alpha", memory_score=0.9)
+        kg.knowledge_graph.add_node("beta", memory_score=0.8)
+        kg.knowledge_graph.add_node("gamma", memory_score=0.7)
+        for i in range(7):
+            kg.knowledge_graph.add_node(f"filler{i}", memory_score=0.1)
+        kg.knowledge_graph.add_node("low", memory_score=0.0)
+
+    stats = kg.get_graph_stats()
+    by_name = {n["concept"]: n["memory_score"] for n in stats["nodes"]}
+    assert by_name["alpha"] == 0.9
+    assert by_name["beta"] == 0.8
+    assert by_name["gamma"] == 0.7
+    assert "low" not in by_name  # outside the visible top-10 set
+    assert len(stats["nodes"]) == len(stats["top_concepts"])
