@@ -1,12 +1,16 @@
 import { useEffect, useState, useCallback } from 'react'
-import { ChevronRight, Loader, AlertCircle, CheckCircle } from 'lucide-react'
+import { ChevronRight, BookOpenCheck, AlertCircle, Eye } from 'lucide-react'
+import { m, AnimatePresence, useReducedMotion } from 'motion/react'
 import { api, LearningItem } from '../api'
+import PageHeader from '../components/PageHeader'
+import { Skeleton } from '../components/ui/skeleton'
+import { easeOut } from '../lib/animation'
 
 const QUALITY_LABELS = [
-    { label: 'AGAIN', q: 0, desc: 'Complete blackout' },
-    { label: 'HARD', q: 2, desc: 'Significant effort' },
-    { label: 'GOOD', q: 4, desc: 'Correct with hesitation' },
-    { label: 'EASY', q: 5, desc: 'Perfect recall' },
+    { label: 'AGAIN', q: 0, desc: 'Complete blackout', cls: 'text-[#EF4444] hover:border-[#EF4444] hover:text-[#EF4444]' },
+    { label: 'HARD', q: 2, desc: 'Significant effort', cls: 'text-[#F59E0B] hover:border-[#F59E0B] hover:text-[#F59E0B]' },
+    { label: 'GOOD', q: 4, desc: 'Correct with hesitation', cls: 'text-primary hover:border-primary hover:text-primary' },
+    { label: 'EASY', q: 5, desc: 'Perfect recall', cls: 'text-primary hover:border-primary hover:text-primary' },
 ]
 
 export default function ReviewPage() {
@@ -17,6 +21,7 @@ export default function ReviewPage() {
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [done, setDone] = useState(false)
+    const reduced = useReducedMotion()
 
     const loadDue = useCallback(async () => {
         try {
@@ -54,97 +59,141 @@ export default function ReviewPage() {
         }
     }
 
-    if (loading) return (
-        <div className="flex items-center justify-center h-full gap-3 text-fkt-text-muted">
-            <Loader size={18} strokeWidth={1.5} className="animate-spin text-fkt-accent" />
-            <span className="font-mono text-xs uppercase tracking-widest">Loading due items…</span>
-        </div>
-    )
+    if (loading) {
+        return (
+            <div className="mx-auto w-full max-w-2xl space-y-4">
+                <Skeleton className="h-3 w-48" />
+                <div className="border border-border bg-card p-8">
+                    <Skeleton className="mb-6 h-3 w-24" />
+                    <Skeleton className="mb-8 h-8 w-3/4" />
+                    <Skeleton className="h-11 w-full" />
+                </div>
+            </div>
+        )
+    }
 
-    if (error) return (
-        <div className="flex items-center justify-center h-full gap-3 text-[#EF4444]">
-            <AlertCircle size={18} strokeWidth={1.5} />
-            <span className="font-mono text-xs">Error — {error}</span>
-        </div>
-    )
+    if (error) {
+        return (
+            <div className="flex h-full items-center justify-center gap-3 font-mono text-xs text-[#EF4444]">
+                <AlertCircle size={16} strokeWidth={1.5} />
+                Error — {error}
+            </div>
+        )
+    }
 
-    if (done) return (
-        <div className="flex flex-col items-center justify-center h-full gap-4 text-center">
-            <CheckCircle size={40} strokeWidth={1} className="text-fkt-accent" />
-            <h2 className="text-fkt-text-primary font-sans text-xl">Review Complete</h2>
-            <p className="text-fkt-text-muted font-mono text-xs max-w-xs">
-                No items currently due for review. Well done — your memory is up to date.
-            </p>
-            <button
-                onClick={() => { setLoading(true); setDone(false); loadDue() }}
-                className="mt-4 px-6 py-3 border border-fkt-accent text-fkt-accent font-mono text-[11px] uppercase hover:bg-fkt-accent/10 transition-colors"
-            >
-                CHECK AGAIN
-            </button>
-        </div>
-    )
+    if (done) {
+        return (
+            <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+                <m.svg width="44" height="44" viewBox="0 0 24 24" fill="none" className="text-primary">
+                    <m.path
+                        d="M4.5 12.5L9.5 17.5L19.5 7"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="square"
+                        initial={reduced ? false : { pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ duration: 0.5, ease: easeOut }}
+                    />
+                </m.svg>
+                <h2 className="font-sans text-xl text-foreground">Review Complete</h2>
+                <p className="max-w-xs font-mono text-xs text-muted-foreground">
+                    No items currently due for review. Well done — your memory is up to date.
+                </p>
+                <button
+                    onClick={() => { setLoading(true); setDone(false); loadDue() }}
+                    className="mt-4 border border-primary px-6 py-3 font-mono text-[11px] uppercase text-primary transition-colors hover:bg-primary/10"
+                >
+                    CHECK AGAIN
+                </button>
+            </div>
+        )
+    }
 
     const item = dueItems[currentIdx]
-    const progress = Math.round(((currentIdx) / dueItems.length) * 100)
+    const progress = Math.round((currentIdx / dueItems.length) * 100)
 
     return (
-        <div className="flex flex-col items-center justify-center h-full">
-            <div className="w-full max-w-2xl">
+        <div className="flex flex-col items-center justify-center">
+            <div className="w-full max-w-2xl space-y-4">
+                <PageHeader
+                    icon={BookOpenCheck}
+                    title="Review"
+                    subtitle="SM-2 spaced-repetition session"
+                >
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                        ITEM {currentIdx + 1} / {dueItems.length} DUE
+                    </span>
+                </PageHeader>
 
                 {/* Progress bar */}
-                <div className="flex justify-between items-center mb-4 text-fkt-text-muted">
-                    <span className="text-[10px] uppercase tracking-[0.12em] font-mono">
-                        ITEM {currentIdx + 1} OF {dueItems.length} DUE
-                    </span>
-                    <span className="font-mono text-fkt-accent text-xs">{progress}% COMPLETE</span>
-                </div>
-                <div className="w-full h-[1px] bg-fkt-elevated mb-6">
-                    <div className="h-full bg-fkt-accent transition-all duration-500" style={{ width: `${progress}%` }} />
+                <div className="h-[1px] w-full bg-slate-800">
+                    <m.div
+                        className="h-full bg-primary"
+                        initial={false}
+                        animate={{ width: `${progress}%` }}
+                        transition={{ duration: 0.4, ease: easeOut }}
+                    />
                 </div>
 
                 {/* Card */}
-                <div className="bg-fkt-surface border border-fkt-elevated p-8 min-h-[320px] flex flex-col hover:shadow-[inset_0_0_0_1px_rgba(0,255,163,0.2)] transition-shadow [clip-path:polygon(0_0,calc(100%-16px)_0,100%_16px,100%_100%,0_100%)]">
-                    {/* Meta tags */}
-                    <div className="flex gap-2 mb-6">
-                        <span className="text-[9px] font-mono uppercase px-2 py-0.5 border border-fkt-elevated text-fkt-text-dim">{item.difficulty}</span>
-                        <span className="text-[9px] font-mono uppercase px-2 py-0.5 border border-fkt-elevated text-fkt-text-dim">{item.item_type}</span>
-                        {item.success_rate > 0 && (
-                            <span className="text-[9px] font-mono uppercase px-2 py-0.5 border border-fkt-accent/30 text-fkt-accent">{Math.round(item.success_rate)}% SUCCESS</span>
+                <AnimatePresence mode="wait">
+                    <m.div
+                        key={item.id}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={reduced ? undefined : { opacity: 0, y: -8 }}
+                        transition={{ duration: 0.22, ease: easeOut }}
+                        className="flex min-h-[320px] flex-col border border-border bg-card p-8 transition-shadow hover:shadow-[inset_0_0_0_1px_rgba(0,255,163,0.2)] [clip-path:polygon(0_0,calc(100%-16px)_0,100%_16px,100%_100%,0_100%)]"
+                    >
+                        {/* Meta tags */}
+                        <div className="mb-6 flex gap-2">
+                            <span className="border border-border px-2 py-0.5 font-mono text-[9px] uppercase text-muted-foreground">{item.difficulty}</span>
+                            <span className="border border-border px-2 py-0.5 font-mono text-[9px] uppercase text-muted-foreground">{item.item_type}</span>
+                            {item.success_rate > 0 && (
+                                <span className="border border-primary/30 px-2 py-0.5 font-mono text-[9px] uppercase text-primary">
+                                    {Math.round(item.success_rate)}% SUCCESS
+                                </span>
+                            )}
+                        </div>
+
+                        <h2 className="mb-auto font-sans text-xl text-foreground">{item.question}</h2>
+
+                        {!revealed ? (
+                            <m.button
+                                onClick={() => setRevealed(true)}
+                                whileTap={reduced ? undefined : { scale: 0.99 }}
+                                transition={{ duration: 0.12 }}
+                                className="mt-8 flex w-full items-center justify-center gap-2 border border-border py-3 font-mono text-[11px] uppercase text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                            >
+                                <Eye size={14} strokeWidth={1.5} />
+                                Reveal Answer <ChevronRight size={14} strokeWidth={1.5} />
+                            </m.button>
+                        ) : (
+                            <>
+                                <div className="mt-6 border border-border border-l-2 border-l-primary bg-background p-4 font-sans text-sm leading-relaxed text-muted-foreground">
+                                    {item.answer}
+                                </div>
+                                <div className="mt-6 flex gap-[1px] bg-slate-800 p-[1px]">
+                                    {QUALITY_LABELS.map(({ label, q, desc, cls }, i) => (
+                                        <m.button
+                                            key={label}
+                                            disabled={submitting}
+                                            onClick={() => handleRate(q)}
+                                            title={desc}
+                                            whileTap={reduced ? undefined : { scale: 0.97 }}
+                                            initial={reduced ? false : { opacity: 0, y: 6 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: i * 0.05, duration: 0.2, ease: easeOut }}
+                                            className={`flex-1 border border-transparent bg-card py-3 font-mono text-[10px] transition-colors disabled:cursor-wait disabled:opacity-40 ${cls}`}
+                                        >
+                                            {submitting ? '…' : label}
+                                        </m.button>
+                                    ))}
+                                </div>
+                            </>
                         )}
-                    </div>
-
-                    <h2 className="text-xl text-fkt-text-primary font-sans mb-auto">{item.question}</h2>
-
-                    {/* Reveal / Answer */}
-                    {!revealed ? (
-                        <button
-                            onClick={() => setRevealed(true)}
-                            className="mt-8 flex items-center justify-center gap-2 w-full py-3 border border-fkt-elevated text-fkt-text-muted hover:border-fkt-accent hover:text-fkt-accent font-mono text-[11px] uppercase transition-colors"
-                        >
-                            REVEAL ANSWER <ChevronRight size={14} strokeWidth={1.5} />
-                        </button>
-                    ) : (
-                        <>
-                            <div className="mt-6 p-4 bg-fkt-base border border-fkt-elevated border-l-2 border-l-fkt-accent text-fkt-text-muted text-sm leading-relaxed">
-                                {item.answer}
-                            </div>
-                            <div className="flex gap-[1px] mt-6 bg-fkt-elevated p-[1px]">
-                                {QUALITY_LABELS.map(({ label, q, desc }) => (
-                                    <button
-                                        key={label}
-                                        disabled={submitting}
-                                        onClick={() => handleRate(q)}
-                                        title={desc}
-                                        className="flex-1 bg-fkt-surface py-3 text-[10px] font-mono text-fkt-text-muted hover:text-fkt-accent hover:bg-fkt-base transition-colors disabled:opacity-40 disabled:cursor-wait"
-                                    >
-                                        {submitting ? '…' : label}
-                                    </button>
-                                ))}
-                            </div>
-                        </>
-                    )}
-                </div>
-
+                    </m.div>
+                </AnimatePresence>
             </div>
         </div>
     )
