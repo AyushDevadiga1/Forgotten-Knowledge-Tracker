@@ -3,18 +3,54 @@
 @tailwind utilities;
 
 @layer base {
-  body {
-    @apply bg-fkt-base text-fkt-text-muted font-sans;
-    margin: 0;
-    min-height: 100vh;
-  }
-  
-  ::selection {
-    @apply bg-fkt-accent text-fkt-base;
-  }
-  
-  /* Hard reset on border radius */
-  * {
-    border-radius: 0 !important;
-  }
+    :root {
+        --background: 216 28% 7%;
+        --foreground: 210 40% 96%;
+        --card: 222 47% 11%;
+        --card-foreground: 210 40% 96%;
+        --popover: 222 47% 11%;
+        --popover-foreground: 210 40% 96%;
+        --primary: 158 100% 50%;
+        --primary-foreground: 216 28% 7%;
+        --secondary: 217 33% 17%;
+        --secondary-foreground: 210 40% 96%;
+        --muted: 217 33% 17%;
+        --muted-foreground: 215 16% 47%;
+        --accent: 158 100% 50%;
+        --accent-foreground: 216 28% 7%;
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 217 33% 17%;
+        --input: 217 33% 17%;
+        --ring: 158 100% 50%;
+        --radius: 0px;
+    }
+
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground font-sans;
+        margin: 0;
+        min-height: 100vh;
+    }
+
+    ::selection {
+        @apply bg-primary text-primary-foreground;
+    }
+}
+
+/* Respect OS-level reduced-motion: kill CSS animations/transitions.
+   Motion components additionally branch on useReducedMotion() at the JS
+   level, so this is a belt-and-braces fallback for any pure-CSS animation. */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
