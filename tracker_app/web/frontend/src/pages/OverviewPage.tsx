@@ -1,281 +1,328 @@
-import { useEffect, useState } from 'react'
-import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, Tooltip as RCTooltip, Cell } from 'recharts'
-import { Search, AlertCircle, Loader, Play, Square } from 'lucide-react'
-import { api, Stats, LearningItem, SessionStatus, TrendDay } from '../api'
-
-const tooltipStyle = {
-  contentStyle: { backgroundColor: '#0F172A', borderColor: '#1E293B', borderRadius: 0, fontFamily: 'IBM Plex Mono', fontSize: '12px', color: '#F1F5F9' },
-  itemStyle: { color: '#00FFA3' },
-}
+import { useEffect, useState, useCallback } from 'react'
+import { m, AnimatePresence, useReducedMotion } from 'motion/react'
+import { Search, AlertTriangle, Activity, Database } from 'lucide-react'
+import { api, Stats, LearningItem, TrendDay } from '../api'
+import { useSession } from '../context/SessionContext'
+import StatCard from '../components/StatCard'
+import TrendChart from '../components/TrendChart'
+import StreakFlame from '../components/StreakFlame'
+import SessionToggleButton from '../components/SessionToggleButton'
+import { OverviewSkeleton } from '../components/PageSkeleton'
+import { formatNumber, formatPercent } from '../lib/format'
+import { easeOut } from '../lib/animation'
+import { cn } from '../lib/utils'
 
 const statusColor: Record<string, string> = {
-  healthy: 'bg-fkt-accent',
-  warning: 'bg-[#F59E0B]',
-  critical: 'bg-[#EF4444]',
+    healthy: 'bg-primary',
+    warning: 'bg-amber-500',
+    critical: 'bg-destructive',
 }
 
-// Sparkline from the real per-day trend series (last 7 days). Each KPI card
-// shows its own metric: additions, mastery, success rate, and the due forecast.
-function miniSparkline(trend: TrendDay[], pick: (d: TrendDay) => number): { v: number }[] {
-  return trend.map((d) => ({ v: pick(d) }))
-}
-
-function formatElapsed(totalSeconds: number | null | undefined): string {
-  if (totalSeconds == null) return '00:00'
-  const s = Math.max(0, Math.floor(totalSeconds))
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const sec = s % 60
-  const mm = String(m).padStart(2, '0')
-  const ss = String(sec).padStart(2, '0')
-  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`
+function panelTitle(children: React.ReactNode) {
+    return <span className="mb-4 block text-[10px] uppercase tracking-[0.12em] text-muted-foreground">{children}</span>
 }
 
 export default function OverviewPage() {
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [today, setToday] = useState<{ reviews_today: number; concepts_studied: number } | null>(null)
-  const [recentItems, setRecentItems] = useState<LearningItem[]>([])
-  const [trend, setTrend] = useState<TrendDay[]>([])
-  const [session, setSession] = useState<SessionStatus | null>(null)
-  const [sessionBusy, setSessionBusy] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+    const { active } = useSession()
+    const reduced = useReducedMotion()
+    const [stats, setStats] = useState<Stats | null>(null)
+    const [today, setToday] = useState<{ reviews_today: number; concepts_studied: number } | null>(null)
+    const [recentItems, setRecentItems] = useState<LearningItem[]>([])
+    const [dueItems, setDueItems] = useState<LearningItem[]>([])
+    const [trend, setTrend] = useState<TrendDay[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [statsRes, itemsRes, sessionRes, trendRes] = await Promise.all([
-          api.getStats(),
-          api.getItems('active', 6),
-          api.getSessionStatus(),
-          api.getStatsTrend(7).catch(() => ({ data: [] as TrendDay[] })),
-        ])
-        setStats(statsRes.data.stats)
-        setToday(statsRes.data.today)
-        setRecentItems(itemsRes.data)
-        setSession(sessionRes.data)
-        setTrend(trendRes.data)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Failed to load data')
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
-    const poll = setInterval(async () => {
-      try {
-        const sessionRes = await api.getSessionStatus()
-        setSession(sessionRes.data)
-      } catch {
-        /* backend may be down; keep last known state */
-      }
-    }, 5000)
-    return () => clearInterval(poll)
-  }, [])
+    const load = useCallback(async () => {
+        try {
+            const [statsRes, itemsRes, trendRes, dueRes] = await Promise.all([
+                api.getStats(),
+                api.getItems('active', 6),
+                api.getStatsTrend(14).catch(() => ({ data: [] as TrendDay[] })),
+                api.getDueItems(),
+            ])
+            setStats(statsRes.data.stats)
+            setToday(statsRes.data.today)
+            setRecentItems(itemsRes.data)
+            setTrend(trendRes.data)
+            setDueItems(dueRes.data)
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Failed to load data')
+        } finally {
+            setLoading(false)
+        }
+    }, [])
 
-  async function toggleSession() {
-    setSessionBusy(true)
-    try {
-      const res = session?.active ? await api.stopSession() : await api.startSession()
-      setSession(res.data)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to toggle study session')
-    } finally {
-      setSessionBusy(false)
-    }
-  }
+    useEffect(() => {
+        load()
+        const poll = setInterval(load, 20000)
+        return () => clearInterval(poll)
+    }, [load])
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-full gap-3 text-fkt-text-muted">
-      <Loader size={18} strokeWidth={1.5} className="animate-spin text-fkt-accent" />
-      <span className="font-mono text-xs uppercase tracking-widest">Loading live data…</span>
-    </div>
-  )
+    if (loading) return <OverviewSkeleton />
 
-  if (error) return (
-    <div className="flex items-center justify-center h-full gap-3 text-[#EF4444]">
-      <AlertCircle size={18} strokeWidth={1.5} />
-      <span className="font-mono text-xs">Backend offline — {error}</span>
-    </div>
-  )
-
-  const kpi = stats ? [
-    {
-      title: 'TOTAL ITEMS',
-      value: stats.total_items.toLocaleString(),
-      delta: `${stats.active_items} active`,
-      up: true,
-      spark: miniSparkline(trend, (d) => d.added),
-    },
-    {
-      title: 'MASTERED',
-      value: stats.mastered_items.toLocaleString(),
-      delta: `${Math.round((stats.mastered_items / Math.max(stats.total_items, 1)) * 100)}%`,
-      up: true,
-      spark: miniSparkline(trend, (d) => d.mastered),
-    },
-    {
-      title: 'AVG SUCCESS',
-      value: `${Math.round(stats.average_success_rate)}%`,
-      delta: `${stats.total_reviews} total reviews`,
-      up: stats.average_success_rate >= 70,
-      spark: miniSparkline(trend, (d) => d.accuracy),
-    },
-    {
-      title: 'DUE TODAY',
-      value: stats.items_due_today.toLocaleString(),
-      delta: `${today?.reviews_today ?? 0} reviewed`,
-      up: stats.items_due_today === 0,
-      spark: miniSparkline(trend, (d) => d.due),
-    },
-  ] : []
-
-  const distData = [
-    { cat: 'Active', v: stats?.active_items ?? 0 },
-    { cat: 'Mastered', v: stats?.mastered_items ?? 0 },
-    { cat: 'Due', v: stats?.items_due_today ?? 0 },
-    { cat: 'Reviews', v: today?.reviews_today ?? 0 },
-    { cat: 'Streak', v: stats?.current_streak ?? 0 },
-  ]
-
-  return (
-    <div className="grid grid-cols-4 gap-[1px] bg-fkt-elevated">
-
-      {/* STUDY SESSION CONTROL */}
-      <div className="col-span-4 bg-fkt-surface p-4 flex items-center justify-between hover:shadow-[inset_0_0_0_1px_rgba(0,255,163,0.2)] transition-shadow">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] uppercase tracking-[0.12em] text-fkt-text-muted">Study Session</span>
-            <span className={`w-2 h-2 rounded-full ${session?.active ? 'bg-fkt-accent animate-pulse' : 'bg-fkt-text-dim'}`} />
-          </div>
-          <span className="text-[12px] text-fkt-text-muted block">
-            FKT captures concepts only while a study session is active — you tell it when.
-          </span>
+    if (error) return (
+        <div className="flex h-64 items-center justify-center gap-3 text-destructive">
+            <AlertTriangle size={18} strokeWidth={1.5} />
+            <span className="font-mono text-xs">Backend offline — {error}</span>
         </div>
-        <div className="flex items-center gap-4">
-          {session?.active && (
-            <span className="font-mono text-fkt-accent text-lg">{formatElapsed(session.elapsed_seconds)}</span>
-          )}
-          <button
-            onClick={toggleSession}
-            disabled={sessionBusy}
-            className={`flex items-center gap-2 px-4 py-2 font-mono text-xs uppercase tracking-[0.12em] border transition-colors disabled:opacity-50 ${
-              session?.active
-                ? 'border-[#EF4444]/40 text-[#EF4444] hover:bg-[#EF4444]/10'
-                : 'border-fkt-accent/40 text-fkt-accent hover:bg-fkt-accent/10'
-            }`}
-          >
-            {session?.active ? <Square size={14} strokeWidth={1.5} /> : <Play size={14} strokeWidth={1.5} />}
-            {session?.active ? 'Stop Studying' : 'Start Studying'}
-          </button>
-        </div>
-      </div>
+    )
 
-      {/* KPI CARDS */}
-      {kpi.map((k, i) => (
-        <div
-          key={i}
-          className={`bg-fkt-surface p-4 flex flex-col justify-between group hover:shadow-[inset_0_0_0_1px_rgba(0,255,163,0.2)] transition-shadow ${i === 0 ? '[clip-path:polygon(0_0,calc(100%-12px)_0,100%_12px,100%_100%,0_100%)]' : ''
-            }`}
-        >
-          <div className="flex justify-between items-start mb-4">
-            <span className="text-[10px] uppercase tracking-[0.12em] text-fkt-text-muted">{k.title}</span>
-            <span className={`text-[10px] font-mono px-1.5 py-0.5 ${k.up ? 'text-fkt-accent bg-fkt-accent/10' : 'text-[#F59E0B] bg-[#F59E0B]/10'}`}>
-              {k.delta}
-            </span>
-          </div>
-          <div className="flex items-end justify-between">
-            <span className="font-mono text-3xl leading-none text-fkt-text-primary">{k.value}</span>
-            <div className="w-[80px] h-[32px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={k.spark}>
-                  <Area type="monotone" dataKey="v" stroke={k.up ? '#00FFA3' : '#64748B'} fill="url(#accentGradient)" strokeWidth={1.5} isAnimationActive={false} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-      ))}
+    const kpi = stats
+        ? [
+              {
+                  title: 'TOTAL ITEMS',
+                  value: stats.total_items,
+                  format: formatNumber,
+                  delta: `${stats.active_items} active`,
+                  up: true,
+                  spark: trend.map((d) => ({ v: d.added })),
+              },
+              {
+                  title: 'MASTERED',
+                  value: stats.mastered_items,
+                  format: formatNumber,
+                  delta: `${Math.round((stats.mastered_items / Math.max(stats.total_items, 1)) * 100)}%`,
+                  up: true,
+                  spark: trend.map((d) => ({ v: d.mastered })),
+              },
+              {
+                  title: 'AVG SUCCESS',
+                  value: stats.average_success_rate,
+                  format: formatPercent,
+                  delta: `${stats.total_reviews} total reviews`,
+                  up: stats.average_success_rate >= 70,
+                  spark: trend.map((d) => ({ v: d.accuracy })),
+              },
+              {
+                  title: 'DUE TODAY',
+                  value: stats.items_due_today,
+                  format: formatNumber,
+                  delta: `${today?.reviews_today ?? 0} reviewed`,
+                  up: stats.items_due_today === 0,
+                  spark: trend.map((d) => ({ v: d.due })),
+              },
+          ]
+        : []
 
-      {/* MAIN CHART — distribution over time (session chart) */}
-      <div className="col-span-2 row-span-2 bg-fkt-surface p-4 flex flex-col hover:shadow-[inset_0_0_0_1px_rgba(0,255,163,0.2)] transition-shadow">
-        <span className="text-[10px] uppercase tracking-[0.12em] text-fkt-text-muted mb-4 block">PERFORMANCE OVERVIEW</span>
-        <div className="flex-1 min-h-[220px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={distData} margin={{ top: 4, right: 0, left: -24, bottom: 0 }}>
-              <RCTooltip {...tooltipStyle} cursor={{ fill: '#1E293B' }} />
-              <Bar dataKey="v" fill="#1E293B" animationDuration={800} label={{ fill: '#64748B', fontSize: 10, position: 'top', fontFamily: 'IBM Plex Mono' }}>
-                {distData.map((_, i) => (
-                  <Cell key={i} fill={i === 0 ? '#00FFA3' : i === 1 ? 'rgba(0,255,163,0.4)' : '#1E293B'} />
+    const trendTotal = trend.reduce((s, d) => s + d.reviews, 0)
+    const trendAccuracy = trend.length
+        ? Math.round(trend.reduce((s, d) => s + d.accuracy, 0) / trend.length)
+        : 0
+
+    return (
+        <div className="space-y-3">
+            {/* STUDY SESSION CONTROL */}
+            <m.div
+                className="flex items-center justify-between border border-border bg-card p-4 transition-colors hover:border-primary/25"
+                initial={reduced ? false : { opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: easeOut }}
+            >
+                <div>
+                    <div className="mb-1 flex items-center gap-2">
+                        <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Study Session</span>
+                        <m.span
+                            className={cn('h-2 w-2', active ? 'bg-primary' : 'bg-muted-foreground')}
+                            animate={active ? { opacity: [1, 0.3, 1] } : { opacity: 1 }}
+                            transition={active ? { duration: 1.6, repeat: Infinity } : { duration: 0 }}
+                        />
+                    </div>
+                    <span className="block text-[12px] text-muted-foreground">
+                        FKT captures concepts only while a study session is active — you tell it when.
+                    </span>
+                </div>
+                <SessionToggleButton />
+            </m.div>
+
+            {/* KPI CARDS */}
+            <div className="grid grid-cols-4 gap-3">
+                {kpi.map((k, i) => (
+                    <StatCard
+                        key={k.title}
+                        title={k.title}
+                        value={k.value}
+                        format={k.format}
+                        delta={k.delta}
+                        up={k.up}
+                        spark={k.spark}
+                        delay={i * 60}
+                    />
                 ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* RECENT ITEMS */}
-      <div className="bg-fkt-surface p-4 flex flex-col hover:shadow-[inset_0_0_0_1px_rgba(0,255,163,0.2)] transition-shadow">
-        <div className="flex justify-between items-center mb-3">
-          <span className="text-[10px] uppercase tracking-[0.12em] text-fkt-text-muted">RECENT ITEMS</span>
-          <Search size={12} className="text-fkt-text-muted" />
-        </div>
-        <div className="flex flex-col text-[12px] flex-1 overflow-auto">
-          {recentItems.length === 0 && (
-            <span className="text-fkt-text-dim font-mono text-xs py-4 text-center">No items yet</span>
-          )}
-          {recentItems.map((item) => (
-            <div key={item.id} className="flex justify-between items-center py-2.5 px-2 -mx-2 hover:bg-fkt-elevated cursor-default border-b border-fkt-elevated/30 last:border-0">
-              <span className="text-fkt-text-primary truncate max-w-[140px]" title={item.question}>{item.question}</span>
-              <span className={`font-mono text-[10px] px-1 ${item.success_rate >= 80 ? 'text-fkt-accent' : 'text-[#F59E0B]'}`}>
-                {Math.round(item.success_rate)}%
-              </span>
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* SYSTEM HEALTH */}
-      <div className="bg-fkt-surface p-4 flex flex-col hover:shadow-[inset_0_0_0_1px_rgba(0,255,163,0.2)] transition-shadow">
-        <span className="text-[10px] uppercase tracking-[0.12em] text-fkt-text-muted mb-4 block">SYSTEM STATUS</span>
-        <div className="flex flex-col gap-2">
-          {[
-            { svc: 'Flask API', status: 'healthy', lat: ':5000' },
-            { svc: 'SQLite DB', status: stats ? 'healthy' : 'critical', lat: 'local' },
-            { svc: 'SM-2 Scheduler', status: (stats?.items_due_today ?? 0) > 50 ? 'warning' : 'healthy', lat: `${stats?.items_due_today ?? 0} due` },
-            { svc: 'Background Tracker', status: session?.active ? 'healthy' : 'warning', lat: session?.active ? 'capturing' : 'idle — press Start Studying' },
-          ].map((h, i) => (
-            <div key={i} className="flex justify-between items-center p-2 border border-fkt-elevated bg-fkt-base">
-              <div className="flex items-center gap-2">
-                <div className={`w-1.5 h-1.5 ${statusColor[h.status]}`} />
-                <span className="text-fkt-text-primary text-[12px]">{h.svc}</span>
-              </div>
-              <span className="font-mono text-[10px] text-fkt-text-muted">{h.lat}</span>
+            {/* MAIN CHART + DUE LIST + SYSTEM STATUS */}
+            <div className="grid grid-cols-4 gap-3">
+                {/* REVIEW TREND (real /stats/trend) */}
+                <m.div
+                    className="col-span-2 row-span-2 flex flex-col border border-border bg-card p-4 transition-colors hover:border-primary/25"
+                    initial={reduced ? false : { opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.18, duration: 0.35, ease: easeOut }}
+                >
+                    <div className="mb-4 flex items-center justify-between">
+                        <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                            Review Trend — last {trend.length} days
+                        </span>
+                        <span className="font-mono text-[10px] text-primary">LIVE</span>
+                    </div>
+                    <div className="flex min-h-[200px] flex-1 flex-col">
+                        <TrendChart data={trend.map((d) => ({ v: d.reviews }))} height={160} />
+                        <div className="mt-3 flex gap-6 font-mono text-[10px] text-muted-foreground">
+                            <span>
+                                Σ <span className="text-primary">{formatNumber(trendTotal)}</span> reviews
+                            </span>
+                            <span>
+                                avg <span className="text-primary">{trendAccuracy}%</span> accuracy
+                            </span>
+                            <span>
+                                peak <span className="text-primary">{formatNumber(Math.max(...trend.map((d) => d.reviews), 0))}</span>/day
+                            </span>
+                        </div>
+                    </div>
+                </m.div>
+
+                {/* DUE TODAY — AnimatePresence + layout */}
+                <m.div
+                    className="col-span-1 row-span-2 flex flex-col border border-border bg-card p-4 transition-colors hover:border-primary/25"
+                    initial={reduced ? false : { opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.24, duration: 0.35, ease: easeOut }}
+                >
+                    {panelTitle(`Due Today · ${dueItems.length}`)}
+                    <div className="flex flex-1 flex-col overflow-auto">
+                        {dueItems.length === 0 && (
+                            <span className="py-4 text-center font-mono text-xs text-muted-foreground">
+                                No items due — memory up to date
+                            </span>
+                        )}
+                        <AnimatePresence initial={false}>
+                            {dueItems.map((item) => (
+                                <m.div
+                                    key={item.id}
+                                    layout
+                                    initial={reduced ? false : { opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={reduced ? undefined : { opacity: 0, x: -14 }}
+                                    transition={{ duration: 0.2, ease: easeOut }}
+                                    className="flex items-center justify-between border-b border-border/40 py-2.5 last:border-0"
+                                >
+                                    <span className="truncate text-[12px] text-foreground" title={item.question}>
+                                        {item.question}
+                                    </span>
+                                    <span
+                                        className={cn(
+                                            'ml-2 shrink-0 font-mono text-[10px]',
+                                            item.success_rate >= 80 ? 'text-primary' : 'text-amber-500'
+                                        )}
+                                    >
+                                        {Math.round(item.success_rate)}%
+                                    </span>
+                                </m.div>
+                            ))}
+                        </AnimatePresence>
+                    </div>
+                </m.div>
+
+                {/* SYSTEM STATUS */}
+                <m.div
+                    className="col-span-1 flex flex-col border border-border bg-card p-4 transition-colors hover:border-primary/25"
+                    initial={reduced ? false : { opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3, duration: 0.35, ease: easeOut }}
+                >
+                    {panelTitle('System Status')}
+                    <div className="flex flex-col gap-2">
+                        {[
+                            { svc: 'Flask API', status: 'healthy', lat: ':5000' },
+                            { svc: 'SQLite DB', status: stats ? 'healthy' : 'critical', lat: 'local' },
+                            { svc: 'SM-2 Scheduler', status: (stats?.items_due_today ?? 0) > 50 ? 'warning' : 'healthy', lat: `${stats?.items_due_today ?? 0} due` },
+                            { svc: 'Background Tracker', status: active ? 'healthy' : 'warning', lat: active ? 'capturing' : 'idle — Start Studying' },
+                        ].map((h, i) => (
+                            <div key={i} className="flex items-center justify-between border border-border bg-background p-2">
+                                <div className="flex items-center gap-2">
+                                    <div className={cn('h-1.5 w-1.5', statusColor[h.status])} />
+                                    <span className="text-[12px] text-foreground">{h.svc}</span>
+                                </div>
+                                <span className="font-mono text-[10px] text-muted-foreground">{h.lat}</span>
+                            </div>
+                        ))}
+                    </div>
+                </m.div>
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* DISTRIBUTION */}
-      <div className="col-span-2 bg-fkt-surface p-4 flex flex-col [clip-path:polygon(0_0,calc(100%-12px)_0,100%_12px,100%_100%,0_100%)] hover:shadow-[inset_0_0_0_1px_rgba(0,255,163,0.2)] transition-shadow">
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-[10px] uppercase tracking-[0.12em] text-fkt-text-muted">DATA BREAKDOWN</span>
-          <span className="font-mono text-[10px] text-fkt-accent">LIVE</span>
-        </div>
-        <div className="grid grid-cols-3 gap-[1px] bg-fkt-elevated text-center flex-1">
-          {[
-            { label: 'Streak', value: `${stats?.current_streak ?? 0}d` },
-            { label: 'Reviews', value: (stats?.total_reviews ?? 0).toLocaleString() },
-            { label: 'Studied Today', value: today?.concepts_studied ?? 0 },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-fkt-surface p-3 flex flex-col justify-center">
-              <span className="text-fkt-text-dim text-[9px] uppercase tracking-widest mb-1">{label}</span>
-              <span className="font-mono text-fkt-accent text-lg leading-none">{value}</span>
+            {/* RECENT ITEMS + DATA BREAKDOWN */}
+            <div className="grid grid-cols-4 gap-3">
+                <m.div
+                    className="col-span-2 flex flex-col border border-border bg-card p-4 transition-colors hover:border-primary/25"
+                    initial={reduced ? false : { opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.36, duration: 0.35, ease: easeOut }}
+                >
+                    <div className="mb-3 flex items-center justify-between">
+                        {panelTitle('Recent Items')}
+                        <Search size={12} className="text-muted-foreground" />
+                    </div>
+                    <div className="flex flex-col text-[12px]">
+                        {recentItems.length === 0 && (
+                            <span className="py-4 text-center font-mono text-xs text-muted-foreground">No items yet</span>
+                        )}
+                        {recentItems.map((item) => (
+                            <div
+                                key={item.id}
+                                className="flex items-center justify-between border-b border-border/30 px-2 py-2.5 last:border-0 hover:bg-muted"
+                            >
+                                <span className="truncate text-foreground" title={item.question}>
+                                    {item.question}
+                                </span>
+                                <span
+                                    className={cn(
+                                        'shrink-0 font-mono text-[10px]',
+                                        item.success_rate >= 80 ? 'text-primary' : 'text-amber-500'
+                                    )}
+                                >
+                                    {Math.round(item.success_rate)}%
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                </m.div>
+
+                <m.div
+                    className="col-span-2 flex flex-col border border-border bg-card p-4 transition-colors hover:border-primary/25"
+                    initial={reduced ? false : { opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.42, duration: 0.35, ease: easeOut }}
+                >
+                    <div className="mb-4 flex items-center justify-between">
+                        {panelTitle('Data Breakdown')}
+                        <span className="font-mono text-[10px] text-primary">LIVE</span>
+                    </div>
+                    <div className="grid flex-1 grid-cols-3 gap-px bg-border text-center">
+                        <div className="flex flex-col items-center justify-center gap-2 bg-card p-3">
+                            <StreakFlame streak={stats?.current_streak ?? 0} />
+                            <span className="font-mono text-lg leading-none text-primary">
+                                {(stats?.current_streak ?? 0).toLocaleString()}d
+                            </span>
+                            <span className="text-[9px] uppercase tracking-widest text-muted-foreground">Streak</span>
+                        </div>
+                        <div className="flex flex-col items-center justify-center gap-2 bg-card p-3">
+                            <Activity size={18} strokeWidth={1.5} className="text-muted-foreground" />
+                            <span className="font-mono text-lg leading-none text-primary">
+                                {(stats?.total_reviews ?? 0).toLocaleString()}
+                            </span>
+                            <span className="text-[9px] uppercase tracking-widest text-muted-foreground">Reviews</span>
+                        </div>
+                        <div className="flex flex-col items-center justify-center gap-2 bg-card p-3">
+                            <Database size={18} strokeWidth={1.5} className="text-muted-foreground" />
+                            <span className="font-mono text-lg leading-none text-primary">
+                                {(today?.concepts_studied ?? 0).toLocaleString()}
+                            </span>
+                            <span className="text-[9px] uppercase tracking-widest text-muted-foreground">Studied Today</span>
+                        </div>
+                    </div>
+                </m.div>
             </div>
-          ))}
         </div>
-      </div>
-
-    </div>
-  )
+    )
 }
