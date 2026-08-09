@@ -1,91 +1,48 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Network, AlertTriangle, RefreshCw, Loader, TrendingDown, Cpu, Share2 } from 'lucide-react'
-import { api, GraphStats, KnowledgeGap, GraphEdge } from '../api'
+import { Share2, RefreshCw, Network, AlertTriangle, MousePointer2 } from 'lucide-react'
+import { m } from 'motion/react'
+import { api, GraphStats, KnowledgeGap, ConceptDrift, GraphNode } from '@/api'
+import PageHeader from '@/components/PageHeader'
+import ForceGraph from '@/components/ForceGraph'
+import ConceptPanel from '@/components/ConceptPanel'
+import { GraphSkeleton } from '@/components/PageSkeleton'
+import BackendDown from '@/components/BackendDown'
+import DriftBadge, { type DriftStatus } from '@/components/DriftBadge'
+import { cn } from '@/lib/utils'
 
-// ── tiny shared helpers ───────────────────────────────────
+function StatChip({ label, value, icon: Icon }: { label: string; value: string | number; icon: typeof Network }) {
+    return (
+        <div className="border border-border bg-card p-3.5">
+            <div className="mb-2 flex items-center gap-1.5">
+                <Icon size={11} strokeWidth={1.5} className="text-muted-foreground" />
+                <span className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground">{label}</span>
+            </div>
+            <span className="font-mono text-xl text-foreground">{value}</span>
+        </div>
+    )
+}
+
 function MemBar({ v, max = 1 }: { v: number; max?: number }) {
     const pct = Math.min(100, (v / max) * 100)
-    const colour =
-        pct > 65 ? 'bg-fkt-accent' : pct > 35 ? 'bg-[#F59E0B]' : 'bg-[#EF4444]'
+    const colour = pct > 65 ? 'bg-primary' : pct > 35 ? 'bg-[#F59E0B]' : 'bg-[#EF4444]'
     return (
-        <div className="h-1 w-full bg-fkt-elevated rounded-none overflow-hidden">
-            <div className={`h-full ${colour} transition-all duration-500`} style={{ width: `${pct}%` }} />
+        <div className="h-1 w-full overflow-hidden bg-slate-800">
+            <m.div className={cn('h-full', colour)} initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.5 }} />
         </div>
     )
 }
 
-function EmptyState({ label }: { label: string }) {
-    return (
-        <div className="flex flex-col items-center justify-center h-48 text-fkt-text-dim gap-3">
-            <Network size={36} strokeWidth={1} />
-            <p className="text-xs font-mono uppercase tracking-widest">{label}</p>
-        </div>
-    )
-}
+const LEGEND = [
+    { color: '#00FFA3', label: 'strong ≥65' },
+    { color: '#F59E0B', label: 'mid 40–64' },
+    { color: '#EF4444', label: 'weak <40' },
+]
 
-function BackendDown() {
-    return (
-        <div className="flex flex-col items-center justify-center h-64 gap-4 text-fkt-text-muted">
-            <AlertTriangle size={40} strokeWidth={1} className="text-[#EF4444]" />
-            <p className="text-sm font-mono">Backend offline — start <code className="text-fkt-accent">main.py</code> and <code className="text-fkt-accent">web/app.py</code></p>
-            <p className="text-[11px] text-fkt-text-dim">Graph data will appear automatically once connected.</p>
-        </div>
-    )
-}
-
-// ── Force-layout mini graph rendered on an SVG canvas ────
-function BubbleGraph({ concepts, edges }: { concepts: string[]; edges: GraphEdge[] }) {
-    if (concepts.length === 0) return <EmptyState label="No concepts in graph yet" />
-
-    const W = 480, H = 260, CX = W / 2, CY = H / 2
-    // evenly place on an ellipse
-    const nodes = concepts.slice(0, 20).map((c, i, arr) => {
-        const angle = (2 * Math.PI * i) / arr.length - Math.PI / 2
-        const rx = CX * 0.72, ry = CY * 0.72
-        return { label: c, x: CX + rx * Math.cos(angle), y: CY + ry * Math.sin(angle) }
-    })
-    const pos = new Map(nodes.map(n => [n.label, n]))
-
-    // Real semantic edges (M-7): draw only links that exist in the backend
-    // graph, with stroke width/opacity scaled by weight — no fabricated HUB.
-    const lines = edges.map((e, i) => {
-        const a = pos.get(e.source), b = pos.get(e.target)
-        if (!a || !b) return null
-        return (
-            <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-                stroke="#00FFA3" strokeWidth={0.6 + e.weight * 2}
-                opacity={0.25 + e.weight * 0.6} />
-        )
-    })
-
-    return (
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-full">
-            {lines}
-            {/* concept nodes */}
-            {nodes.map((n, i) => (
-                <g key={i}>
-                    <circle cx={n.x} cy={n.y} r={9} fill="#0F172A" stroke="#334155" strokeWidth={1} />
-                    <text x={n.x} y={n.y - 13} textAnchor="middle" fontSize={8}
-                        fill="#94A3B8" fontFamily="IBM Plex Mono"
-                        className="pointer-events-none select-none">
-                        {n.label.length > 12 ? n.label.slice(0, 11) + '…' : n.label}
-                    </text>
-                </g>
-            ))}
-            {edges.length === 0 && (
-                <text x={CX} y={CY} textAnchor="middle" fontSize={9}
-                    fill="#475569" fontFamily="IBM Plex Mono">
-                    no semantic links among top concepts yet
-                </text>
-            )}
-        </svg>
-    )
-}
-
-// ── Main page ─────────────────────────────────────────────
 export default function GraphPage() {
     const [stats, setStats] = useState<GraphStats | null>(null)
     const [gaps, setGaps] = useState<KnowledgeGap[]>([])
+    const [drifts, setDrifts] = useState<Record<string, ConceptDrift>>({})
+    const [selected, setSelected] = useState<GraphNode | null>(null)
     const [loading, setLoading] = useState(true)
     const [backendDown, setBackendDown] = useState(false)
     const [refreshing, setRefreshing] = useState(false)
@@ -99,6 +56,13 @@ export default function GraphPage() {
             ])
             setStats(statsRes.data)
             setGaps(gapsRes.data ?? [])
+            const top = (statsRes.data.top_concepts ?? []).slice(0, 3)
+            const driftRes = await Promise.allSettled(top.map((c) => api.getConceptDrift(c)))
+            const map: Record<string, ConceptDrift> = {}
+            driftRes.forEach((r, i) => {
+                if (r.status === 'fulfilled' && top[i]) map[top[i]] = r.value.data
+            })
+            setDrifts(map)
             setBackendDown(false)
         } catch {
             setBackendDown(true)
@@ -110,98 +74,128 @@ export default function GraphPage() {
 
     useEffect(() => { load() }, [load])
 
-    if (loading) return (
-        <div className="flex items-center justify-center h-64 gap-3 text-fkt-text-muted">
-            <Loader size={18} className="animate-spin" />
-            <span className="text-xs font-mono">Loading knowledge graph…</span>
-        </div>
-    )
-
+    if (loading) return <GraphSkeleton />
     if (backendDown) return <BackendDown />
 
-    const topConcepts = stats?.top_concepts ?? []
+    const nodes = stats?.nodes ?? []
+    const links = stats?.edges ?? []
 
     return (
-        <div className="space-y-5">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-fkt-text-primary font-mono text-sm uppercase tracking-widest flex items-center gap-2">
-                        <Share2 size={14} className="text-fkt-accent" />
-                        Knowledge Graph
-                    </h1>
-                    <p className="text-[11px] text-fkt-text-dim mt-0.5 font-mono">
-                        Concept network built from your tracked sessions
-                    </p>
-                </div>
+        <div className="space-y-4">
+            <PageHeader
+                icon={Share2}
+                title="Knowledge Graph"
+                subtitle="Concept network built from your tracked sessions"
+            >
                 <button
                     id="graph-refresh-btn"
                     onClick={() => load(true)}
                     disabled={refreshing}
-                    className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-widest text-fkt-text-muted
-                               border border-fkt-elevated px-3 py-1.5 hover:border-fkt-accent hover:text-fkt-accent transition-colors"
+                    className="flex items-center gap-1.5 border border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-primary hover:text-primary"
                 >
                     <RefreshCw size={11} className={refreshing ? 'animate-spin' : ''} />
                     Refresh
                 </button>
-            </div>
+            </PageHeader>
 
-            {/* Stats row */}
             <div className="grid grid-cols-3 gap-3">
-                {[
-                    { label: 'Concepts', value: stats?.total_concepts ?? 0, icon: Cpu },
-                    { label: 'Connections', value: stats?.total_edges ?? 0, icon: Share2 },
-                    { label: 'Avg Memory', value: stats ? `${(stats.avg_memory_strength * 100).toFixed(0)}%` : '—', icon: TrendingDown },
-                ].map(({ label, value, icon: Icon }) => (
-                    <div key={label} className="bg-fkt-surface border border-fkt-elevated p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Icon size={12} strokeWidth={1.5} className="text-fkt-text-dim" />
-                            <span className="text-[10px] font-mono uppercase tracking-widest text-fkt-text-dim">{label}</span>
-                        </div>
-                        <span className="text-2xl font-mono text-fkt-text-primary">{value}</span>
-                    </div>
-                ))}
+                <StatChip label="Concepts" value={stats?.total_concepts ?? 0} icon={Network} />
+                <StatChip label="Connections" value={stats?.total_edges ?? 0} icon={Share2} />
+                <StatChip
+                    label="Avg Memory"
+                    value={stats ? `${(stats.avg_memory_strength * 100).toFixed(0)}%` : '—'}
+                    icon={AlertTriangle}
+                />
             </div>
 
-            {/* Graph + Gaps side by side */}
             <div className="grid grid-cols-5 gap-3">
                 {/* Visual graph */}
-                <div className="col-span-3 bg-fkt-surface border border-fkt-elevated p-4">
-                    <p className="text-[10px] font-mono uppercase tracking-widest text-fkt-text-dim mb-3">
-                        Concept Map — top {Math.min(20, topConcepts.length)} nodes
-                    </p>
-                    <div className="h-[260px]">
-                        <BubbleGraph concepts={topConcepts} edges={stats?.edges ?? []} />
+                <div className="col-span-3 border border-border bg-card p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                        <p className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                            Concept Map — top {nodes.length} nodes · force layout
+                        </p>
+                        <div className="flex items-center gap-3">
+                            {LEGEND.map((l) => (
+                                <span key={l.label} className="flex items-center gap-1.5 text-[9px] font-mono text-muted-foreground">
+                                    <span className="h-1.5 w-1.5" style={{ background: l.color }} />
+                                    {l.label}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex gap-4">
+                        <div className="flex-1">
+                            {nodes.length === 0 ? (
+                                <div className="flex h-[380px] flex-col items-center justify-center gap-3 text-muted-foreground">
+                                    <Network size={32} strokeWidth={1} />
+                                    <p className="text-[10px] font-mono uppercase tracking-widest">No concepts in graph yet</p>
+                                    <p className="text-[10px] font-mono text-muted-foreground/70">Study in an active session to grow it.</p>
+                                </div>
+                            ) : (
+                                <div className="h-[380px]">
+                                    <ForceGraph nodes={nodes} links={links} onSelect={(n) => setSelected(n)} />
+                                </div>
+                            )}
+                            <p className="mt-2 flex items-center gap-1.5 text-[9px] font-mono text-muted-foreground/70">
+                                <MousePointer2 size={10} className="text-primary" />
+                                click a node for memory + encounter history
+                            </p>
+                        </div>
+                        <ConceptPanel
+                            concept={selected?.concept ?? null}
+                            memoryScore={selected?.memory_score ?? null}
+                            onClose={() => setSelected(null)}
+                        />
                     </div>
                 </div>
 
-                {/* Knowledge gaps */}
-                <div className="col-span-2 bg-fkt-surface border border-fkt-elevated p-4 flex flex-col">
-                    <p className="text-[10px] font-mono uppercase tracking-widest text-fkt-text-dim mb-3 flex items-center gap-2">
-                        <AlertTriangle size={10} className="text-[#F59E0B]" />
-                        Knowledge Gaps
-                    </p>
-                    {gaps.length === 0
-                        ? <EmptyState label="No gaps detected yet" />
-                        : (
-                            <ul className="space-y-3 overflow-y-auto flex-1">
+                {/* Right rail: gaps + drift */}
+                <div className="col-span-2 flex flex-col gap-3">
+                    <div className="flex-1 border border-border bg-card p-4">
+                        <p className="mb-3 flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                            <AlertTriangle size={10} className="text-[#F59E0B]" />
+                            Knowledge Gaps
+                        </p>
+                        {gaps.length === 0 ? (
+                            <div className="flex h-32 items-center justify-center text-[10px] font-mono uppercase tracking-widest text-muted-foreground/70">
+                                No gaps detected yet
+                            </div>
+                        ) : (
+                            <ul className="space-y-3">
                                 {gaps.map((g) => (
-                                    <li key={g.concept} className="group">
-                                        <div className="flex justify-between items-baseline mb-1">
-                                            <span className="text-xs text-fkt-text-primary font-mono truncate max-w-[130px]">{g.concept}</span>
-                                            <span className="text-[10px] text-fkt-text-dim font-mono shrink-0 ml-2">
+                                    <li key={g.concept}>
+                                        <div className="mb-1 flex items-baseline justify-between">
+                                            <span className="max-w-[150px] truncate font-mono text-xs text-foreground">{g.concept}</span>
+                                            <span className="ml-2 shrink-0 font-mono text-[10px] text-muted-foreground">
                                                 {(g.memory_strength * 100).toFixed(0)}%
                                             </span>
                                         </div>
                                         <MemBar v={g.memory_strength} />
-                                        <p className="text-[9px] text-fkt-text-dim mt-0.5 font-mono">
-                                            Last seen: {g.last_seen ? new Date(g.last_seen).toLocaleDateString() : 'never'}
+                                        <p className="mt-0.5 font-mono text-[9px] text-muted-foreground">
+                                            last seen: {g.last_seen ? new Date(g.last_seen).toLocaleDateString() : 'never'}
                                         </p>
                                     </li>
                                 ))}
                             </ul>
-                        )
-                    }
+                        )}
+                    </div>
+
+                    {Object.keys(drifts).length > 0 && (
+                        <div className="border border-border bg-card p-4">
+                            <p className="mb-3 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
+                                Concept Drift
+                            </p>
+                            <ul className="space-y-2">
+                                {Object.entries(drifts).map(([concept, d]) => (
+                                    <li key={concept} className="flex items-center justify-between">
+                                        <span className="max-w-[140px] truncate font-mono text-[11px] text-foreground">{concept}</span>
+                                        <DriftBadge status={d.status as DriftStatus} />
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

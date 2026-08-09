@@ -159,6 +159,14 @@ export const api = {
     getKnowledgeGaps: (limit = 8) =>
         apiFetch<{ success: boolean; data: KnowledgeGap[]; count: number }>(`/graph/gaps?limit=${limit}`),
 
+    /** GET /api/v1/graph/drift/<concept> */
+    getConceptDrift: (concept: string) =>
+        apiFetch<{ success: boolean; data: ConceptDrift }>(`/graph/drift/${encodeURIComponent(concept)}`),
+
+    /** GET /api/v1/graph/concept/<concept> — memory score + encounter history */
+    getConceptDetail: (concept: string) =>
+        apiFetch<{ success: boolean; data: ConceptDetail }>(`/graph/concept/${encodeURIComponent(concept)}`),
+
     /** GET /api/v1/quiz/current */
     getQuiz: () => apiFetch<{ success: boolean; data: QuizQuestion | null }>('/quiz/current'),
 
@@ -174,10 +182,12 @@ export const api = {
 }
 
 // ── Graph + Quiz Types ────────────────────────────────────
-export interface GraphEdge {
-    source: string
-    target: string
-    weight: number
+/** Backend returns edges as [source, target, weight] tuples (M-7). */
+export type GraphEdge = [string, string, number]
+
+export interface GraphNode {
+    concept: string
+    memory_score: number
 }
 
 export interface GraphStats {
@@ -185,14 +195,38 @@ export interface GraphStats {
     total_edges: number
     avg_memory_strength: number
     top_concepts: string[]
+    nodes: GraphNode[]
     edges: GraphEdge[]
 }
 
 export interface KnowledgeGap {
     concept: string
-    last_seen: string
+    gap_concept?: string
+    bridge_concepts?: string[]
+    last_seen: string | null
     memory_strength: number
     gap_score: number
+}
+
+export interface ConceptDrift {
+    concept: string
+    drift_score: number
+    status: 'new' | 'evolving' | 'stable' | 'stagnant'
+    co_concepts_now: string[]
+    co_concepts_historic: string[]
+}
+
+export interface ConceptHistoryEntry {
+    timestamp: string
+    context: string | null
+    confidence: number | null
+    relevance: number | null
+}
+
+export interface ConceptDetail {
+    concept: string
+    memory_score: number
+    history: ConceptHistoryEntry[]
 }
 
 export interface QuizQuestion {
