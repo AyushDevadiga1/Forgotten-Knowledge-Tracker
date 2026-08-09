@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
+import { m, AnimatePresence, useReducedMotion } from 'motion/react'
+import { X, Check, ThumbsDown } from 'lucide-react'
 import { api, IntentPrediction } from '../api'
+import { spring } from '@/lib/animation'
 
 function formatAgo(iso: string): string {
     try {
@@ -44,6 +47,7 @@ export default function IntentFeedbackToast() {
     const [prediction, setPrediction] = useState<IntentPrediction | null>(null)
     const [submitted, setSubmitted] = useState(false)
     const [actualIntent, setActualIntent] = useState('')
+    const reduced = useReducedMotion()
 
     useEffect(() => {
         // Poll every 10 seconds for the latest prediction
@@ -88,77 +92,94 @@ export default function IntentFeedbackToast() {
         setPrediction(null)
     }
 
-    if (!prediction) return null
-
     return (
-        <div className="fixed bottom-6 right-6 w-80 bg-fkt-surface border border-fkt-elevated shadow-2xl z-50 animate-in slide-in-from-bottom-5">
-            <div className="p-3 border-b border-fkt-elevated bg-fkt-base flex justify-between items-center">
-                <span className="text-[10px] uppercase tracking-widest text-fkt-text-muted font-mono flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-fkt-accent animate-pulse" />
-                    Quick Check
-                </span>
-                <div className="flex items-center gap-3">
-                    <span className="text-[9px] text-fkt-text-dim font-mono">{Math.round(prediction.confidence * 100)}% CONF</span>
-                    <button
-                        onClick={dismiss}
-                        title="Dismiss"
-                        className="text-fkt-text-dim hover:text-fkt-text-primary transition-colors text-sm leading-none"
-                    >
-                        ✕
-                    </button>
-                </div>
-            </div>
-
-            <div className="p-4">
-                <p className="text-xs text-fkt-text-muted mb-1 font-sans">
-                    The system predicted your recent activity as:
-                </p>
-                <div className="text-center font-mono text-fkt-accent text-lg mb-3 uppercase">
-                    {prediction.predicted_intent}
-                </div>
-
-                {(prediction.timestamp || prediction.window_title) && (
-                    <div className="flex items-center justify-center gap-2 text-[10px] font-mono text-fkt-text-dim mb-3">
-                        {prediction.timestamp && <span>{formatAgo(prediction.timestamp)}</span>}
-                        {prediction.timestamp && prediction.window_title && <span>•</span>}
-                        {prediction.window_title && (
-                            <span
-                                className="truncate max-w-[200px]"
-                                title={prediction.window_title}
-                            >
-                                {truncate(prediction.window_title, 42)}
+        <AnimatePresence>
+            {prediction && (
+                <m.div
+                    key={prediction.id}
+                    className="fixed bottom-6 right-6 z-50 w-80 border border-border bg-card shadow-2xl"
+                    initial={reduced ? false : { x: 32, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={reduced ? undefined : { x: 32, opacity: 0 }}
+                    transition={spring}
+                >
+                    <div className="flex items-center justify-between border-b border-border bg-background p-3">
+                        <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                            <span className="h-1.5 w-1.5 animate-pulse bg-primary" />
+                            Quick Check
+                        </span>
+                        <div className="flex items-center gap-3">
+                            <span className="font-mono text-[9px] text-muted-foreground">
+                                {Math.round(prediction.confidence * 100)}% CONF
                             </span>
-                        )}
+                            <button
+                                onClick={dismiss}
+                                title="Dismiss"
+                                aria-label="Dismiss"
+                                className="leading-none text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
                     </div>
-                )}
 
-                <p className="text-[10px] text-fkt-text-muted mb-2 uppercase tracking-wide">Was this correct?</p>
-                <div className="flex gap-2 mb-3">
-                    <button
-                        onClick={() => handleFeedback(true)}
-                        className="flex-1 py-2 border border-fkt-elevated hover:border-fkt-accent hover:text-fkt-accent text-fkt-text-primary transition-colors text-xs font-mono bg-fkt-base"
-                    >
-                        YES
-                    </button>
-                    <button
-                        onClick={() => handleFeedback(false)}
-                        className="flex-1 py-2 border border-fkt-elevated hover:border-[#EF4444] hover:text-[#EF4444] text-fkt-text-primary transition-colors text-xs font-mono bg-fkt-base"
-                    >
-                        NO
-                    </button>
-                </div>
+                    <div className="p-4">
+                        <p className="mb-1 font-sans text-xs text-muted-foreground">
+                            The system predicted your recent activity as:
+                        </p>
+                        <div className="mb-3 text-center font-mono text-lg uppercase text-primary drop-shadow-[0_0_10px_rgba(0,255,163,0.35)]">
+                            {prediction.predicted_intent}
+                        </div>
 
-                {/* Optional correction field to improve data */}
-                <div className="mt-2 pt-2 border-t border-fkt-elevated/50">
-                    <input
-                        type="text"
-                        placeholder="If no, what were you doing?"
-                        value={actualIntent}
-                        onChange={e => setActualIntent(e.target.value)}
-                        className="w-full bg-transparent border border-fkt-elevated p-2 text-[11px] font-mono outline-none focus:border-[#F59E0B] text-fkt-text-primary placeholder:text-fkt-text-dim"
-                    />
-                </div>
-            </div>
-        </div>
+                        {(prediction.timestamp || prediction.window_title) && (
+                            <div className="mb-3 flex items-center justify-center gap-2 font-mono text-[10px] text-muted-foreground">
+                                {prediction.timestamp && <span>{formatAgo(prediction.timestamp)}</span>}
+                                {prediction.timestamp && prediction.window_title && <span>•</span>}
+                                {prediction.window_title && (
+                                    <span className="max-w-[200px] truncate" title={prediction.window_title}>
+                                        {truncate(prediction.window_title, 42)}
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
+                        <p className="mb-2 text-[10px] uppercase tracking-wide text-muted-foreground">Was this correct?</p>
+                        <div className="mb-3 flex gap-2">
+                            <m.button
+                                onClick={() => handleFeedback(true)}
+                                whileHover={reduced ? undefined : { scale: 1.02 }}
+                                whileTap={reduced ? undefined : { scale: 0.97 }}
+                                transition={{ duration: 0.12 }}
+                                className="flex flex-1 items-center justify-center gap-1.5 border border-border bg-background py-2 font-mono text-xs text-foreground transition-colors hover:border-primary hover:text-primary"
+                            >
+                                <Check size={12} />
+                                YES
+                            </m.button>
+                            <m.button
+                                onClick={() => handleFeedback(false)}
+                                whileHover={reduced ? undefined : { scale: 1.02 }}
+                                whileTap={reduced ? undefined : { scale: 0.97 }}
+                                transition={{ duration: 0.12 }}
+                                className="flex flex-1 items-center justify-center gap-1.5 border border-border bg-background py-2 font-mono text-xs text-foreground transition-colors hover:border-[#EF4444] hover:text-[#EF4444]"
+                            >
+                                <ThumbsDown size={12} />
+                                NO
+                            </m.button>
+                        </div>
+
+                        {/* Optional correction field to improve data */}
+                        <div className="mt-2 border-t border-border/60 pt-2">
+                            <input
+                                type="text"
+                                placeholder="If no, what were you doing?"
+                                value={actualIntent}
+                                onChange={(e) => setActualIntent(e.target.value)}
+                                className="w-full border border-border bg-transparent p-2 font-mono text-[11px] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-[#F59E0B]"
+                            />
+                        </div>
+                    </div>
+                </m.div>
+            )}
+        </AnimatePresence>
     )
 }
