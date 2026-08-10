@@ -78,6 +78,25 @@ class ConceptScheduler:
                 existing.relevance_score = (
                     ((existing.relevance_score or 0.5) + confidence) / 2.0
                 )
+                # Auto-promote into the learning deck once the concept has
+                # been re-encountered enough times to look like real study
+                # content, not a one-off glance. Promotion is best-effort and
+                # idempotent; failures must never break the tracking loop.
+                from tracker_app.learning.concept_promotion import (
+                    PROMOTE_AFTER_ENCOUNTERS,
+                    is_kb_worthy,
+                )
+                if (
+                    existing.frequency_count == PROMOTE_AFTER_ENCOUNTERS
+                    and is_kb_worthy(concept)
+                ):
+                    try:
+                        from tracker_app.learning.concept_promotion import (
+                            promote_concept_to_deck,
+                        )
+                        promote_concept_to_deck(concept)
+                    except Exception as e:
+                        logger.debug(f"Deck promotion failed for {concept}: {e}")
             else:
                 lambda_p = compute_awfc_lambda(DEFAULT_LAMBDA, attention_at_encoding)
                 new_concept = TrackedConcept(

@@ -22,12 +22,53 @@ _FRAGMENT_BLOCKLIST = frozenset({
 # Short no-vowel acronyms that are legitimately useful despite the vowel rule.
 _ACRONYM_WHITELIST = frozenset({'sql', 'css', 'html', 'http', 'https', 'ftp'})
 
+# Observed OCR misreads / glued screen-chrome tokens that are structurally
+# invisible (vowel-rich, normal-looking length) but never study content.
+# These came straight out of live E2E tracking — the sticky UI text that the
+# camera keeps re-reading. They are blocked at ingest so they never pollute
+# tracked_concepts again.
+_OCR_NOISE = frozenset({
+    'uktantigtaaty', 'uktantagtantyf', 'annletae', 'dtrarre', 'aofieedit',
+    'aofikefdit', 'oreerat', 'enoea', 'aannup', 'youlube', 'exlorer',
+    'andbekgt', 'teasanc', 'timetine', 'textprunall', 'csonwiagrceov',
+    'laqithub', 'sbodiidts', 'yak', 'aye', 'foy', 'campusx', 'askgemini',
+    'hxagent', 'boyton', 'canfigfor', 'fullsuite', 'lomfrackerappi',
+    'allpipelines', 'sarchitecture', 'debugcantole', 'goorunferminalhelp',
+    'ocbugconsole', 'qcommands', 'qoyoutubecomwatenfor', 'statuscode',
+    'newsession', 'redacted', 'aofleedit', 'sgoigs', 'tez', 'blopencode',
+    'csondwiagreov', 'goowias', 'woe', 'mereadme', 'boython', 'tatlea',
+    'ses', 'csonwadr', 'mets', 'lanter', 'orta', 'vaqthuty', 'ter',
+    'compusx', 'colabreseurch', 'iole', 'uspearecreanled', 'problemsoutput',
+    'ingusing', 'srketonview', 'darchitecture', 'qoyortubecomintens',
+    'urihttp', 'answeringsystemusing', 'bjpython', 'bpython',
+})
+
+# Function words that are never useful as a whole-concept string.
+_STOPWORD_CONCEPTS = frozenset({
+    'the', 'a', 'an', 'and', 'or', 'is', 'are', 'was', 'were', 'be', 'been',
+    'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should',
+    'could', 'might', 'must', 'can', 'of', 'in', 'on', 'at', 'to', 'for',
+    'from', 'by', 'with', 'about', 'as', 'if', 'that', 'this', 'it', 'what',
+    'when', 'where', 'why', 'how', 'which', 'who',
+})
+
+# Per-token structural limits. Real study terms sit well inside these bounds;
+# glued OCR chains, consonant-cluster noise, and vowel soup get rejected.
+_MAX_TOKEN_LENGTH           = 20
+_MAX_CONSECUTIVE_CONSONANTS = 5   # 'synthesis'/'photosynthesis' reach 5 legitimately
+_MIN_VOWEL_RATIO            = 0.12   # keeps 'pytorch' (0.14); 'strengths' (0.11) stays out
+_MAX_VOWEL_RATIO            = 0.85  # high enough to keep 'queue'; 'enoea' is in _OCR_NOISE
+
 _VOWELS = frozenset('aeiou')
 _REPEATED_RUN = re.compile(r'(.)\1\1')  # three or more identical chars
 
 
 def _has_repeated_run_noise(word: str) -> bool:
-    """True if >40% of a word's chars sit in doubled runs ('aannup' -> 4/6)."""
+    """True if >50% of a word's chars sit in doubled runs ('aannup' -> 4/6).
+
+    Threshold is 0.5, not 0.4: real words like 'tree'/'meeting' reach 50%
+    ('ee'/'ee'), but pure doubled-run garbage ('aannup' at 0.67) still trips.
+    """
     runs, i, n = 0, 0, len(word)
     while i < n:
         j = i
@@ -36,7 +77,7 @@ def _has_repeated_run_noise(word: str) -> bool:
         if j > i:
             runs += j - i + 1
         i = j + 1
-    return n > 0 and runs / n > 0.4
+    return n > 0 and runs / n > 0.5
 
 
 def is_plausible_concept(text) -> bool:
@@ -53,6 +94,8 @@ def is_plausible_concept(text) -> bool:
     stripped = text.strip()
     if not stripped or len(stripped) < 3 or len(stripped) > 80:
         return False
+    if stripped.lower() in _STOPWORD_CONCEPTS:
+        return False
 
     words = re.findall(r"[A-Za-z]+", stripped)
     if not words:
@@ -67,6 +110,8 @@ def _is_plausible_word(word: str) -> bool:
     low = word.lower()
     if low in _FRAGMENT_BLOCKLIST:
         return False
+    if low in _OCR_NOISE:
+        return False
     # All-caps acronyms pass regardless of vowels.
     if word.isupper() and len(word) <= 6:
         return True
@@ -75,6 +120,22 @@ def _is_plausible_word(word: str) -> bool:
     has_vowel     = any(c in _VOWELS for c in low)
     has_consonant = any(c not in _VOWELS for c in low)
     if not has_vowel or not has_consonant:
+        return False
+    if len(low) > _MAX_TOKEN_LENGTH:
+        return False
+    vowel_ratio = sum(1 for c in low if c in _VOWELS) / len(low)
+    if vowel_ratio < _MIN_VOWEL_RATIO or vowel_ratio > _MAX_VOWEL_RATIO:
+        return False
+    # Longest run of consecutive consonants (OCR merges text into clusters).
+    best_run = cur_run = 0
+    for c in low:
+        if c not in _VOWELS:
+            cur_run += 1
+            if cur_run > best_run:
+                best_run = cur_run
+        else:
+            cur_run = 0
+    if best_run > _MAX_CONSECUTIVE_CONSONANTS:
         return False
     if _REPEATED_RUN.search(word):
         return False

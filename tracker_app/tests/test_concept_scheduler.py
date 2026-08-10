@@ -225,6 +225,51 @@ def test_recalibration_uses_cumulative_success_rate(db, scheduler, no_graph_sync
     assert abs(row.lambda_personalised - buggy) > 1e-3
 
 
+def test_reexposure_auto_promotes_to_deck_at_threshold(db, monkeypatch, no_graph_sync):
+    # Phase 12: a concept re-encountered enough times is auto-promoted into
+    # the learning deck (the KB surface). Uses the same in-memory SessionLocal
+    # so the promotion write lands in the test DB, and only promotes once.
+    from tracker_app.db.models import LearningItem
+    from tracker_app.learning.concept_promotion import PROMOTE_AFTER_ENCOUNTERS
+    from tracker_app.learning import concept_promotion as cp
+    monkeypatch.setattr(cp, "SessionLocal", db)
+
+    scheduler = ConceptScheduler()
+    for _ in range(PROMOTE_AFTER_ENCOUNTERS):
+        scheduler.add_concept("hash table", confidence=0.5, context="browser:Notes")
+
+    with db() as session:
+        tc = session.query(TrackedConcept).filter(
+            TrackedConcept.concept == "hash table"
+        ).first()
+        assert tc.frequency_count == PROMOTE_AFTER_ENCOUNTERS
+        assert session.query(LearningItem).filter(
+            LearningItem.question == "hash table"
+        ).count() == 1
+
+    # A 4th encounter must not create a duplicate deck item.
+    scheduler.add_concept("hash table", confidence=0.5, context="browser:Notes")
+    with db() as session:
+        assert session.query(LearningItem).filter(
+            LearningItem.question == "hash table"
+        ).count() == 1
+
+
+def test_reexposure_does_not_promote_noise(db, monkeypatch, no_graph_sync):
+    # UI chrome / OCR noise reaches the tracked_concepts gate on re-encounter,
+    # but never enters the learning deck.
+    from tracker_app.db.models import LearningItem
+    from tracker_app.learning import concept_promotion as cp
+    monkeypatch.setattr(cp, "SessionLocal", db)
+
+    scheduler = ConceptScheduler()
+    for _ in range(5):
+        scheduler.add_concept("explorer", confidence=0.5, context="ocr")
+
+    with db() as session:
+        assert session.query(LearningItem).count() == 0
+
+
 if __name__ == '__main__':
     import sys
     sys.exit(pytest.main([__file__, '-v']))

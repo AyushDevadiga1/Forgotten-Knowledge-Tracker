@@ -161,6 +161,27 @@ def create_item():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@api_bp.route('/items/backfill', methods=['POST'])
+def backfill_items():
+    """One-shot migration: promote validated extracted concepts from
+    tracked_concepts into the SM-2 learning deck. Idempotent — concepts with
+    an existing deck item (exact question match) are skipped."""
+    try:
+        from tracker_app.learning.concept_promotion import backfill_items as run_backfill
+        min_frequency = request.args.get('min_frequency', 3)
+        try:
+            min_frequency = int(min_frequency)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': 'min_frequency must be an integer'}), 400
+        if not (1 <= min_frequency <= 1000):
+            return jsonify({'success': False, 'error': 'min_frequency must be 1–1000'}), 400
+        result = run_backfill(min_frequency=min_frequency)
+        return jsonify({'success': True, 'data': result})
+    except Exception as e:
+        logger.error(f"backfill_items: {e}")
+        return jsonify({'success': False, 'error': 'Internal server error'}), 500
+
+
 @api_bp.route('/items/due', methods=['GET'])
 def get_due_items():
     try:

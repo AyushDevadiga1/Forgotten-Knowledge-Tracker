@@ -108,3 +108,33 @@ def test_plausible_concept_rejects_garbage():
 def test_plausible_concept_rejects_common_suffix_fragments():
     for fragment in ("tion", "ing", "ent", "ion", "ation"):
         assert is_plausible_concept(fragment) is False, fragment
+
+def test_plausible_concept_rejects_long_glued_tokens():
+    # Glued OCR chains of screen chrome — killed by the per-token length cap.
+    assert is_plausible_concept("srketonviewgoorunferminalhelp") is False
+    assert is_plausible_concept("problemsqutputoebugcontoleterminalport") is False
+    assert is_plausible_concept("seuretagschpeudoxoomektsurepeudy") is False
+
+def test_plausible_concept_rejects_consonant_cluster_noise():
+    # dnkkhmackgrsswel has a 6-consonant run; 'strengths' is vowel-poor.
+    assert is_plausible_concept("dnkkhmackgrsswel") is False
+    assert is_plausible_concept("strengths") is False
+
+def test_plausible_concept_rejects_observed_ocr_noise():
+    # Sticky window-chrome misreads from live E2E tracking that pass the
+    # generic structural rules — blocked by the explicit OCR-noise list.
+    for noise in ("uktantigtaaty", "annletae", "dtrarre", "aofieedit",
+                  "oreerat", "enoea", "aannup", "youlube", "exlorer"):
+        assert is_plausible_concept(noise) is False, noise
+
+def test_plausible_concept_rejects_stopword_concepts():
+    assert is_plausible_concept("for") is False
+    assert is_plausible_concept("the") is False
+    assert is_plausible_concept("with") is False
+
+def test_plausible_concept_keeps_vowel_heavy_technical_terms():
+    # 'queue' is 80% vowels — the upper ratio bound must not kill real words.
+    assert is_plausible_concept("queue") is True
+    assert is_plausible_concept("binary tree") is True   # 'tree' is 50% doubled 'ee'
+    assert is_plausible_concept("pytorch") is True       # 14% vowels
+    assert is_plausible_concept("photosynthesis") is True  # 5-consonant 'synt h' run
