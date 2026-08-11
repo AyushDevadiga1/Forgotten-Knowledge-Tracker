@@ -243,6 +243,22 @@ def sync_concept_to_graph(concept):
         logger.debug(f"sync_concept_to_graph failed for {concept}: {e}")
 
 
+def remove_concept_from_graph(concept):
+    """Remove a concept node (and its edges) from the in-memory graph.
+
+    Called when a tracked concept is permanently deleted so the dashboard and
+    micro-quiz never surface knowledge we agreed to forget. Best-effort and
+    idempotent; the graph is a rebuildable cache from tracked_concepts.
+    """
+    if concept not in knowledge_graph:
+        return False
+    with _graph_lock:
+        if concept in knowledge_graph:
+            knowledge_graph.remove_node(concept)
+    _save_graph()
+    return True
+
+
 def _refresh_all_memory_scores(concepts):
     """Batch-refresh graph node memory fields from live DB state (Phase 11.2).
 
