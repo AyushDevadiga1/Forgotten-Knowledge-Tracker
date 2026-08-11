@@ -138,3 +138,56 @@ def test_plausible_concept_keeps_vowel_heavy_technical_terms():
     assert is_plausible_concept("binary tree") is True   # 'tree' is 50% doubled 'ee'
     assert is_plausible_concept("pytorch") is True       # 14% vowels
     assert is_plausible_concept("photosynthesis") is True  # 5-consonant 'synt h' run
+
+def test_plausible_concept_allows_connector_phrases():
+    # Function words are legal inside a multi-word phrase but never standalone.
+    assert is_plausible_concept("c3 and c4 plants") is True
+    assert is_plausible_concept("systems of equations") is True
+    assert is_plausible_concept("and") is False
+    assert is_plausible_concept("of") is False
+    assert is_plausible_concept("vs") is False
+
+def test_plausible_concept_keeps_new_acronyms():
+    for acr in ("iss", "api", "sdk", "gps", "cpu", "ram", "ssh", "json",
+                "yaml", "sql", "html", "rna", "dna"):
+        assert is_plausible_concept(acr) is True, acr
+
+def test_plausible_concept_handles_mixed_alnum_tokens():
+    assert is_plausible_concept("c3") is False         # too short standalone
+    assert is_plausible_concept("c3 and c4 plants") is True  # fine inside a phrase
+    assert is_plausible_concept("python3") is True
+    assert is_plausible_concept("1995") is False          # bare number
+    assert is_plausible_concept("world war 2") is True    # number inside phrase
+    assert is_plausible_concept("g42dfgh7x") is False     # glued OCR (9+ chars)
+
+def test_plausible_concept_rejects_you_stopword():
+    assert is_plausible_concept("you") is False
+    assert is_plausible_concept("you and me") is False    # 'you' standalone
+
+def test_plausible_concept_rejects_live_capture_ocr_noise():
+    # Fresh OCR misreads captured from real app windows (WhatsApp/Chrome/PDF
+    # chrome overlaid on study content, 2026-08) — all blocked at ingest.
+    for noise in ("deapof", "bda", "pdt", "wrbwtetepp", "webwhalsapp",
+                  "uwnsrgp", "yestetcayat", "oalsockrrarks", "coalboctrrarks",
+                  "abrfowe", "svwnacrsp", "com", "fednpof"):
+        assert is_plausible_concept(noise) is False, noise
+
+def test_plausible_concept_rejects_second_wave_ocr_noise():
+    # Second live-capture pass (Downloads / FKT IDE / bda PDF chrome).
+    for noise in ("ybpteess", "bownloads", "cohlecaserstho", "cobiecfeevhp",
+                  "aweatrge", "feteany", "abeeeaes", "askgemint", "feoe"):
+        assert is_plausible_concept(noise) is False, noise
+
+def test_plausible_concept_three_letter_word_gate():
+    # Standalone 3-letter words must be known English (or whitelisted acronyms)
+    # — otherwise 'ase'/'res'-style suffix fragments pass every structural rule.
+    for frag in ("ase", "res", "ers", "ates", "ines", "ted"):
+        assert is_plausible_concept(frag) is False, frag
+    for word in ("lab", "war", "net", "sea", "act", "sun"):
+        assert is_plausible_concept(word) is True, word
+    assert is_plausible_concept("atp") is True       # whitelisted acronym
+    assert is_plausible_concept("big") is False      # not in the 3-letter set
+
+def test_plausible_concept_keeps_new_biochem_acronyms():
+    assert is_plausible_concept("atp") is True
+    assert is_plausible_concept("ndp") is True
