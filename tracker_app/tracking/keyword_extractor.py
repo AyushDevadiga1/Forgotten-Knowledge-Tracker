@@ -77,6 +77,30 @@ class YAKEKeywordExtractor:
     ENTITY_TYPES   = {"PERSON", "ORG", "GPE", "PRODUCT", "EVENT",
                       "WORK_OF_ART", "LAW", "LANGUAGE"}
 
+    # Multi-word candidates built around generic verbs / function words are
+    # collocation fragments, not concepts ('converts sunlight', 'energy
+    # stored', 'produce atp'). Single-word keywords are left alone — the
+    # plausibility gate downstream filters those.
+    WEAK_PHRASE_TOKENS = frozenset({
+        'converts', 'convert', 'converters', 'provide', 'provides', 'produced',
+        'produce', 'produces', 'stored', 'store', 'stores', 'create', 'creates',
+        'using', 'used', 'based', 'include', 'includes', 'including', 'following',
+        'called', 'known', 'also', 'both', 'into', 'from', 'with', 'for',
+        'during', 'after', 'before', 'the', 'and', 'a', 'an', 'of', 'to', 'in',
+        'on', 'at', 'by', 'as', 'is', 'are', 'was', 'were', 'has', 'have',
+        'studying', 'study', 'studies', 'learn', 'learning', 'about', 'will',
+        'would', 'can', 'could', 'should', 'may', 'might', 'must', 'there',
+        'their', 'this', 'that', 'these', 'those', 'over', 'under', 'which',
+        'what', 'when', 'where', 'how', 'why', 'all', 'some', 'any', 'each',
+        'not', 'very', 'more', 'most', 'other', 'such', 'than', 'then', 'than',
+    })
+
+    @staticmethod
+    def _is_weak_phrase(keyword: str) -> bool:
+        if ' ' not in keyword:
+            return False
+        return any(t in YAKEKeywordExtractor.WEAK_PHRASE_TOKENS for t in keyword.split())
+
     def extract_keywords(self, text: str, top_n: int = 15) -> List[Tuple[str, float]]:
         """
         Extract and rank keywords from a single text.
@@ -147,6 +171,8 @@ class YAKEKeywordExtractor:
 
         # ── 4. Sort, cap, return ─────────────────────────────
         sorted_kws = sorted(scores.items(), key=lambda x: -x[1])
+        # Drop weak verb/function-word phrase fragments (keep single words).
+        sorted_kws = [kv for kv in sorted_kws if not self._is_weak_phrase(kv[0])]
         return sorted_kws[:top_n]
 
     @staticmethod
