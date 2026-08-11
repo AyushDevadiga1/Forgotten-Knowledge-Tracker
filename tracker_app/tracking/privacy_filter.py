@@ -10,13 +10,32 @@ from typing import Tuple, List
 # Sensitive data patterns (raw strings)
 SENSITIVE_PATTERNS_RAW = {
     'credit_card': r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b',
-    'ssn': r'\b\d{3}-\d{2}-\d{4}\b',
-    'email': r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
-    'phone': r'\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b',
-    'password_field': r'password[:=\s]+\S+',
-    'api_key': r'(api[_-]?key|token)[:=\s]+[A-Za-z0-9_\-]{20,}',
+    'amex':        r'\b3[47]\d{13}\b',
+    'discover':    r'\b6(?:011|5\d{2})\d{12}\b',
+    'ssn':         r'\b\d{3}-\d{2}-\d{4}\b',
+    'ssn_digits':  r'\b\d{9}\b',
+    'email':       r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b',
+    'phone':       r'\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b',
+    'phone_digits': r'\b\d{10}\b',
+    'bank_account': r'\b(?:acct|account|routing|iban|a\/c|sort\s?code)\b\s*#?\s*\d[\d\- ]{3,17}',
+    'dob':          r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',
+    'password_field': r'\b(?:password|passcode|passwd|pwd)\b\s*(?:is|was|has been|becomes)?\s*[:=]?\s*\S+',
+    'api_key': r'\b(?:api[_-]?key|token|bearer|auth[_-]?token|access[_-]?key|secret[_-]?key)\b[:=\s]+\S{10,}',
     'ip_address': r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b',
 }
+
+# Keywords that only exist because a redaction marker (or a sensitive value)
+# reached the extractor — never legitimate study concepts on their own.
+# (Defense-in-depth: the markers are stripped before extraction, so this list
+# only catches stragglers.)
+SENSITIVE_KEYWORD_NOISE = frozenset({
+    'redacted', 'email', 'phone', 'ssn', 'card', 'credit', 'password',
+    'passcode', 'passwd', 'pwd', 'field', 'token', 'bearer', 'acct',
+    'routing', 'iban',
+})
+
+# Sensitive density at which the whole capture is skipped rather than redacted.
+MAX_REDACTION_DENSITY = 3
 
 # Pre-compile patterns for performance
 SENSITIVE_PATTERNS = {
@@ -106,12 +125,35 @@ def should_skip_capture(window_title: str, text: str = None) -> Tuple[bool, str]
 def sanitize_text_for_storage(text: str) -> dict:
     """
     Sanitize text before storage.
-    
+
+    Sensitive values are redacted in place. If the text is dense with
+    sensitive data (more than MAX_REDACTION_DENSITY hits), the whole capture
+    is rejected (safe_to_store=False) — redacting one value out of a page of
+    PII still leaves the rest as usable concepts, which defeats the point.
+
     Returns dict with sanitized text and metadata.
     """
-    # Detect sensitive data
+    if not text:
+        return {
+            'text': text,
+            'is_sanitized': False,
+            'num_redactions': 0,
+            'detected_types': [],
+            'safe_to_store': True,
+        }
+
     detections = detect_sensitive_data(text)
-    
+
+    # High-density sensitive content → reject the whole capture.
+    if len(detections) > MAX_REDACTION_DENSITY:
+        return {
+            'text': '',
+            'is_sanitized': True,
+            'num_redactions': len(detections),
+            'detected_types': sorted(set(d['type'] for d in detections)),
+            'safe_to_store': False,
+        }
+
     # Redact if needed
     if detections:
         redacted_text, num_redactions = redact_sensitive_data(text)
@@ -119,10 +161,10 @@ def sanitize_text_for_storage(text: str) -> dict:
             'text': redacted_text,
             'is_sanitized': True,
             'num_redactions': num_redactions,
-            'detected_types': list(set(d['type'] for d in detections)),
+            'detected_types': sorted(set(d['type'] for d in detections)),
             'safe_to_store': True
         }
-    
+
     return {
         'text': text,
         'is_sanitized': False,
@@ -130,3 +172,45 @@ def sanitize_text_for_storage(text: str) -> dict:
         'detected_types': [],
         'safe_to_store': True
     }
+
+
+_REDACTION_MARKER_RE = re.compile(r'\[REDACTED:[A-Z_]+\]')
+
+
+def strip_redaction_markers(text: str) -> str:
+    """Remove [REDACTED:TYPE] markers so they never become keywords.
+
+    The markers are informative for humans but must not reach keyword
+    extraction — 'email', 'phone', 'password' etc. are not study concepts.
+    """
+    if not text:
+        return text
+    return _REDACTION_MARKER_RE.sub('', text)
+
+
+def filter_sensitive_keywords(keywords) -> dict:
+    """
+    Drop extracted keywords that are themselves sensitive data or redaction
+    marker noise. Input: {keyword: score} dict. Output: cleaned dict.
+    """
+    if not keywords:
+        return keywords
+
+    clean = {}
+    for kw, score in keywords.items():
+        if not kw:
+            continue
+        k = str(kw).strip().lower()
+        if not k:
+            continue
+        if k in SENSITIVE_KEYWORD_NOISE:
+            continue
+        if detect_sensitive_data(k):
+            continue
+        if '@' in k:
+            continue
+        # Pure numeric / phone-like / decimal junk is never a concept.
+        if k.isdigit() or re.fullmatch(r'[\d\s.\-()]+', k):
+            continue
+        clean[kw] = score
+    return clean
