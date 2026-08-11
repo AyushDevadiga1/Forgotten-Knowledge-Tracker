@@ -214,6 +214,19 @@ class LearningTracker:
                 item.updated_at = datetime.utcnow()
                 db.commit()
 
+    def delete_item(self, item_id: str) -> bool:
+        """Permanently delete a learning item and its review history.
+
+        ReviewHistory rows cascade via the ORM relationship. Returns True if
+        an item was actually deleted."""
+        with models.SessionLocal() as db:
+            item = LearningRepository.get_item(db, item_id)
+            if not item:
+                return False
+            db.delete(item)  # cascade='all, delete-orphan' removes reviews
+            db.commit()
+            return True
+
     def unarchive_item(self, item_id: str):
         with models.SessionLocal() as db:
             item = LearningRepository.get_item(db, item_id)
