@@ -202,6 +202,95 @@ def get_item(item_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@api_bp.route('/items/<item_id>', methods=['DELETE'])
+def delete_item(item_id):
+    """Permanently remove a learning item and its review history."""
+    try:
+        deleted = get_tracker().delete_item(item_id)
+        if not deleted:
+            return jsonify({'success': False, 'error': 'Item not found'}), 404
+        return jsonify({'success': True, 'message': 'Item deleted'})
+    except Exception as e:
+        logger.error(f"delete_item: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/concepts/<concept>', methods=['DELETE'])
+def delete_concept(concept):
+    """Permanently remove a tracked concept, its encounter history, and its
+    knowledge-graph node. This is the right-to-be-forgotten path for anything
+    passively captured (e.g. a stray sensitive term)."""
+    try:
+        from tracker_app.db.models import SessionLocal, TrackedConcept
+        from tracker_app.tracking.knowledge_graph import remove_concept_from_graph
+        with SessionLocal() as db:
+            row = db.query(TrackedConcept).filter(
+                TrackedConcept.concept == concept).first()
+            if not row:
+                return jsonify({'success': False, 'error': 'Concept not found'}), 404
+            db.delete(row)  # ConceptEncounter rows cascade via ORM
+            db.commit()
+        remove_concept_from_graph(concept)
+        return jsonify({'success': True, 'message': 'Concept deleted'})
+    except Exception as e:
+        logger.error(f"delete_concept: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/intent/predictions', methods=['DELETE'])
+def delete_intent_predictions():
+    """Clear all raw intent predictions, accuracy counters, and feedback
+    training samples (the passive capture trail)."""
+    try:
+        from tracker_app.db.models import (
+            SessionLocal, IntentPrediction, IntentAccuracy,
+            FeedbackTrainingSample,
+        )
+        from sqlalchemy import delete
+        with SessionLocal() as db:
+            n_pred  = db.execute(delete(IntentPrediction)).rowcount
+            db.execute(delete(IntentAccuracy))
+            n_fb    = db.execute(delete(FeedbackTrainingSample)).rowcount
+            db.commit()
+        return jsonify({'success': True, 'message': 'Intent history cleared',
+                        'deleted_predictions': n_pred,
+                        'deleted_feedback': n_fb})
+    except Exception as e:
+        logger.error(f"delete_intent_predictions: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@api_bp.route('/tracking/history', methods=['DELETE'])
+def delete_tracking_history():
+    """Clear the passive capture trail: sessions, multimodal logs, memory
+    decay, metrics, daily summaries, and intent history — while KEEPING the
+    explicit learning deck (learning_items) intact."""
+    try:
+        from tracker_app.db.models import (
+            SessionLocal, TrackingSession, MultiModalLog, MemoryDecay,
+            Metric, DailySummary, IntentPrediction, IntentAccuracy,
+            FeedbackTrainingSample, ConceptEncounter,
+        )
+        from sqlalchemy import delete
+        with SessionLocal() as db:
+            n_enc    = db.execute(delete(ConceptEncounter)).rowcount
+            db.execute(delete(TrackingSession))
+            db.execute(delete(MultiModalLog))
+            db.execute(delete(MemoryDecay))
+            db.execute(delete(Metric))
+            db.execute(delete(DailySummary))
+            n_pred   = db.execute(delete(IntentPrediction)).rowcount
+            db.execute(delete(IntentAccuracy))
+            db.execute(delete(FeedbackTrainingSample))
+            db.commit()
+        return jsonify({'success': True, 'message': 'Tracking history cleared',
+                        'deleted_encounters': n_enc,
+                        'deleted_predictions': n_pred})
+    except Exception as e:
+        logger.error(f"delete_tracking_history: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @api_bp.route('/reviews', methods=['POST'])
 def record_review():
     data = request.get_json(silent=True)
@@ -471,17 +560,35 @@ def browser_ingest():
         return jsonify({'success': True, 'message': 'Text too short — skipped'})
 
     try:
+        from tracker_app.tracking.privacy_filter import (
+            sanitize_text_for_storage, is_sensitive_window,
+            strip_redaction_markers, filter_sensitive_keywords,
+        )
         from tracker_app.tracking.keyword_extractor import get_keyword_extractor
         from tracker_app.learning.concept_scheduler import ConceptScheduler
         from tracker_app.learning.text_quality_validator import validate_and_clean_extraction
+
+        # Sensitive window title → drop it (never stored as context).
+        if is_sensitive_window(title):
+            title = ""
+
+        # Privacy gate FIRST — the extension path previously bypassed the
+        # redactor entirely, so emails/passwords/SSNs reached add_concept.
+        sanitized = sanitize_text_for_storage(text)
+        if not sanitized['safe_to_store']:
+            return jsonify({'success': True, 'message': 'Text filtered as sensitive'})
+
+        text = strip_redaction_markers(sanitized['text'])
 
         validation = validate_and_clean_extraction(text)
         if not validation.get('is_useful', False):
             return jsonify({'success': True, 'message': 'Text filtered as low quality'})
 
         extractor = get_keyword_extractor()
-        keywords  = extractor.get_keyword_scores_dict(
-            validation['cleaned_text'], top_n=15
+        keywords  = filter_sensitive_keywords(
+            extractor.get_keyword_scores_dict(
+                validation['cleaned_text'], top_n=15
+            )
         )
 
         if not keywords:
