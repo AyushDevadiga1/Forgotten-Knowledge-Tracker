@@ -19,6 +19,7 @@ from tracker_app.tracking.activity_monitor import ActivityMonitor
 from tracker_app.tracking.intent_module import predict_intent
 from tracker_app.tracking.cle_module import get_cle
 from tracker_app.tracking.session_state import is_active as session_is_active
+from tracker_app.tracking.privacy_filter import is_sensitive_window
 
 logger = logging.getLogger("TrackerLoop")
 
@@ -319,6 +320,11 @@ def track_loop(
 
             window_title, interaction_rate = get_active_window(monitor)
 
+            # Privacy: a sensitive window title (bank, login, medical…) is
+            # never persisted — the OCR capture was already skipped for it, so
+            # storing the title would leak exactly the info we refused to read.
+            context = "" if is_sensitive_window(window_title) else window_title
+
             # Adaptive intervals based on current CPU
             intervals = _get_effective_intervals()
 
@@ -382,7 +388,7 @@ def track_loop(
                     use_webcam=webcam_enabled,
                     audio_confidence=audio_result.get('confidence', 0.7),
                 )
-                monitor.process_intent(intent_result, context=window_title)
+                monitor.process_intent(intent_result, context=context)
             except Exception as e:
                 logger.warning(f"Intent prediction error: {e}")
 
