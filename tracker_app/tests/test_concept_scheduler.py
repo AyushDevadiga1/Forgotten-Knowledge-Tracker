@@ -270,6 +270,35 @@ def test_reexposure_does_not_promote_noise(db, monkeypatch, no_graph_sync):
         assert session.query(LearningItem).count() == 0
 
 
+def test_add_concept_rejects_marker_noise_words(db, no_graph_sync):
+    # Defense-in-depth: even a direct add_concept call must never persist
+    # redaction-marker noise ('password', 'email', 'field') as concepts.
+    scheduler = ConceptScheduler()
+    for word in ("password", "email", "field", "redacted", "phone", "ssn"):
+        assert scheduler.add_concept(word, confidence=0.9, context="ocr") is None, word
+
+
+def test_add_concept_rejects_pii_patterns(db, no_graph_sync):
+    # PII that slips past the pipeline redactor must still be blocked here.
+    scheduler = ConceptScheduler()
+    for bad in ("john.doe@example.com", "123-45-6789", "555-867-5309",
+                "4111-1111-1111-1111"):
+        assert scheduler.add_concept(bad, confidence=0.9, context="ocr") is None, bad
+
+
+def test_add_concept_rejects_ocr_fragments(db, no_graph_sync):
+    # Suffix fragments and 3-letter junk must never become tracked concepts.
+    scheduler = ConceptScheduler()
+    for junk in ("ase", "res", "deapof", "ybpteess", "cobiecfeevhp"):
+        assert scheduler.add_concept(junk, confidence=0.9, context="ocr") is None, junk
+
+
+def test_add_concept_keeps_real_study_concepts(db, no_graph_sync):
+    scheduler = ConceptScheduler()
+    for word in ("calvin cycle", "mitochondria", "photosynthesis", "atp"):
+        assert scheduler.add_concept(word, confidence=0.7, context="ocr") is not None, word
+
+
 if __name__ == '__main__':
     import sys
     sys.exit(pytest.main([__file__, '-v']))
