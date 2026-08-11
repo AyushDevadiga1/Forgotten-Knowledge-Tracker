@@ -34,6 +34,17 @@ class ConceptScheduler:
         """
         from tracker_app.learning.memory_model import compute_awfc_lambda
         from tracker_app.learning.text_quality_validator import is_plausible_concept
+        from tracker_app.tracking.privacy_filter import filter_sensitive_keywords
+
+        # Final defense-in-depth: even if some future code path bypasses the
+        # sanitize/strip/filter pipeline, the scheduler itself must never
+        # persist marker-noise words ('password', 'email', 'redacted'), PII
+        # patterns (SSN/phone/card/email), or pure-numeric junk as concepts.
+        cleaned = filter_sensitive_keywords({concept: confidence})
+        if not cleaned:
+            logger.debug("Skipping sensitive keyword: %r", concept)
+            return None
+        concept = next(iter(cleaned))
 
         if not is_plausible_concept(concept):
             logger.debug("Skipping implausible concept: %r", concept)
