@@ -4,13 +4,16 @@ import numpy as np
 import pytesseract
 import hashlib
 from mss import mss
-from tracker_app.config import TESSERACT_PATH
+from tracker_app.config import TESSERACT_PATH, OCR_MIN_WORD_CONFIDENCE
 import spacy
 import logging
 from tracker_app.tracking.knowledge_graph import get_graph
 from tracker_app.tracking.keyword_extractor import get_keyword_extractor
 from tracker_app.learning.text_quality_validator import validate_and_clean_extraction
-from tracker_app.tracking.privacy_filter import sanitize_text_for_storage, is_sensitive_window
+from tracker_app.tracking.privacy_filter import (
+    sanitize_text_for_storage, is_sensitive_window, strip_redaction_markers,
+    filter_sensitive_keywords,
+)
 import re
 from functools import lru_cache
 
@@ -174,18 +177,51 @@ def preprocess_image(img):
         print(f"Error preprocessing image: {e}")
         return gray if 'gray' in locals() else img
 
-def extract_text(img):
-    """Extract text from image using optimized OCR strategy"""
+def extract_text(img, min_confidence: int = None):
+    """Extract text from image using optimized OCR strategy.
+
+    Uses per-word confidence (image_to_data) and drops words below
+    OCR_MIN_WORD_CONFIDENCE. Tesseract scores misreads of UI chrome /
+    overlapping windows very low (often 0.0) while readable study content
+    scores 50-95 — so this filters OCR garble at the source instead of
+    letting every misread try the plausibility gate downstream.
+    """
     if img is None:
         return ""
-        
+
+    if min_confidence is None:
+        min_confidence = OCR_MIN_WORD_CONFIDENCE
+
     try:
         # Use ONLY PSM 6 (default) - removed PSM 7 and 8 for performance
         custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,!?;:()[]{}@#$%&*+-/=<> '
-        text = pytesseract.image_to_string(img, config=custom_config)
-        
-        return text.strip() if text else ""
-        
+        data = pytesseract.image_to_data(
+            img, config=custom_config, output_type=pytesseract.Output.DICT
+        )
+
+        # Reconstruct text line-by-line, keeping only confident words.
+        # Key = (block, paragraph, line) so reading order survives sorting.
+        lines: dict = {}
+        n = len(data.get('text', []))
+        for i in range(n):
+            word = (data['text'][i] or '').strip()
+            if not word:
+                continue
+            try:
+                conf = float(data['conf'][i])
+            except (TypeError, ValueError):
+                continue
+            if conf < min_confidence:
+                continue
+            key = (data['block_num'][i], data['par_num'][i], data['line_num'][i])
+            lines.setdefault(key, []).append(word)
+
+        if not lines:
+            return ""
+
+        pieces = [' '.join(lines[key]) for key in sorted(lines.keys())]
+        return '\n'.join(pieces).strip()
+
     except Exception as e:
         print(f"Error extracting text with OCR: {e}")
         return ""
@@ -208,6 +244,10 @@ def extract_keywords(text, top_n=15, boost_repeats=True):
 
     if sanitized['is_sanitized']:
         print(f"[PRIVACY] Redacted {sanitized['num_redactions']} sensitive items")
+
+    # Strip [REDACTED:TYPE] markers so 'email'/'phone'/'password' etc. can
+    # never become extracted concepts (they are marker noise, not study terms).
+    text = strip_redaction_markers(text)
     
     # Quality validation
     validation = validate_and_clean_extraction(text)
@@ -255,11 +295,16 @@ def extract_keywords(text, top_n=15, boost_repeats=True):
     except Exception as e:
         print(f"spaCy processing failed: {e}")
 
-    # 3️⃣ Split camelCase / snake_case
+    # 3️⃣ Split camelCase / snake_case — but keep multi-word phrases intact:
+    # 'calvin cycle' is a better concept than 'calvin' + 'cycle', and the old
+    # unconditional split was destroying every YAKE two-word keyword.
     split_keywords = {}
     for kw, score in kw_dict.items():
         try:
-            parts = re.split(r'[_\s]', kw)
+            if ' ' in kw:
+                split_keywords[kw] = max(score, split_keywords.get(kw, 0.0))
+                continue
+            parts = re.split(r'[_]', kw)
             final_parts = []
             for part in parts:
                 camel_parts = re.findall(r'[A-Z]?[a-z]+|[A-Z]+(?=[A-Z]|$)', part)
@@ -301,7 +346,9 @@ def extract_keywords(text, top_n=15, boost_repeats=True):
     # 6️ Sort by score and return top_n
     try:
         sorted_keywords = dict(sorted(kw_dict.items(), key=lambda x: x[1], reverse=True))
-        return dict(list(sorted_keywords.items())[:top_n])
+        top = dict(list(sorted_keywords.items())[:top_n])
+        # Drop any keyword that is itself sensitive data or marker noise.
+        return filter_sensitive_keywords(top)
     except Exception as e:
         print(f"Error sorting keywords: {e}")
         return {}
@@ -312,11 +359,18 @@ def extract_concepts_v2(text, top_n=5):
     if not text or len(text.strip()) < 5:
         return []
     
+    # Privacy gate on the concept path too (defense-in-depth — the pipeline
+    # result currently only uses 'keywords', but this must never leak raw PII).
+    sanitized = sanitize_text_for_storage(text)
+    if not sanitized['safe_to_store']:
+        return []
+    clean = strip_redaction_markers(sanitized['text'])
+
     try:
-        # Use TF-IDF for concept extraction with broader range
         if kw_extractor:
-            keywords = kw_extractor.extract_keywords(text, top_n=20)
-            return [kw for kw, score in keywords if score > 0.1][:top_n]
+            keywords = kw_extractor.extract_keywords(clean, top_n=20)
+            return [kw for kw, score in filter_sensitive_keywords(
+                        dict(keywords)).items() if score > 0.1][:top_n]
         return []
     except Exception as e:
         print(f"[WARN] extract_concepts_v2 failed: {e}")
