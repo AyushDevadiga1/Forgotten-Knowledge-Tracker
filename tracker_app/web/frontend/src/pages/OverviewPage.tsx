@@ -7,6 +7,7 @@ import StatCard from '../components/StatCard'
 import TrendChart from '../components/TrendChart'
 import StreakFlame from '../components/StreakFlame'
 import SessionToggleButton from '../components/SessionToggleButton'
+import OnboardingShowcase from '../components/OnboardingShowcase'
 import { OverviewSkeleton } from '../components/PageSkeleton'
 import { formatNumber, formatPercent } from '../lib/format'
 import { easeOut } from '../lib/animation'
@@ -67,6 +68,41 @@ export default function OverviewPage() {
             <span className="font-mono text-xs">Backend offline — {error}</span>
         </div>
     )
+
+    // First run: no deck items, no reviews, nothing studied yet — show what the
+    // product does instead of a wall of zeros.
+    const isFresh = (stats?.total_items ?? 0) === 0
+        && (today?.concepts_studied ?? 0) === 0
+        && recentItems.length === 0
+
+    if (isFresh) {
+        return (
+            <div className="space-y-3">
+                <m.div
+                    className="flex items-center justify-between border border-border bg-card p-4 transition-colors hover:border-primary/25"
+                    initial={reduced ? false : { opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, ease: easeOut }}
+                >
+                    <div>
+                        <div className="mb-1 flex items-center gap-2">
+                            <span className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Study Session</span>
+                            <m.span
+                                className={cn('h-2 w-2', active ? 'bg-primary' : 'bg-muted-foreground')}
+                                animate={active ? { opacity: [1, 0.3, 1] } : { opacity: 1 }}
+                                transition={active ? { duration: 1.6, repeat: Infinity } : { duration: 0 }}
+                            />
+                        </div>
+                        <span className="block text-[12px] text-muted-foreground">
+                            Flip the toggle, open your study material, and FKT will start building your deck.
+                        </span>
+                    </div>
+                    <SessionToggleButton />
+                </m.div>
+                <OnboardingShowcase />
+            </div>
+        )
+    }
 
     const kpi = stats
         ? [
