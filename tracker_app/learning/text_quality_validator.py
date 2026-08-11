@@ -17,10 +17,62 @@ _FRAGMENT_BLOCKLIST = frozenset({
     'ano', 'ity', 'tion', 'ing', 'ent', 'ion', 'ati', 'ght', 'ack', 'ess',
     'ere', 'ive', 'ous', 'igh', 'ord', 'heh', 'bene', 'tae', 'eve', 'ane',
     'ation',
+    # High-confidence UI-colon/suffix fragments ('Downloads:' → 'ase', etc.)
+    'ase', 'ade', 'ate', 'ene', 'ine', 'ose', 'one', 'ide', 'ies', 'ted',
+    'red', 'res', 'ers', 'ans', 'ant', 'est', 'ons', 'ues',
+    'ates', 'ines', 'ades', 'eses', 'erss',
 })
 
 # Short no-vowel acronyms that are legitimately useful despite the vowel rule.
-_ACRONYM_WHITELIST = frozenset({'sql', 'css', 'html', 'http', 'https', 'ftp'})
+_ACRONYM_WHITELIST = frozenset({
+    'sql', 'css', 'html', 'http', 'https', 'ftp',
+    'iss', 'ssh', 'rna', 'dna', 'api', 'sdk', 'gps', 'cpu', 'ram', 'os',
+    'url', 'uri', 'git', 'vpn', 'dns', 'tcp', 'udp', 'xml', 'json', 'yaml',
+    'toml', 'csv', 'pdf', 'db', 'ui', 'ux', 'io', 'js', 'ts', 'atp', 'ndp',
+    'adp',
+})
+
+# Genuine 3-letter English words a student might actually study. Standalone
+# 3-letter concepts are ONLY accepted if they are whitelisted acronyms or in
+# this set — otherwise every 'ase'/'res'-style OCR fragment and single-letter
+# chrome residue would pass the structural rules. Multi-word phrases are not
+# restricted this way ('world war 2' needs 'war', 'net working capital' needs
+# 'net').
+_THREE_LETTER_WORDS = frozenset({
+    'act', 'add', 'age', 'aid', 'aim', 'air', 'ape', 'arc', 'arm', 'art',
+    'axe', 'bar', 'bat', 'bay', 'bed', 'bee', 'bet', 'bid', 'bin', 'bit',
+    'bow', 'box', 'boy', 'bud', 'bug', 'bus', 'buy', 'cab', 'cap', 'car',
+    'cat', 'cop', 'cow', 'cry', 'cue', 'cup', 'cut', 'dam', 'day', 'den',
+    'die', 'dig', 'dim', 'dip', 'dog', 'dot', 'dry', 'dye', 'ear', 'eat',
+    'egg', 'elm', 'end', 'era', 'eye', 'fan', 'far', 'fee', 'few', 'fig',
+    'fin', 'fit', 'fix', 'fly', 'fog', 'fox', 'fry', 'fun', 'fur', 'gap',
+    'gas', 'gel', 'gem', 'gin', 'god', 'gum', 'gun', 'gut', 'gym', 'hat',
+    'hay', 'hen', 'hip', 'hit', 'hoe', 'hog', 'hop', 'hot', 'hub', 'hue',
+    'hut', 'ice', 'icy', 'ill', 'imp', 'ink', 'inn', 'ion', 'jam', 'jar',
+    'jaw', 'jay', 'jet', 'job', 'jog', 'joy', 'jug', 'keg', 'key', 'kid',
+    'kin', 'kit', 'lab', 'lad', 'lag', 'lap', 'law', 'lay', 'led', 'leg',
+    'lid', 'lie', 'lip', 'lit', 'log', 'lot', 'low', 'mad', 'map', 'mat',
+    'men', 'met', 'mid', 'mix', 'mob', 'mud', 'nap', 'net', 'nod', 'nut',
+    'oak', 'oar', 'oat', 'odd', 'oil', 'old', 'one', 'opt', 'orb', 'ore',
+    'pad', 'pan', 'par', 'pat', 'paw', 'pay', 'pea', 'pen', 'pet', 'pie',
+    'pig', 'pin', 'pit', 'pod', 'pop', 'pot', 'pro', 'pub', 'rag', 'ram',
+    'ran', 'rap', 'rat', 'raw', 'ray', 'rib', 'rim', 'rip', 'rob', 'rod',
+    'rot', 'row', 'rub', 'rug', 'rum', 'run', 'rut', 'sad', 'sap', 'sat',
+    'saw', 'say', 'sea', 'see', 'sin', 'sip', 'sir', 'sit', 'six', 'ski',
+    'sky', 'sly', 'sob', 'son', 'sow', 'spa', 'spy', 'sun', 'tab', 'tag',
+    'tan', 'tap', 'tax', 'tea', 'ten', 'tie', 'tin', 'tip', 'toe', 'ton',
+    'top', 'tot', 'tow', 'toy', 'try', 'tub', 'tug', 'two', 'use', 'van',
+    'vat', 'vet', 'vie', 'vow', 'wad', 'wag', 'war', 'wax', 'way', 'web',
+    'wed', 'wet', 'wig', 'win', 'wit', 'woe', 'wry', 'yak', 'yam', 'zip',
+})
+
+# Function words allowed INSIDE a multi-word phrase ("c3 and c4 plants",
+# "systems of equations") but never as a concept on their own.
+_PHRASE_CONNECTORS = frozenset({
+    'and', 'or', 'the', 'of', 'for', 'to', 'in', 'on', 'at', 'with', 'by',
+    'vs', 'versus', 'a', 'an', 'as', 'from', 'into', 'during', 'after',
+    'before', 'between', 'under', 'over', 'per',
+})
 
 # Observed OCR misreads / glued screen-chrome tokens that are structurally
 # invisible (vowel-rich, normal-looking length) but never study content.
@@ -41,6 +93,17 @@ _OCR_NOISE = frozenset({
     'compusx', 'colabreseurch', 'iole', 'uspearecreanled', 'problemsoutput',
     'ingusing', 'srketonview', 'darchitecture', 'qoyortubecomintens',
     'urihttp', 'answeringsystemusing', 'bjpython', 'bpython',
+    # Live-capture misreads (WhatsApp/PDF/Chrome chrome overlaid on study
+    # content, captured 2026-08): vowel-rich, normal-length, never concepts.
+    'deapof', 'bda', 'pdt', 'wrbwtetepp', 'webwhalsapp', 'uwnsrgp',
+    'yestetcayat', 'oalsockrrarks', 'fednpof', 'gvrwnsaryp',
+    'coalboctrrarks', 'coalboctrrark', 'abrfowe', 'edpof', 'svwnacrsp',
+    'rol', 'cow', 'com', 'yestercayat',
+    # Second live-capture pass (Downloads / FKT IDE / bda PDF chrome, 2026-08):
+    # confidence-filtered at the source now, but kept here so webcam-path or
+    # direct add_concept calls can never resurrect them.
+    'ybpteess', 'bownloads', 'cohlecaserstho', 'cobiecfeevhp', 'aweatrge',
+    'feteany', 'abeeeaes', 'askgemint', 'feoe', 'edpofx',
 })
 
 # Function words that are never useful as a whole-concept string.
@@ -49,7 +112,8 @@ _STOPWORD_CONCEPTS = frozenset({
     'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should',
     'could', 'might', 'must', 'can', 'of', 'in', 'on', 'at', 'to', 'for',
     'from', 'by', 'with', 'about', 'as', 'if', 'that', 'this', 'it', 'what',
-    'when', 'where', 'why', 'how', 'which', 'who',
+    'when', 'where', 'why', 'how', 'which', 'who', 'you', 'your', 'they',
+    'them', 'we', 'our', 'me', 'my', 'i',
 })
 
 # Per-token structural limits. Real study terms sit well inside these bounds;
@@ -86,8 +150,10 @@ def is_plausible_concept(text) -> bool:
     Catches the common OCR failure modes seen in live tracking:
     short word fragments ('ano', 'ity'), vowel-less garbage ('hty'), and
     doubled-character noise ('aannup'). Multi-word phrases pass only if
-    every word is plausible. ALL-CAPS acronyms (SQL, CSS, HTML) are allowed
-    even without a vowel so they are not dropped.
+    every word is plausible — with function-word connectors ('and', 'the',
+    'of') and short alphanumeric tokens ('c3', 'c4', 'python3') allowed.
+    ALL-CAPS acronyms (SQL, CSS, HTML) are allowed even without a vowel so
+    they are not dropped.
     """
     if not text or not isinstance(text, str):
         return False
@@ -97,11 +163,40 @@ def is_plausible_concept(text) -> bool:
     if stripped.lower() in _STOPWORD_CONCEPTS:
         return False
 
-    words = re.findall(r"[A-Za-z]+", stripped)
-    if not words:
+    tokens = re.findall(r"[A-Za-z0-9]+", stripped)
+    if not tokens:
         return False
 
-    return all(_is_plausible_word(w) for w in words)
+    multiword = len(tokens) > 1
+    for token in tokens:
+        if not _is_plausible_token(token, multiword):
+            return False
+    return True
+
+
+def _is_plausible_token(token: str, multiword: bool) -> bool:
+    """Is a single token (possibly 'c3'-style or a connector) plausible?"""
+    if not token:
+        return False
+
+    if token.isalpha():
+        low = token.lower()
+        if low in _FRAGMENT_BLOCKLIST or low in _OCR_NOISE:
+            return False
+        # Function-word connectors are fine inside a phrase, never alone.
+        if low in _PHRASE_CONNECTORS:
+            return multiword
+        return _is_plausible_word(low)
+
+    # Token contains digits — 'c3', 'python3', '1995'.
+    letters = re.findall(r"[a-z]", token.lower())
+    digits  = re.findall(r"[0-9]", token)
+    if not letters:
+        # Pure number: only meaningful as part of a phrase ('world war 2').
+        return multiword and len(digits) <= 4
+    if len(token) > 8:
+        return False  # 'g42dfgh7' — glued OCR
+    return True  # short mixed tokens like 'c3', 'python3', 'g2'
 
 
 def _is_plausible_word(word: str) -> bool:
@@ -117,6 +212,10 @@ def _is_plausible_word(word: str) -> bool:
         return True
     if low in _ACRONYM_WHITELIST:
         return True
+    # Standalone 3-letter non-acronym words must be known English words —
+    # otherwise 'ase'/'res'-style suffix fragments pass every structural rule.
+    if len(low) == 3 and low not in _THREE_LETTER_WORDS:
+        return False
     has_vowel     = any(c in _VOWELS for c in low)
     has_consonant = any(c not in _VOWELS for c in low)
     if not has_vowel or not has_consonant:
