@@ -143,5 +143,63 @@ class TestFeedbackRoundTrip(FeedbackPipelineBase):
         self.assertEqual(len(y_fb), 0)
 
 
+class TestStrictBooleanFeedback(FeedbackPipelineBase):
+    """The API must not treat the string "false" as True.
+
+    bool("false") is True, so the old `bool(data['is_correct'])` silently
+    recorded a *correct* answer for a JSON string "false" — the correction was
+    dropped and the accuracy stats counted a wrong answer as right.
+    """
+
+    def test_string_false_is_treated_as_false(self):
+        pid = self._add_prediction(context_keywords='[]')
+        resp = self.client.post('/api/v1/intent/feedback',
+            data=json.dumps({'prediction_id': pid, 'is_correct': "false",
+                             'actual_intent': 'idle'}),
+            content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+
+        with self.TestingSessionLocal() as db:
+            pred = db.query(IntentPrediction).filter(IntentPrediction.id == pid).first()
+            self.assertEqual(pred.user_feedback, 0)   # incorrect, not correct
+            sample = db.query(FeedbackTrainingSample).first()
+            self.assertIsNotNone(sample)              # correction WAS stored
+            self.assertEqual(sample.actual_label, 'idle')
+
+    def test_string_true_is_treated_as_true(self):
+        pid = self._add_prediction(context_keywords='[]')
+        resp = self.client.post('/api/v1/intent/feedback',
+            data=json.dumps({'prediction_id': pid, 'is_correct': "true"}),
+            content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+
+        with self.TestingSessionLocal() as db:
+            pred = db.query(IntentPrediction).filter(IntentPrediction.id == pid).first()
+            self.assertEqual(pred.user_feedback, 1)
+            self.assertIsNone(db.query(FeedbackTrainingSample).first())
+
+    def test_non_boolean_value_rejected_with_400(self):
+        pid = self._add_prediction(context_keywords='[]')
+        resp = self.client.post('/api/v1/intent/feedback',
+            data=json.dumps({'prediction_id': pid, 'is_correct': "maybe",
+                             'actual_intent': 'idle'}),
+            content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
+
+        with self.TestingSessionLocal() as db:
+            pred = db.query(IntentPrediction).filter(IntentPrediction.id == pid).first()
+            self.assertIsNone(pred.user_feedback)  # nothing recorded
+
+    def test_string_false_still_requires_actual_intent(self):
+        """The 'false requires actual_intent' validation must see the parsed
+        value — the old `not data['is_correct']` check never fired for the
+        string "false" (not "false" == False)."""
+        pid = self._add_prediction(context_keywords='[]')
+        resp = self.client.post('/api/v1/intent/feedback',
+            data=json.dumps({'prediction_id': pid, 'is_correct': "false"}),
+            content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -269,7 +269,11 @@ class TrackingRepository:
     @staticmethod
     def get_trend_analysis(db: Session, days: int = 7) -> Dict[str, Any]:
         from datetime import timedelta
-        start_date = (datetime.utcnow() - timedelta(days=days)).isoformat()
+        # Bind the datetime OBJECT, not a string: SQLite stores DateTime as
+        # "YYYY-MM-DD HH:MM:SS" while isoformat() uses "T", so a string compare
+        # lexicographically mis-excludes every session on the boundary day that
+        # started after the cutoff time-of-day (space < 'T').
+        start_date = datetime.utcnow() - timedelta(days=days)
         
         row = db.query(
             func.count(TrackingSession.id),

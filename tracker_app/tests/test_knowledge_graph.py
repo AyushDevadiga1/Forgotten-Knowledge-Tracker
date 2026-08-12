@@ -22,6 +22,8 @@ def clean_graph():
         kg.knowledge_graph.clear()
         kg.knowledge_graph.add_nodes_from(original.nodes(data=True))
         kg.knowledge_graph.add_edges_from(original.edges(data=True))
+        kg._loaded = False
+        kg._last_db_sync = 0.0
 
 
 def test_save_and_reload_graph(isolated_graph_path, clean_graph):
@@ -74,6 +76,47 @@ def test_sync_db_to_graph_is_incremental(isolated_graph_path, clean_graph, monke
 
     kg.sync_db_to_graph()
     assert added == ["new concept"]
+
+
+def test_ensure_graph_loaded_reconciles_mid_process(clean_graph, monkeypatch):
+    """Concepts captured after the first load must appear in the graph within
+    the resync window — quiz selection / stats must not serve a graph frozen at
+    first load for the whole process lifetime."""
+    clock = [0.0]
+    monkeypatch.setattr(kg.time, "monotonic", lambda: clock[0])
+
+    db_concepts = ["alpha", "beta"]   # alpha from pkl, beta new in DB
+
+    def fake_fetch():
+        return list(db_concepts)
+
+    def fake_add(concepts):
+        for c in concepts:
+            with kg._graph_lock:
+                kg.knowledge_graph.add_node(c, count=1, memory_score=0.5)
+
+    monkeypatch.setattr(kg, "_load_graph", lambda: True)
+    monkeypatch.setattr(kg, "fetch_concepts_from_db", fake_fetch)
+    monkeypatch.setattr(kg, "add_concepts", fake_add)
+    monkeypatch.setattr(kg, "_refresh_all_memory_scores", lambda concepts: None)
+    monkeypatch.setattr(kg, "_save_graph", lambda: None)
+
+    with kg._graph_lock:
+        kg.knowledge_graph.clear()   # fresh process: pkl+DB bootstrap runs
+
+    kg.get_graph()
+    assert "alpha" in kg.knowledge_graph   # from the simulated pkl load
+    assert "beta" in kg.knowledge_graph     # reconciled on first load
+
+    # A concept the DB gains mid-process is not visible yet...
+    db_concepts.append("gamma")
+    kg.get_graph()
+    assert "gamma" not in kg.knowledge_graph
+
+    # ...but appears after the resync window elapses, without a restart.
+    clock[0] = kg.DB_SYNC_INTERVAL_SECONDS + 1
+    kg.get_graph()
+    assert "gamma" in kg.knowledge_graph
 
 
 def test_graph_stats_includes_real_edges(clean_graph):

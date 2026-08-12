@@ -26,6 +26,28 @@ VALID_STATUSES = {'active', 'mastered', 'archived', 'all'}
 MAX_LIMIT      = 500
 
 
+def _parse_bool_flag(value):
+    """Strictly parse a JSON boolean-ish flag.
+
+    Accepts real JSON booleans plus the common string/number forms
+    'true'/'false' (case-insensitive, '1'/'0'). Returns None for anything
+    unrecognised so callers can reject it with a 400 instead of silently
+    treating a value like the string "false" as True (bool("false") is True).
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        v = value.strip().lower()
+        if v in ('true', '1'):
+            return True
+        if v in ('false', '0'):
+            return False
+        return None
+    if isinstance(value, (int, float)) and value in (0, 1):
+        return bool(value)
+    return None
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # FeedbackService  (business logic extracted from route handler)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -133,8 +155,14 @@ def create_item():
     if not data:
         return jsonify({'success': False, 'error': 'Request body must be valid JSON'}), 400
 
-    question = data.get('question', '').strip()
-    answer   = data.get('answer',   '').strip()
+    question = data.get('question', '') or ''
+    answer   = data.get('answer', '') or ''
+    if not isinstance(question, str):
+        question = str(question)   # JSON numbers must not crash .strip()
+    if not isinstance(answer, str):
+        answer = str(answer)
+    question = question.strip()
+    answer   = answer.strip()
 
     if not question:
         return jsonify({'success': False, 'error': 'question is required'}), 400
@@ -297,7 +325,12 @@ def record_review():
     if not data:
         return jsonify({'success': False, 'error': 'Request body must be valid JSON'}), 400
 
-    item_id = data.get('item_id', '').strip()
+    item_id = data.get('item_id', '')
+    if item_id is None:
+        return jsonify({'success': False, 'error': 'item_id is required'}), 400
+    if not isinstance(item_id, str):
+        item_id = str(item_id)   # JSON numbers are valid ids — never crash on .strip()
+    item_id = item_id.strip()
     if not item_id:
         return jsonify({'success': False, 'error': 'item_id is required'}), 400
 
@@ -427,14 +460,19 @@ def send_intent_feedback():
         return jsonify({'success': False,
                         'error': 'prediction_id and is_correct are required'}), 400
 
-    if not data['is_correct'] and 'actual_intent' not in data:
+    is_correct = _parse_bool_flag(data['is_correct'])
+    if is_correct is None:
+        return jsonify({'success': False,
+                        'error': 'is_correct must be a boolean'}), 400
+
+    if not is_correct and 'actual_intent' not in data:
         return jsonify({'success': False,
                         'error': 'actual_intent required when is_correct=false'}), 400
 
     try:
         FeedbackService.record_feedback(
             prediction_id=int(data['prediction_id']),
-            is_correct=bool(data['is_correct']),
+            is_correct=is_correct,
             actual_intent=data.get('actual_intent'),
         )
         FeedbackService.maybe_trigger_retrain()
@@ -530,9 +568,13 @@ def submit_quiz_answer():
     if not data or 'concept' not in data or 'was_correct' not in data:
         return jsonify({'success': False,
                         'error': 'concept and was_correct are required'}), 400
+    was_correct = _parse_bool_flag(data['was_correct'])
+    if was_correct is None:
+        return jsonify({'success': False,
+                        'error': 'was_correct must be a boolean'}), 400
     try:
         from tracker_app.tracking.quiz_engine import record_quiz_result
-        record_quiz_result(str(data['concept']), bool(data['was_correct']))
+        record_quiz_result(str(data['concept']), was_correct)
         return jsonify({'success': True, 'message': 'Quiz result recorded in SM-2'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500

@@ -104,6 +104,26 @@ class TestAPICreateItem(TestAPIBase):
         self.assertEqual(data['count'], 1)
         self.assertEqual(data['data'][0]['question'], 'What is a decorator?')
 
+    def test_create_item_numeric_fields_are_coerced_not_crashed(self):
+        """Sibling of the record_review crash: `int.strip()` on a JSON number
+        raised AttributeError before the try block -> unhandled 500."""
+        resp = self.client.post('/api/v1/items',
+            data=json.dumps({'question': 12345, 'answer': 67890}),
+            content_type='application/json')
+        self.assertEqual(resp.status_code, 201)
+
+        item_id = json.loads(resp.data)['data']['id']
+        resp = self.client.get(f'/api/v1/items/{item_id}')
+        data = json.loads(resp.data)['data']
+        self.assertEqual(data['question'], '12345')
+        self.assertEqual(data['answer'], '67890')
+
+    def test_create_item_null_question_still_requires_field(self):
+        resp = self.client.post('/api/v1/items',
+            data=json.dumps({'question': None, 'answer': 'A.'}),
+            content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
+
 class TestAPIBrowserIngest(TestAPIBase):
     def test_ingest_saves_concepts(self):
         resp = self.client.post('/api/v1/ingest',
@@ -147,6 +167,23 @@ class TestAPIRecordReview(TestAPIBase):
             data=json.dumps({'item_id': item_id, 'quality': 4}),
             content_type='application/json')
         self.assertEqual(resp.status_code, 200)
+
+    def test_record_review_numeric_item_id_is_400_not_500(self):
+        """A JSON-number item_id (e.g. a JS client serialising an id number)
+        must not crash the route — previously `int.strip()` raised
+        AttributeError outside the try block and the request died as a 500.
+        The unknown item is then a normal 400 'not found' contract error."""
+        resp = self.client.post('/api/v1/reviews',
+            data=json.dumps({'item_id': 424242, 'quality': 4}),
+            content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(json.loads(resp.data)['success'])
+
+    def test_record_review_null_item_id_is_400(self):
+        resp = self.client.post('/api/v1/reviews',
+            data=json.dumps({'item_id': None, 'quality': 4}),
+            content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
 
 class TestAPISessions(TestAPIBase):
     """Phase 9: study-session toggle endpoints."""
@@ -279,9 +316,86 @@ class TestDailySummaryRange(TestAPIBase):
         self.assertEqual(summary['total_minutes'], 0)
         self.assertEqual(summary['concepts'], 0)
 
+
+class TestTrendAnalysisBoundary(TestAPIBase):
+    """get_trend_analysis must include every session on the boundary day that
+    started after the cutoff time-of-day.
+
+    Regression: the cutoff was passed to SQLAlchemy as an isoformat() string
+    ("2026-08-04T12:00:00") while SQLite stores DateTime as
+    "2026-08-04 15:00:00" — lexicographically, space < 'T', so same-day
+    sessions after the cutoff time were silently excluded from the trend.
+    """
+
+    def test_boundary_day_sessions_after_cutoff_are_included(self):
+        from datetime import datetime, timedelta
+        from unittest import mock
+        from tracker_app.db.models import TrackingSession
+        from tracker_app.db.repository import TrackingRepository
+
+        fixed_now = datetime(2026, 8, 11, 12, 0, 0)   # midday → wide same-day window
+        cutoff = fixed_now - timedelta(days=7)        # 2026-08-04 12:00
+
+        fake_dt = type("FakeDT", (), {
+            "utcnow": staticmethod(lambda: fixed_now),
+            "timedelta": timedelta,
+        })()
+
+        with self.TestingSessionLocal() as db:
+            for label, ts in (
+                ("after-cutoff",  cutoff + timedelta(hours=3)),   # same day, include
+                ("before-cutoff", cutoff - timedelta(hours=7)),   # same day, exclude
+                ("next-day",      cutoff + timedelta(days=1)),    # include
+                ("stale",         cutoff - timedelta(days=10)),   # exclude
+            ):
+                db.add(TrackingSession(
+                    start_time=ts, duration_minutes=10.0,
+                    concepts_encountered=1, avg_attention=0.5))
+            db.commit()
+
+            with mock.patch("tracker_app.db.repository.datetime", fake_dt):
+                result = TrackingRepository.get_trend_analysis(db, days=7)
+
+        self.assertEqual(result["tracking_days"], 2)
+
+
+class TestAPIQuizAnswerStrictBoolean(TestAPIBase):
+    """/quiz/answer must not treat the string "false" as True.
+
+    Regression: `bool(data['was_correct'])` recorded a *correct* SM-2 result
+    for "false", so a wrong answer was scheduled as a successful recall.
+    """
+
+    def _add_concept(self, concept="quiz-probe"):
+        from tracker_app.db.models import TrackedConcept
+        with self.TestingSessionLocal() as db:
+            db.add(TrackedConcept(concept=concept))
+            db.commit()
+
+    def test_string_false_records_wrong_answer(self):
+        from tracker_app.db.models import TrackedConcept
+        self._add_concept()
+
+        resp = self.client.post('/api/v1/quiz/answer',
+            data=json.dumps({'concept': 'quiz-probe', 'was_correct': "false"}),
+            content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+
+        with self.TestingSessionLocal() as db:
+            row = db.query(TrackedConcept).filter(
+                TrackedConcept.concept == 'quiz-probe').first()
+            # quality 0 → ease drops to 1.7 (2.5 + 0.1 - 5*(0.08 + 5*0.02)).
+            # A "false" recorded as correct would leave ease at 2.5.
+            self.assertAlmostEqual(row.memory_strength, 1.7, places=4)
+            self.assertEqual(row.repetitions, 1)
+
+    def test_invalid_was_correct_rejected_with_400(self):
+        self._add_concept()
+        resp = self.client.post('/api/v1/quiz/answer',
+            data=json.dumps({'concept': 'quiz-probe', 'was_correct': "maybe"}),
+            content_type='application/json')
+        self.assertEqual(resp.status_code, 400)
+
+
 if __name__ == '__main__':
     unittest.main()
-
-
-if __name__ == '__main__':
-    unittest.main(verbosity=2)

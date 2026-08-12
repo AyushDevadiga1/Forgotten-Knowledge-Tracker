@@ -4,6 +4,7 @@ import numpy as np
 import pickle
 import sqlite3
 import threading
+import time
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -16,6 +17,12 @@ DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 # Thread safety lock for graph operations
 _graph_lock = threading.RLock()
+
+# How often a loaded graph re-reconciles against the DB (so concepts captured
+# mid-process become visible to quiz selection / stats without a restart).
+DB_SYNC_INTERVAL_SECONDS = 60.0
+_loaded = False
+_last_db_sync = 0.0
 
 # ----------------------------
 # Lazy embedding model
@@ -50,22 +57,36 @@ knowledge_graph = nx.Graph()
 
 
 def _ensure_graph_loaded():
-    """Populate the in-memory graph on first use.
+    """Populate the in-memory graph on first use, then re-reconcile periodically.
 
     Loads the persisted graph (nodes, embeddings, edges) from
     KNOWLEDGE_GRAPH_PATH when available, then reconciles any concepts the DB
     gained since the last save. Falls back to a full DB sync when no persisted
-    graph exists. No-op once loaded. The pkl is a cache: it can always be
-    rebuilt from `tracked_concepts`, so a corrupt/missing file is not fatal.
+    graph exists. After the initial load, a throttled DB re-sync runs at most
+    once per DB_SYNC_INTERVAL_SECONDS so concepts captured mid-process (tracker
+    loop, browser ingest) surface in quiz selection and graph stats without a
+    process restart. The pkl is a cache: it can always be rebuilt from
+    `tracked_concepts`, so a corrupt/missing file is not fatal.
     """
+    global _loaded, _last_db_sync
+    now = time.monotonic()
     with _graph_lock:
-        if knowledge_graph.number_of_nodes() != 0:
-            return
-        if not _load_graph():
-            logger.info("No persisted knowledge graph; building from DB.")
-        else:
-            logger.info("Knowledge graph loaded from %s", KNOWLEDGE_GRAPH_PATH)
-        sync_db_to_graph()  # reconcile (or first-build) then persist
+        if not _loaded:
+            if knowledge_graph.number_of_nodes() != 0:
+                # Graph already populated (e.g. by another module) — no pkl/DB
+                # bootstrap needed, but subsequent calls still re-reconcile.
+                _loaded = True
+            else:
+                if not _load_graph():
+                    logger.info("No persisted knowledge graph; building from DB.")
+                else:
+                    logger.info("Knowledge graph loaded from %s", KNOWLEDGE_GRAPH_PATH)
+                sync_db_to_graph()  # reconcile (or first-build) then persist
+                _loaded = True
+            _last_db_sync = now
+        elif now - _last_db_sync >= DB_SYNC_INTERVAL_SECONDS:
+            sync_db_to_graph()
+            _last_db_sync = now
 
 def _load_graph() -> bool:
     """Load a persisted graph from KNOWLEDGE_GRAPH_PATH. Returns True on success."""
@@ -217,10 +238,25 @@ def sync_concept_to_graph(concept):
     """Refresh one graph node's memory fields from the live DB row.
 
     Called when a concept is re-encountered or reviewed so the in-memory graph
-    stays in step with SM-2/AWFC state. No-op if the node isn't in the graph.
+    stays in step with SM-2/AWFC state. A concept the DB gained after the graph
+    was last built (mid-session capture, browser ingest) is added on first
+    contact too — the micro-quiz's 'weakest concept' selection and graph stats
+    must never serve a graph frozen at first load.
     """
     if concept not in knowledge_graph:
-        return
+        # Node missing: add it from the live DB row (pull live AWFC score).
+        try:
+            from tracker_app.db.models import SessionLocal, TrackedConcept
+            with SessionLocal() as db:
+                exists = db.query(TrackedConcept.concept).filter(
+                    TrackedConcept.concept == concept).first() is not None
+        except Exception as e:
+            logger.debug(f"sync_concept_to_graph lookup failed for {concept}: {e}")
+            return
+        if exists:
+            add_concepts([concept])
+        if concept not in knowledge_graph:
+            return
     try:
         from tracker_app.db.models import SessionLocal, TrackedConcept
         with SessionLocal() as db:
@@ -310,10 +346,10 @@ def sync_db_to_graph():
             add_concepts(new_concepts)
         _refresh_all_memory_scores(db_concepts)
         _save_graph()
-        print(f"Synced {len(db_concepts)} concepts from DB to graph "
-              f"({len(new_concepts)} new)")
+        logger.info("Synced %d concepts from DB to graph (%d new)",
+                    len(db_concepts), len(new_concepts))
     except Exception as e:
-        print(f"Error syncing DB to graph: {e}")
+        logger.warning("Error syncing DB to graph: %s", e)
 
 def get_graph():
     """Get graph with thread-safe access"""

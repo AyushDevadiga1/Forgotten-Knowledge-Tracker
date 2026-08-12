@@ -32,6 +32,8 @@ def clean_graph():
         kg.knowledge_graph.clear()
         kg.knowledge_graph.add_nodes_from(original.nodes(data=True))
         kg.knowledge_graph.add_edges_from(original.edges(data=True))
+        kg._loaded = False
+        kg._last_db_sync = 0.0
 
 
 @pytest.fixture
@@ -102,6 +104,35 @@ def test_add_concepts_uses_live_score_at_creation(isolated_graph_path, clean_gra
 
     kg.add_concepts(["forgotten-concept"])
     assert kg.knowledge_graph.nodes["forgotten-concept"]["memory_score"] < 0.3
+
+
+def test_sync_adds_missing_concept_from_db(isolated_graph_path, clean_graph, db, monkeypatch):
+    """A concept the DB gained after the graph was last built must be added on
+    first contact — the micro-quiz 'weakest concept' selection and graph stats
+    must not serve a graph frozen at first load (mid-session captures)."""
+    monkeypatch.setattr(kg, "_get_embed_model", lambda: None)
+    monkeypatch.setattr(kg, "_get_spacy_vectors", lambda concepts: None)
+    _add_concept(db, "chloroplast", last_seen=datetime.utcnow())
+    with kg._graph_lock:
+        kg.knowledge_graph.clear()
+
+    kg.sync_concept_to_graph("chloroplast")
+
+    assert "chloroplast" in kg.knowledge_graph
+    assert _memory_score("chloroplast") > 0.9   # live AWFC score, not the 0.3 default
+
+
+def test_sync_skips_concept_absent_from_db(isolated_graph_path, clean_graph, monkeypatch):
+    """sync_concept_to_graph for a concept in neither DB nor graph is a no-op —
+    it must not resurrect a deleted concept with a fabricated 0.3 score."""
+    monkeypatch.setattr(kg, "_get_embed_model", lambda: None)
+    monkeypatch.setattr(kg, "_get_spacy_vectors", lambda concepts: None)
+    with kg._graph_lock:
+        kg.knowledge_graph.clear()
+
+    kg.sync_concept_to_graph("ghost-concept")
+
+    assert "ghost-concept" not in kg.knowledge_graph
 
 
 def test_schedule_next_review_bounces_memory_score(isolated_graph_path, clean_graph, db):
