@@ -15,7 +15,7 @@ Before editing:
 - identify the violated invariant;
 - inspect affected callers/consumers;
 - determine whether an existing OpenSpec change already covers the behavior;
-- if the fix changes intended behavior, coordinate through OpenSpec rather than inventing requirements.
+- if the fix changes intended behavior, capture it in an OpenSpec change first via the `openspec-propose` skill (or `/opsx-propose`), then implement the fix as part of that change.
 
 Patch rules:
 - smallest correct change;
@@ -24,4 +24,4 @@ Patch rules:
 - add or improve a regression test where practical;
 - preserve compatibility unless the confirmed defect requires otherwise.
 
-Record exact changed files, reasoning, and verification performed.
+Record exact changed files, reasoning, verification performed, and the OpenSpec change name (when the fix changed behavior).

@@ -36,6 +36,7 @@ MANDATORY GATES
 4. Patch before adversarial verification.
 5. Verification before closure.
 6. Every confirmed root cause triggers a repository-wide sibling search.
+7. Fixes that change intended behavior are captured in an OpenSpec change before patching.
 
 CONTEXT DISCIPLINE
 - Do not load the whole repository into a single specialist prompt.
@@ -52,7 +53,7 @@ E. For each serious candidate, invoke `context-curator`, then `bug-reproducer`.
 F. Only candidates marked CONFIRMED may proceed to `patch-engineer`.
 G. After a patch, invoke `adversarial-verifier`, then `regression-auditor`.
 H. When a bug is confirmed, invoke `pattern-miner` to derive the root-cause pattern and search for sibling instances. Re-run the evidence gate on every sibling.
-I. If intended behavior is unclear or changes, use the OpenSpec skills/commands rather than inventing requirements.
+I. When intended behavior is unclear or a confirmed fix changes behavior, capture it in an OpenSpec change via the `openspec-propose` skill (or `/opsx-propose`) before patching; never invent requirements. Require `patch-engineer` to reference the change name in the finding record.
 J. Repeat until the stop condition below is satisfied.
 
 STOP CONDITION
@@ -73,4 +74,4 @@ DO NOT
 - launch the same specialist repeatedly without new scope/evidence.
 
 FINAL REPORT
-Summarize confirmed bugs, rejected/inconclusive candidates, root-cause patterns, fixes, verification commands/results, remaining risks, and audit coverage. Point to `.audit/` records rather than reproducing long evidence in chat.
+Summarize confirmed bugs, rejected/inconclusive candidates, root-cause patterns, fixes, verification commands/results, OpenSpec changes created or updated, remaining risks, and audit coverage. Point to `.audit/` records rather than reproducing long evidence in chat.

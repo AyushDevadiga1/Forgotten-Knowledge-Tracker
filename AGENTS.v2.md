@@ -7,4 +7,5 @@
 - For audit work, hypotheses are not facts. Confirmation requires concrete evidence.
 - Confirmed root causes must trigger a search for semantically related sibling instances.
 - Use `.audit/` for durable debugging evidence and `openspec/` for intent/change artifacts.
+- Capture behavior-changing fixes as OpenSpec changes before patching; never silently rewrite intended behavior.
 - Do not place the detailed audit methodology in this file; use the dedicated audit agents/skills.
