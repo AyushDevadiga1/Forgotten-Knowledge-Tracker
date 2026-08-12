@@ -1,10 +1,11 @@
 """Audio pipeline: async recording, MFCC feature extraction, and classification.
 
-Classification is deterministic energy/RMS/ZCR heuristics. FKT previously
-shipped a "trained" GaussianNB classifier fed entirely by synthetic random MFCC
-vectors (`train_audio_classifier`) — a stub that created a false sense of
-quality (see ADR-002). The synthetic trainer and its model-loading path were
-removed; the energy-based heuristic is the honest classifier (C-4).
+Classification is deterministic heuristics over RMS energy, spectral shape and
+syllabic-rate amplitude modulation. FKT previously shipped a "trained"
+GaussianNB classifier fed entirely by synthetic random MFCC vectors
+(`train_audio_classifier`) — a stub that created a false sense of quality
+(see ADR-002). The synthetic trainer and its model-loading path were removed;
+the feature-driven heuristic is the honest classifier (C-4).
 """
 
 import threading
@@ -56,22 +57,68 @@ def extract_mfcc_features(audio: np.ndarray, sr: int = SAMPLE_RATE,
 
 # ─── Energy-based fallback heuristic ─────────────────────────────────────────
 
+SILENCE_RMS_THRESHOLD     = 0.005   # below this the capture is treated as quiet
+TONAL_FLATNESS_THRESHOLD  = 0.35    # below this the spectrum is harmonic (music)
+SPEECH_SYLLABIC_THRESHOLD = 0.90    # above this the envelope is speech-paced
+
+# Syllabic band (Hz): human speech modulates its envelope at 2–8 Hz (syllables).
+SYLLABIC_BAND = (1.0, 8.0)
+
+
+def _syllabic_modulation(audio: np.ndarray, sr: int = SAMPLE_RATE) -> float:
+    """Fraction of amplitude-envelope power in the syllabic (1–8 Hz) band.
+
+    Speech (talk radio, lectures, dialog) has strong envelope modulation at
+    syllable rates; steady noise, pure tones and slow-breathed music have
+    almost none — so this is the feature that keeps white noise from being
+    labeled speech. Returns 0.0 on failure or near-silence.
+    """
+    try:
+        if len(audio) == 0 or np.max(np.abs(audio)) < 1e-6:
+            return 0.0
+        env = np.abs(librosa.stft(audio, hop_length=256)).sum(axis=0)
+        env = env - env.mean()
+        frame_rate = sr / 256.0
+        f = np.fft.rfftfreq(len(env), d=1.0 / frame_rate)
+        power = np.abs(np.fft.rfft(env)) ** 2
+        total = power.sum() + 1e-12
+        return float(power[(f >= SYLLABIC_BAND[0]) & (f <= SYLLABIC_BAND[1])].sum() / total)
+    except Exception as e:
+        logger.warning(f"Syllabic modulation failed: {e}")
+        return 0.0
+
+
 def energy_based_classification(audio: np.ndarray) -> Tuple[str, float]:
-    """Fallback when classifier unavailable. Uses RMS + ZCR + spectral centroid."""
+    """Deterministic audio classification from RMS + spectral + modulation.
+
+    Decision order:
+      1. Near-silence            -> silence (low RMS)
+      2. Tonal / harmonic        -> music   (flatness low: tones, chords, vocals)
+      3. Syllabic-rate AM        -> speech  (envelope modulates 2–8 Hz)
+      4. Steady, low-brightness  -> music   (ambient hum, pink noise)
+      5. Everything else         -> unknown
+
+    The old three-threshold version labeled white noise as speech (high ZCR +
+    bright centroid) and low-level noise as speech — both fixed by the
+    modulation feature and an explicit silence floor.
+    """
     try:
         if len(audio) == 0 or np.max(np.abs(audio)) < 1e-6:
             return "silence", 0.95
         rms = np.sqrt(np.mean(audio ** 2))
-        zcr = float(np.mean(librosa.feature.zero_crossing_rate(audio)))
-        sc  = float(np.mean(librosa.feature.spectral_centroid(y=audio, sr=SAMPLE_RATE)))
-        if rms < 0.005:
+        if rms < SILENCE_RMS_THRESHOLD:
             return "silence", 0.95
-        elif zcr > 0.15 and sc > 2000:
-            return "speech",  0.78
-        elif rms > 0.03 and zcr < 0.1:
-            return "music",   0.70
-        else:
-            return "unknown", 0.50
+        zcr  = float(np.mean(librosa.feature.zero_crossing_rate(audio)))
+        sc   = float(np.mean(librosa.feature.spectral_centroid(y=audio, sr=SAMPLE_RATE)))
+        flat = float(np.mean(librosa.feature.spectral_flatness(y=audio)))
+        syll = _syllabic_modulation(audio)
+        if flat < TONAL_FLATNESS_THRESHOLD:
+            return "music", 0.80
+        if syll > SPEECH_SYLLABIC_THRESHOLD:
+            return "speech", 0.78
+        if zcr < 0.15 and sc < 2500:
+            return "music", 0.60
+        return "unknown", 0.45
     except Exception as e:
         logger.warning(f"Energy classification failed: {e}")
         return "unknown", 0.30
@@ -80,7 +127,7 @@ def energy_based_classification(audio: np.ndarray) -> Tuple[str, float]:
 # ─── Classification ───────────────────────────────────────────────────────────
 
 def classify_audio(audio: np.ndarray) -> Tuple[str, float]:
-    """Classify audio using deterministic energy/RMS/ZCR heuristics.
+    """Classify audio using deterministic RMS/spectral/modulation heuristics.
 
     This is the only classifier (see module docstring — the synthetic ML trainer
     and loader were removed per C-4 / ADR-002).
