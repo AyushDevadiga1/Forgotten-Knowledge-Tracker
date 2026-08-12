@@ -1,0 +1,134 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "permission": {
+    "*": "ask",
+
+    "read": "allow",
+    "glob": "allow",
+    "grep": "allow",
+    "list": "allow",
+    "skill": "allow",
+    "task": "allow",
+    "lsp": "allow",
+
+    "bash": {
+      "*": "allow",
+      "git push *": "deny",
+      "git reset --hard *": "deny",
+      "git clean *": "deny"
+    },
+
+    "edit": "deny"
+  },
+
+  "agent": {
+    "audit-orchestrator": {
+      "permission": {
+        "edit": "deny",
+        "bash": "allow",
+        "task": "allow",
+        "skill": "allow"
+      }
+    },
+
+    "patch-engineer": {
+      "permission": {
+        "edit": "ask",
+        "bash": "allow",
+        "task": "allow",
+        "skill": "allow"
+      }
+    },
+
+    "repository-recon": {
+      "permission": {
+        "edit": "deny",
+        "bash": "allow",
+        "task": "allow",
+        "skill": "allow"
+      }
+    },
+
+    "context-curator": {
+      "permission": {
+        "edit": "deny",
+        "bash": "allow",
+        "task": "allow",
+        "skill": "allow"
+      }
+    },
+
+    "logic-hunter": {
+      "permission": {
+        "edit": "deny",
+        "bash": "allow",
+        "task": "allow",
+        "skill": "allow"
+      }
+    },
+
+    "runtime-hunter": {
+      "permission": {
+        "edit": "deny",
+        "bash": "allow",
+        "task": "allow",
+        "skill": "allow"
+      }
+    },
+
+    "contract-hunter": {
+      "permission": {
+        "edit": "deny",
+        "bash": "allow",
+        "task": "allow",
+        "skill": "allow"
+      }
+    },
+
+    "test-gap-hunter": {
+      "permission": {
+        "edit": "deny",
+        "bash": "allow",
+        "task": "allow",
+        "skill": "allow"
+      }
+    },
+
+    "bug-reproducer": {
+      "permission": {
+        "edit": "deny",
+        "bash": "allow",
+        "task": "allow",
+        "skill": "allow"
+      }
+    },
+
+    "adversarial-verifier": {
+      "permission": {
+        "edit": "deny",
+        "bash": "allow",
+        "task": "allow",
+        "skill": "allow"
+      }
+    },
+
+    "regression-auditor": {
+      "permission": {
+        "edit": "deny",
+        "bash": "allow",
+        "task": "allow",
+        "skill": "allow"
+      }
+    },
+
+    "pattern-miner": {
+      "permission": {
+        "edit": "deny",
+        "bash": "allow",
+        "task": "allow",
+        "skill": "allow"
+      }
+    }
+  }
+}
