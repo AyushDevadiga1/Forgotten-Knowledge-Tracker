@@ -2,67 +2,107 @@
 
 # 🧠 Forgotten Knowledge Tracker (FKT)
 
-**A passive AI second-brain that watches what you study, builds a knowledge graph from it, and reminds you before you forget.**
+**FKT is your silent study companion. It watches what you study, remembers what you tend to forget, and quizzes you before it happens — automatically.**
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Status: Active Development](https://img.shields.io/badge/status-active%20development-green.svg)]()
 [![Platform: Windows](https://img.shields.io/badge/platform-Windows%20(primary)-lightgrey.svg)]()
 
-*No manual note-taking. No manual flashcard creation. Just tell FKT when you're studying — it handles the rest.*
+*No note-taking. No making your own flashcards. You just press **Start** when you study — FKT handles the rest.*
 
 </div>
 
 ---
 
-## What Is FKT?
+## What is FKT? (In plain English)
 
-FKT is a desktop application that runs silently in the background while you work or study. It uses your screen (OCR), microphone (audio environment detection), webcam (optional eye-tracking), and keyboard/mouse activity (Cognitive Load Estimation) to understand **what you are learning and how focused you are**. From this it builds a personal knowledge graph, calculates how likely you are to forget each concept, and schedules intelligent review sessions at exactly the right moment.
+Imagine you had a **personal librarian** who:
 
-Think of it as a spaced-repetition system (like Anki) — but one that fills itself automatically from your existing screen activity, rather than requiring you to manually create cards.
+1. Watches over your shoulder (only while you allow it) while you study on your computer.
+2. Quietly takes note of the important words and ideas you come across.
+3. Keeps track of which ideas you seem to struggle with.
+4. Later, at the right moment, asks you a quick question to make sure the idea stays in your head.
+
+That librarian is FKT. It is a **desktop program** that runs in the background on your own computer, learns what you are studying from your screen, and schedules short review moments so you do not forget.
+
+It is based on the same research-proven "spaced repetition" idea used by popular learning apps (like Anki) — the key difference is that **FKT fills itself from your real study activity instead of making you type in cards by hand**.
+
+---
+
+## What problem does it solve?
+
+You know this feeling: you study something, understand it completely, then two weeks later... it is gone. Forgetting is normal — our brains are designed to let unused information fade.
+
+FKT works with your brain instead of against it. Because it sees *what* you studied and *how focused* you were at the time, it can predict when a particular idea is about to fade from memory — and remind you of it **just before** it does. A five-second review at the right time saves you a re-study session later.
 
 ---
 
-## Key Features
+## How does it work? (Without the jargon)
 
-### Session-Gated Knowledge Capture
-- **Study Session toggle** — FKT only captures while a session is active. Press **Start Studying** on the dashboard when you begin; capture pauses when you press **Stop**. No toggle, no capture — you tell it when.
-- **Intent gating** — even inside an active session, only cycles the intent classifier labels as `studying` persist concepts, so a mid-session distraction (a YouTube tab, a chat message) is not captured.
-- **Screen OCR** — captures keywords from the foreground window every 20 seconds using Tesseract OCR (auto-installed on first run)
-- **Active Window Detection** — only scans the foreground window, not your entire screen
-- **Privacy Filter** — automatically redacts emails, passwords, credit card numbers, and other sensitive data before anything is stored
-- **Browser Extension** — send tab text directly to FKT without OCR via the FKT Capture extension
+Here is what happens, step by step:
 
-### Attention Tracking
-- **Webcam Eye-Tracking** (optional, strongly recommended) — MediaPipe FaceMesh measures Eye Aspect Ratio (EAR) to detect focus vs. drowsiness
-- **Cognitive Load Estimator (CLE)** — a novel keystroke-dynamics system that estimates your mental engagement from typing rhythm, backspace rate, pause patterns, and burst length — works with or without a webcam
-- **Blended Attention Score** — when both are active, webcam provides 70% of the signal and CLE provides 30%
+1. **You decide when to start.** FKT only watches while a study session is active. Press **Start Studying** when you begin; it stops when you press **Stop**. No session, no watching.
 
-### Knowledge Graph
-- **Automatic concept extraction** — YAKE! + spaCy NER extracts and ranks meaningful keywords from screen text
-- **Semantic edge linking** — concepts that frequently co-occur or are semantically similar are connected in the graph
-- **Concept Drift Detection** *(coming Phase 6)* — tracks whether your understanding of a topic is evolving, stagnating, or decaying
-- **Knowledge Gap Map** *(coming Phase 6)* — surfaces concepts you probably don't know but should, based on your graph's neighbourhood
+2. **It pays attention to your screen.** Every so often it quietly looks at the window you are working in (not your whole screen) and picks out the key words and ideas.
 
-### Memory Scheduling
-- **SuperMemo-2 (SM-2) algorithm** — the same research-validated algorithm behind Anki and many language-learning apps
-- **Attention-Weighted Forgetting Curve (AWFC)** *(coming Phase 4)* — concepts learned during high-focus sessions decay up to 30% slower than those absorbed passively
-- **Micro-Quiz Interrupts** *(coming Phase 7)* — during idle periods, FKT pops a quick quiz using your own captured content, results feed directly into SM-2
+3. **It senses how focused you are.** It can use your microphone to tell if you are in a quiet room or in a noisy environment, and your webcam (optional) to see whether you look engaged or tired. It also watches your typing rhythm — people type differently when they are deeply concentrating.
 
-### Intent Classification
-- **Trained RandomForest classifier** — 96% cross-validated accuracy on 6 multi-modal features
-- **3 activity states** — `studying`, `passive`, `idle`
-- **Self-improving** *(coming Phase 9)* — retrains from your feedback every 50 corrections
-- **Rule-based fallback** — if the model file is missing, heuristic rules ensure the system still works
+4. **It decides what is worth remembering.** If you are clearly studying (reading a textbook, writing notes), it keeps the ideas it saw. If you get distracted (a chat message, a video), it ignores that — your notes stay clean.
 
-### Dashboard
-- **React + TypeScript frontend** — clean, minimal dark-mode interface
-- **Overview page** — KPI cards, system status, recent items, performance chart
-- **Review page** — full SM-2 flashcard review with quality rating (Again / Hard / Good / Easy)
-- **Knowledge base** — searchable table of all tracked concepts and learning items
-- **Add concept** — manually add flashcards with difficulty, type, and tags
+5. **It builds your personal knowledge map.** Related ideas get connected together, so FKT knows the *shape* of what you know.
+
+6. **It schedules the right moment to remind you.** Using a well-known memory science algorithm, FKT decides when each idea needs a quick refresher — then pops a tiny quiz during an idle moment.
+
+That is it. The whole loop is designed so that **you only ever press one button**; everything else is automatic.
+
+| What it watches | What it learns from it |
+|---|---|
+| Your screen (the active window only) | The words and ideas you are studying |
+| Your microphone | Whether the environment is quiet or noisy |
+| Your webcam *(optional)* | Whether you look focused or drowsy |
+| Your typing rhythm | How deeply you are concentrating |
 
 ---
+
+## Your privacy
+
+Privacy is a core design choice, not an afterthought:
+
+- **Nothing leaves your computer.** Everything runs locally. No account, no cloud, no uploads — FKT never sends data anywhere.
+- **Sensitive info is removed automatically.** Credit card numbers, emails, passwords, and similar details are detected and scrubbed before anything is saved.
+- **Private windows are skipped.** Windows with titles like "password", "login", or "bank" are never looked at.
+- **You stay in control.** FKT only watches while a study session is active — flip the switch off and it goes fully quiet.
+- **Your data is a file you own.** Everything is stored in a single database file on your machine. Delete it any time; nothing is hidden.
+
+---
+
+## What you will see
+
+FKT shows you a simple dashboard in your browser:
+
+- **Overview** — a quick snapshot of how your study is going.
+- **Review** — the quick quizzes FKT generates for you, with an "Again / Hard / Good / Easy" rating, just like a flashcard app.
+- **Knowledge base** — every idea FKT has captured, searchable in one place.
+- **Add idea** — if you want, add your own items for FKT to track.
+
+---
+
+## Getting started
+
+**For a non-technical try-out**, you will still need one step that involves the terminal, but that is the whole story:
+
+```
+python setup.py --run
+```
+
+That single command installs everything, then starts the program. Open your browser to **http://localhost:5000** and press **Start Studying**.
+
+---
+
+# For technical readers
+
+Everything below assumes you are comfortable with Python, terminals, and reading code.
 
 ## Quick Start
 
@@ -116,7 +156,7 @@ python -m tracker_app.web.app
 
 ---
 
-## How It Works
+## How It Works (system view)
 
 ```
 Your screen  ──► OCR (Tesseract)  ──►┐
@@ -221,18 +261,6 @@ All settings are in `.env` (created automatically by `setup.py`). You can also o
 | `SESSION_ALLOWED_INTENTS` | `studying` | Intent labels allowed to persist concepts inside an active session (e.g. `studying,passive`) |
 | `TESSERACT_PATH` | *(auto-detected)* | Path to Tesseract executable |
 | `DEBUG` | `True` | Flask debug mode |
-
----
-
-## Privacy
-
-FKT is designed to be fully local and private:
-
-- **No cloud** — everything runs on your machine. No data is ever sent to any external server.
-- **PII redaction** — the privacy filter automatically detects and redacts credit card numbers, email addresses, phone numbers, passwords, IP addresses, and API keys before any text is stored.
-- **Sensitive windows** — windows with titles containing "password", "login", "bank", "private", "incognito" are automatically skipped.
-- **Browser extension** — *FKT Capture* (`tracker_app/web/extension/`) sends text you select in a tab to the local dashboard's `/api/v1/ingest` endpoint. It only talks to `localhost`; load it via `chrome://extensions` → *Load unpacked*.
-- **Local database** — all data is stored in a single SQLite file at `tracker_app/data/fkt_tracking.db`. You can delete it at any time.
 
 ---
 
