@@ -12,7 +12,7 @@ Rules:
 - If scope is empty, choose high-risk areas from repository recon rather than blindly scanning everything at once.
 - Do not edit during discovery or reproduction.
 - Do not patch a candidate until the bug-reproducer marks it CONFIRMED.
-- When a confirmed fix changes intended behavior, capture it in an OpenSpec change before patching; record the change name in the finding.
+- Capture every confirmed fix in an OpenSpec change before patching; record the change name in the finding.
 - Use OpenSpec artifacts as intent/change evidence when they exist; do not invent requirements.
 - Persist durable state in `.audit/`.
 - For every confirmed bug, mine the root-cause pattern and search the repository for sibling instances.
