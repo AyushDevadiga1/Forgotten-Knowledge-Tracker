@@ -25,6 +25,7 @@ class ConceptScheduler:
         confidence: float = 0.5,
         context: str = "",
         attention_at_encoding: float = 50.0,
+        source: str = "ocr",
     ) -> str:
         """
         Insert or update a tracked concept.
@@ -124,7 +125,7 @@ class ConceptScheduler:
             encounter = ConceptEncounter(
                 concept=concept,
                 timestamp=now,
-                source="ocr",
+                source=source,
                 confidence=confidence,
                 context_snippet=context[:200] if context else "",
             )

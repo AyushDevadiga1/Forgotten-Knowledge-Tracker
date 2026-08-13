@@ -299,6 +299,45 @@ def test_add_concept_keeps_real_study_concepts(db, no_graph_sync):
         assert scheduler.add_concept(word, confidence=0.7, context="ocr") is not None, word
 
 
+def test_add_concept_stores_explicit_source(db, no_graph_sync):
+    # FKT-F-007: ConceptEncounter.source documents 'ocr' | 'browser_extension' |
+    # 'manual' (models.py:261); an explicit source must be persisted verbatim.
+    from tracker_app.db.models import ConceptEncounter
+
+    scheduler = ConceptScheduler()
+    assert scheduler.add_concept(
+        "backpropagation",
+        confidence=0.7,
+        context="browser:New Tab - Wikipedia",
+        source="browser_extension",
+    ) is not None
+
+    with db() as session:
+        rows = session.query(ConceptEncounter).filter(
+            ConceptEncounter.concept == "backpropagation"
+        ).all()
+    assert len(rows) == 1
+    assert rows[0].source == "browser_extension"
+
+
+def test_add_concept_default_source_is_ocr(db, no_graph_sync):
+    # FKT-F-007: existing callers (OCR path, api.py, loop.py) call add_concept
+    # without a source; the default must keep writing 'ocr'.
+    from tracker_app.db.models import ConceptEncounter
+
+    scheduler = ConceptScheduler()
+    assert scheduler.add_concept(
+        "backpropagation", confidence=0.7, context="ocr"
+    ) is not None
+
+    with db() as session:
+        rows = session.query(ConceptEncounter).filter(
+            ConceptEncounter.concept == "backpropagation"
+        ).all()
+    assert len(rows) == 1
+    assert rows[0].source == "ocr"
+
+
 if __name__ == '__main__':
     import sys
     sys.exit(pytest.main([__file__, '-v']))

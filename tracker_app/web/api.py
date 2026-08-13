@@ -665,6 +665,7 @@ def browser_ingest():
                     confidence=float(score),
                     context=f"browser:{title[:80]}",
                     attention_at_encoding=60.0,  # assume moderate engagement
+                    source="browser_extension",
                 )
                 if result:
                     saved += 1
