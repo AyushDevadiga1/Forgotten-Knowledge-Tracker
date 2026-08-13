@@ -142,6 +142,19 @@ MIGRATIONS = [
         "UPDATE memory_decay SET updated_at = substr(updated_at,1,10) || ' ' || substr(updated_at,12) WHERE updated_at LIKE '____-__-__T%'",
     ]),
 
+    # ── 012: Drop duplicate timestamp index on feedback_training_samples ──────
+    # Migration 004 created ix_feedback_samples_timestamp, but the ORM model's
+    # index=True on FeedbackTrainingSample.timestamp auto-creates
+    # ix_feedback_training_samples_timestamp for the same column. Because
+    # ensure_base_schema (create_all) runs before migration 004 and the index
+    # names differ, IF NOT EXISTS cannot dedupe them — migrated databases end
+    # up with two indexes on the same column (write amplification on every
+    # insert; FKT-F-006). Dropping the legacy migration-004 index converges
+    # every path to the single ORM-managed index; IF EXISTS keeps it a no-op
+    # on create_all-only databases where the legacy index never existed.
+    ("012_drop_duplicate_feedback_index", "Drop duplicate timestamp index on feedback_training_samples", [
+        "DROP INDEX IF EXISTS ix_feedback_samples_timestamp",
+    ]),
 ]
 
 
