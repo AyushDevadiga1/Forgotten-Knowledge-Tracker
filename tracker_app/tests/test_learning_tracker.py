@@ -85,6 +85,34 @@ class TestRecordReview(TestLearningTrackerBase):
             count = db.query(ReviewHistory).filter(ReviewHistory.item_id == item_id).count()
             self.assertEqual(count, 1)
 
+    def test_review_sm2_persists_last_review_date(self):
+        """FKT-F-003: last_review_date must be non-null after an sm2 review and
+        survive a fresh-session reload (previously always null in API + DB)."""
+        item_id = self.tracker.add_learning_item("Q?", "A.")
+        self.tracker.record_review(item_id, quality_rating=5, algorithm='sm2')
+
+        # API surface reflects the persisted value
+        item = self.tracker.get_item(item_id)
+        self.assertIsNotNone(item['last_review_date'])
+
+        # Fresh session reload reads the value back from the DB row
+        with self.SessionLocal() as db:
+            row = db.query(LearningItem).filter(LearningItem.id == item_id).first()
+            self.assertIsNotNone(row.last_review_date)
+
+    def test_review_leitner_persists_last_review_date(self):
+        """FKT-F-003: last_review_date must be non-null after a leitner review
+        and survive a fresh-session reload."""
+        item_id = self.tracker.add_learning_item("Q?", "A.")
+        self.tracker.record_review(item_id, quality_rating=5, algorithm='leitner')
+
+        item = self.tracker.get_item(item_id)
+        self.assertIsNotNone(item['last_review_date'])
+
+        with self.SessionLocal() as db:
+            row = db.query(LearningItem).filter(LearningItem.id == item_id).first()
+            self.assertIsNotNone(row.last_review_date)
+
 if __name__ == '__main__':
     unittest.main()
 

@@ -153,6 +153,7 @@ class LearningItem(Base):
     ease_factor      = Column(Float,   default=2.5)
     repetitions      = Column(Integer, default=0)
     next_review_date = Column(DateTime, index=True)   # ← DateTime + index
+    last_review_date = Column(DateTime, nullable=True)  # ← maps migration 005 column
 
     # Stats
     total_reviews = Column(Integer, default=0)

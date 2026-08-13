@@ -143,6 +143,7 @@ class LearningTracker:
             item_record.correct_count = item.correct_count
             item_record.success_rate = success_rate
             item_record.status = status
+            item_record.last_review_date = review_date
             item_record.updated_at = datetime.utcnow()
 
             LearningRepository.record_review(db, history, item_record)
@@ -267,7 +268,7 @@ class LearningTracker:
             'ease_factor': row.ease_factor,
             'repetitions': row.repetitions,
             'next_review_date': row.next_review_date,
-            'last_review_date': getattr(row, 'last_review_date', None),
+            'last_review_date': row.last_review_date,
             'total_reviews': row.total_reviews,
             'correct_count': row.correct_count,
             'success_rate': row.success_rate,
