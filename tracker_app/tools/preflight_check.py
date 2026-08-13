@@ -54,7 +54,11 @@ def run_stress_test():
                              attention_score, interaction_rate, intent_label, intent_confidence)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                         """, (
-                            "2025-10-02T10:00:00", "TestWindow",
+                            # DateTime columns use the ORM space-separated
+                            # storage format — the old 'T' literal sorted
+                            # AFTER space-separated values and was invisible
+                            # to same-day due queries (FKT-F-004).
+                            "2025-10-02 10:00:00", "TestWindow",
                             str(list(ocr_keywords.keys())),
                             audio, att, interact,
                             result["intent_label"], result["confidence"]

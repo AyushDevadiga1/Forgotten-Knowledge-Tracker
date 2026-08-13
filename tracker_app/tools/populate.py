@@ -54,7 +54,11 @@ for i in range(100):
          interaction_count, audio_label, intent_label, intent_confidence)
         VALUES (?,?,?,?,?,?,?,?,?)
     """, (
-        start.isoformat(), end.isoformat(),
+        # DateTime columns are stored/compared as space-separated text
+        # ('YYYY-MM-DD HH:MM:SS.ffffff', the ORM format) — isoformat()'s 'T'
+        # separator sorts AFTER a space and would silently exclude same-day
+        # rows from due queries (FKT-F-004).
+        str(start), str(end),
         random.choice(["VS Code", "Chrome", "PyCharm", "Obsidian"]),
         random.choice(CONCEPTS),
         round(random.uniform(0.1, 15.0), 2),
@@ -73,7 +77,7 @@ for i in range(200):
          attention_score, interaction_rate, intent_label, intent_confidence, memory_score)
         VALUES (?,?,?,?,?,?,?,?,?)
     """, (
-        ts.isoformat(),
+        str(ts),
         random.choice(CONCEPTS),
         str(random.sample(CONCEPTS, min(5, len(CONCEPTS)))),
         random.choice(audios),
@@ -97,14 +101,14 @@ for concept in CONCEPTS:
         VALUES (?,?,?,?,?,?,?,?,?,?,?)
     """, (
         concept,
-        (now - timedelta(days=random.randint(5, 60))).isoformat(),
-        last_seen.isoformat(),
+        str(now - timedelta(days=random.randint(5, 60))),
+        str(last_seen),
         random.randint(1, 20),
         round(random.uniform(0.3, 0.95), 3),
         "discovered",
         random.randint(1, 14),
         round(random.uniform(1.3, 3.5), 3),
-        next_review.isoformat(),
+        str(next_review),
         round(random.uniform(20, 90), 1),
         round(random.uniform(0.05, 0.15), 4),
     ))
@@ -118,10 +122,10 @@ for concept in CONCEPTS:
         VALUES (?,?,?,?,?)
     """, (
         concept,
-        last_seen.isoformat(),
+        str(last_seen),
         round(random.uniform(0.2, 1.0), 3),
         random.randint(1, 15),
-        now.isoformat(),
+        str(now),
     ))
 
 conn.commit()

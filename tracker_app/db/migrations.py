@@ -120,6 +120,28 @@ MIGRATIONS = [
         "ALTER TABLE tracked_concepts ADD COLUMN review_count  INTEGER DEFAULT 0",
         "ALTER TABLE tracked_concepts ADD COLUMN correct_count INTEGER DEFAULT 0",
     ]),
+
+    # ── 011: Normalize raw-writer 'T'-separated datetimes ────────────────────
+    # populate.py / preflight_check.py used to store datetime.isoformat()
+    # values ('2026-08-13T09:00:00') into DateTime columns while the ORM
+    # writes and compares space-separated text ('2026-08-13 09:00:00.000000').
+    # Because ' ' < 'T' in ASCII, same-day 'T' rows sorted lexicographically
+    # AFTER the bound datetime and were silently excluded from due queries
+    # until the date flipped (FKT-F-004). These UPDATEs rewrite only text
+    # matching the 'T' pattern at position 10, so space-formatted ORM rows and
+    # date-only values are never touched, and once normalized no row matches
+    # the LIKE guard — the migration is idempotent and safe to re-run.
+    ("011_datetime_storage_format", "Normalize 'T'-separated datetimes to ORM space format", [
+        "UPDATE tracked_concepts SET next_review = substr(next_review,1,10) || ' ' || substr(next_review,12) WHERE next_review LIKE '____-__-__T%'",
+        "UPDATE tracked_concepts SET first_seen = substr(first_seen,1,10) || ' ' || substr(first_seen,12) WHERE first_seen LIKE '____-__-__T%'",
+        "UPDATE tracked_concepts SET last_seen = substr(last_seen,1,10) || ' ' || substr(last_seen,12) WHERE last_seen LIKE '____-__-__T%'",
+        "UPDATE sessions SET start_ts = substr(start_ts,1,10) || ' ' || substr(start_ts,12) WHERE start_ts LIKE '____-__-__T%'",
+        "UPDATE sessions SET end_ts = substr(end_ts,1,10) || ' ' || substr(end_ts,12) WHERE end_ts LIKE '____-__-__T%'",
+        "UPDATE multi_modal_logs SET timestamp = substr(timestamp,1,10) || ' ' || substr(timestamp,12) WHERE timestamp LIKE '____-__-__T%'",
+        "UPDATE memory_decay SET last_seen_ts = substr(last_seen_ts,1,10) || ' ' || substr(last_seen_ts,12) WHERE last_seen_ts LIKE '____-__-__T%'",
+        "UPDATE memory_decay SET updated_at = substr(updated_at,1,10) || ' ' || substr(updated_at,12) WHERE updated_at LIKE '____-__-__T%'",
+    ]),
+
 ]
 
 
