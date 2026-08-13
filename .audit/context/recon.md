@@ -1,76 +1,103 @@
-# FKT Recon — v2 (recon-only run, 2026-08-12)
+﻿# FKT Recon - v3 refresh (2026-08-13) - DB subsystem cycle (tracker_app/db/models.py)
 
 ## Mode & constraints
 
-- RECON-ONLY run. No application code, tests, OpenSpec artifacts, AGENTS.md, or configuration were modified. Only this `.audit/` context artifact was written.
+- RECON-ONLY refresh. No application code, tests, OpenSpec artifacts, AGENTS.md, or configuration modified. Only `.audit/context/recon.md` was overwritten.
+- Audit cycle scope: `tracker_app/db/models.py` (DB subsystem). Observations for hunters below are marked as observations, not confirmed bugs.
 
-## Git state (evidence: `git status`, `git log`, `git branch -avv`)
+## Git state (evidence: `git status`, `git log --oneline -12`, `git branch -avv`)
 
-- HEAD: `343ee62` "chore: checkpoint before audit architecture migration"; branch `main`, **ahead of `origin/main` by 4** (origin at `d914a67`). Local commits not pushed:
-  - `a0dd9e2` fix(audio): syllabic-modulation heuristics replace synthetic GaussianNB
-  - `16f467c` fix(api,graph): truthy booleans, trend boundary, graph staleness, route crash guards
-  - `95de59a` chore: initialize agentic development workflow (OpenSpec integration scaffolding: `.opencode/`, `.agent/`, `.hermes/`, `.github/` opsx skills/workflows; `openspec/config.yaml`; `adversarial-debugger.md`, `debug-hunt.md`)
-  - `343ee62` chore: checkpoint before audit architecture migration
-- Working tree:
-  - `README.md` **modified (tracked, uncommitted)** — content replaced with "FKT Adversarial Audit v2" package description; original project README is only in git history.
-  - Untracked: `.audit/` (scaffold), `.opencode/agents/*` (v2 agent set incl. `audit-orchestrator` + 10 read-only/hunter agents), `.opencode/commands/audit.md`, `.opencode/skills/audit-*/` (9 skills), `AGENTS.v2.md`, `MANIFEST.txt`, `MIGRATION.md`.
-  - `AGENTS.md` **unmodified** — old monolithic debugging protocol still the active project rules.
-- Earlier `git show 34362ee` failure was a mistyped abbreviation; full hash `343ee62...` resolves fine.
+- HEAD: `bd26cad` "docs(map): add interactive function dependency map with regenerate tooling"; branch `main`, **up to date with `origin/main`** (`origin/main` == `bd26cad`, `origin/HEAD -> origin/main`). No local unpushed commits.
+- Last 12 commits (newest first): `bd26cad` docs(map), `27b1a28` docs(readme), `bdc8194` chore(openspec) require OpenSpec change for every modification, `e95c308` feat(opencode) capture behavior-changing fixes as OpenSpec changes, `6282f28` docs(opencode) adversarial audit v2 migration guide, `ad7856d` chore(opencode) permissions for audit agents, `5e3ebab` feat(audit) durable audit memory structure, `70cc8fc` feat(opencode) on-demand audit skills, `76da049` feat(opencode) adversarial audit agent pipeline, `343ee62` chore checkpoint before audit architecture migration, `95de59a` chore initialize agentic development workflow, `16f467c` fix(api,graph) v1 bugfix batch.
+- Working tree: **clean** except one untracked directory `fkt-audit-v3/` (contains `.audit/`, `.opencode/`, `AGENTS.v3.md`, `MANIFEST.txt`, `MIGRATION.md`, `README.md` - a newer audit-tooling snapshot, not committed). No modified tracked files.
+- `.audit/`, `.opencode/`, `openspec/`, `AGENTS.v2.md` are now **tracked** (committed in the `95de59a..bd26cad` series). This corrects the stale v2 recon which listed them as untracked.
+- `AGENTS.md` is **gitignored** (`.gitignore:72`) and NOT tracked; current content is the "Project Operating Rules" file (v2 merge). `AGENTS.v2.md` (tracked) differs from `AGENTS.md`.
+- `.pytest_cache`: 239 node IDs, `lastfailed` is `{}` (empty) - consistent with a passed full run, not re-run during this recon.
 
-## Previous audit (v1) — shipped locally, not yet on origin
+## Architecture map (evidence: module inventory, greps, reads)
 
-- `a0dd9e2` — `tracking/audio_module.py` + `tests/test_audio_heuristics.py`: fake "trained" classifier (ADR-002 synthetic MFCCs) replaced by envelope-power syllabic-band detection with silence→tonal→syllabic→ambient decision path.
-- `16f467c` — 7 files, +353/−25, 14 regression tests:
-  - `web/api.py`: `_parse_bool_flag` strict booleans (`/intent/feedback`, `/quiz/answer` — `bool('false') is True` bug); `record_review`/`create_item` `.strip()` on JSON numbers → str-coercion + None→400.
-  - `db/repository.py`: `get_trend_analysis` binds datetime object instead of isoformat string (space-vs-T separator boundary bug).
-  - `tracking/knowledge_graph.py`: `_ensure_graph_loaded` loaded-flag; missing concepts added on first contact; 60 s `sync_db_to_graph` resync; prints→logger.
-- Last known green: **236 passed** at commit time. Current `.pytest_cache` shows **239 node IDs**, `lastfailed: {}` (empty) — consistent with a later green full run; re-run to confirm before any v2 cycle claims.
+- Entry: `tracker_app/main.py`; web: `tracker_app/web/app.py` (Flask + SPA catch-all), blueprint `api_bp` in `web/api.py` (**727 lines**, confirmed), `realtime.py` (SocketIO), `auth.py`. Tracking: `tracking/loop.py` (track_loop, warm_up_all_pipelines, _maybe_trigger_quiz, _safe_run).
+- DB subsystem (`tracker_app/db/`, 4 source files + `__init__.py`):
+  - `db/models.py` (339 lines) - SQLAlchemy ORM, 13 models, lazy engine/session factories, `after_flush` logging.
+  - `db/repository.py` (308 lines) - DAO layer: `LearningRepository` (item CRUD, get_items_due, get_stats, get_learning_today, get_review_trend, search_items, get_items), `TrackingRepository` (log_session, log_intent_prediction, update_intent_accuracy, get_accuracy_stats, get_daily_summary, get_trend_analysis), `FeedbackRepository` (log_feedback_sample, get_all_samples, get_total_count). Static methods taking a Session; commits happen inside methods.
+  - `db/migrations.py` (280 lines) - no-Alembic idempotent runner: `ensure_base_schema` (create_all from current models, for fresh DBs), `MIGRATIONS` registry 001-010, `run_migrations` (guards ADD COLUMN via `_column_exists`), `print_status`, `__main__` with `--status`.
+  - `db/db_module.py` (26 lines) - `ensure_db_directory`, `init_db` (`Base.metadata.create_all(bind=get_engine())`), `init_all_databases`; `__main__` calls init.
+- Config: `tracker_app/config.py` - `DB_PATH = os.environ.get('FKT_TEST_DB', str(DATA_DIR / "sessions.db"))` where `DATA_DIR = tracker_app/data`. `PROJECT_ROOT` = `tracker_app/` dir.
+- Data: `tracker_app/data/` (sessions.db, knowledge_graph.pkl, session_state.json, backups, exports).
 
-## Architecture map (evidence: module inventory, route/def greps)
+## DB models (evidence: db/models.py)
 
-- Entry: `tracker_app/main.py` → `tracking/loop.py` (`track_loop`, `warm_up_all_pipelines`, `_maybe_trigger_quiz`, `_safe_run`). Web: `tracker_app/web/app.py` (Flask app + SPA catch-all), blueprint `api_bp` in `web/api.py` (**727 lines**, unmodified in tree), `realtime.py` (SocketIO), `auth.py`.
-- API surface — 26 routes (`api_bp`): `/items` GET/POST, `/items/backfill`, `/items/due`, `/items/<id>` GET/DELETE, `/concepts/<concept>` DELETE, `/intent/predictions` DELETE, `/tracking/history` DELETE, `/reviews` POST, `/stats`, `/stats/trend`, `/intent/recent`, `/intent/feedback` POST, `/graph/stats|gaps|drift/<concept>|concept/<concept>`, `/quiz/current`, `/quiz/answer` POST, `/ingest` POST, `/session/status|start|stop`, `/health`.
-- Tracking modules: `session_state.py` (JSON session gating), `privacy_filter.py` (sensitive text/window gates, redaction, keyword filter), `keyword_extractor.py` (YAKE+spacy), `intent_module.py` (rule-based predict; model loader), `cle_module.py`, `audio_module.py`, `webcam_module.py`, `ocr_module.py`, `activity_monitor.py` (session logging, daily summary, `get_trend_analysis`), `quiz_engine.py`, `knowledge_graph.py` (embed model, load/save, `add_concepts`, `sync_concept_to_graph`, `sync_db_to_graph`, drift, gaps).
-- Learning: `sm2_memory_model.py`, `memory_model.py`, `learning_tracker.py`, `concept_scheduler.py` (sensitive/PII gate), `concept_promotion.py`, `text_quality_validator.py`.
-- DB: `db/models.py` (SQLAlchemy: LearningItem, ReviewHistory, IntentPrediction, IntentAccuracy, TrackingSession, DailySummary, TrackedConcept, ConceptEncounter, SystemSession, MultiModalLog, MemoryDecay, Metric, FeedbackTrainingSample; lazy engine/session proxies), `db/repository.py` (LearningRepository, TrackingRepository, FeedbackRepository), `db/migrations.py` (idempotent, `run_migrations`), `db/db_module.py`.
-- Data: `tracker_app/data/` — `sessions.db`, `knowledge_graph.pkl`, `session_state.json`, backups `sessions.backup-*.db`, exports.
-- Frontend: `tracker_app/web/frontend/` (package.json present, TS/SPA).
-- Docs: `architecture/high_level/`, `architecture/low_level/` (LLD, ERD, DFD, sequence diagrams), `architecture/adr/` (ADR-001 SQLite, ADR-002 Heuristics-over-ML, ADR-003 Reinstate-RandomForest-Intent). `README.md` (working-tree version = audit-package description; original README only in git).
+13 models, class -> table:
+1. LearningItem -> learning_items
+2. ReviewHistory -> review_history
+3. IntentPrediction -> intent_predictions
+4. IntentAccuracy -> intent_accuracy
+5. TrackingSession -> tracking_sessions
+6. DailySummary -> daily_summary
+7. TrackedConcept -> tracked_concepts
+8. ConceptEncounter -> concept_encounters
+9. SystemSession -> sessions
+10. MultiModalLog -> multi_modal_logs
+11. MemoryDecay -> memory_decay
+12. Metric -> metrics
+13. FeedbackTrainingSample -> feedback_training_samples
 
-## Verification commands (evidence: `.github/workflows/ci.yml`, `requirements.txt`)
+Mechanics of models.py:
+- Lazy engine: `get_engine()` creates engine on first call (sqlite:///{DB_PATH}, check_same_thread=False, pool_pre_ping, pool_recycle=3600) and installs a connect event setting `PRAGMA foreign_keys=ON`, `journal_mode=WAL`, `synchronous=NORMAL`. `get_session_local()` creates sessionmaker (autocommit=False, autoflush=False). Module-level `SessionLocal` and `engine` are lazy proxies (`_LazySessionProxy`, `_LazyEngineProxy`). `get_db()` yields a session, closes but never commits.
+- `@event.listens_for(Session, "after_flush")` -> `receive_after_flush` logs `obj.__dict__` for session.new/dirty/deleted at INFO to logger `"DB_Models"` (no handler configured; relies on root propagation).
 
-- CI backend: `python -m tracker_app.db.migrations` then `pytest tracker_app/tests/ -v --tb=short`; Python 3.11; **reduced deps** (flask, flask-wtf, flask-cors, flask-socketio, python-dotenv, sqlalchemy, numpy, networkx, scikit-learn, spacy, yake, pytest + `python -m spacy download en_core_web_sm`). Heavy runtime deps (tesseract/opencv/mediapipe/librosa/psutil/pynput) are absent on CI — modules must degrade gracefully.
-- Local: `venv\Scripts\python.exe -m pytest tracker_app/tests -q` (venv is CPython 3.13; full `requirements.txt` includes heavy deps + pywin32 on Windows).
-- CI frontend: `npm ci`; `npx tsc --noEmit`; `npm run build` in `tracker_app/web/frontend`.
+## Primary consumers of db.models (evidence: grep across tracker_app/)
+
+Production code (file:line):
+- db/repository.py:10 (LearningItem, ReviewHistory, TrackingSession, IntentPrediction, IntentAccuracy, FeedbackTrainingSample, TrackedConcept)
+- db/db_module.py:5 (get_engine, Base, get_db)
+- db/migrations.py:23 (Base, inside ensure_base_schema)
+- learning/concept_scheduler.py:9 (TrackedConcept, ConceptEncounter, SessionLocal)
+- learning/learning_tracker.py:11 (LearningItem, ReviewHistory)
+- learning/concept_promotion.py:16 (SessionLocal, TrackedConcept, ConceptEncounter); :120 (LearningItem, import inside function)
+- tracking/knowledge_graph.py:158, 249, 261, 308 (SessionLocal, TrackedConcept); :371 (SessionLocal, ConceptEncounter) - all imports inside functions
+- tracking/activity_monitor.py:12 (SessionLocal, IntentPrediction, TrackingSession)
+- web/api.py:62 (SessionLocal, FeedbackTrainingSample); :91 (SessionLocal); :252 (SessionLocal, TrackedConcept); :273, :297 (multiple); :403 (SessionLocal, IntentPrediction); :505 (SessionLocal, TrackedConcept); :707 (SessionLocal) - all imports inside functions
+- scripts/train_models_from_logs.py:158 (SessionLocal, import inside function)
+
+Tests: tests/test_intent_toast_cooldown.py, test_graph_memory_sync.py, test_graph_drift_gaps.py, test_feedback_pipeline.py, test_concept_scheduler.py, test_new_system.py, test_concept_promotion.py, test_learning_tracker.py, test_api.py (all import Base + models directly).
+
+## Verification commands (evidence: .github/workflows/ci.yml, venv probe)
+
+- CI backend (ubuntu, Python 3.11, setup-python v5): `pip install flask flask-wtf flask-cors flask-socketio python-dotenv sqlalchemy numpy networkx scikit-learn spacy yake pytest`; `python -m spacy download en_core_web_sm`; `python -m tracker_app.db.migrations` (env PYTHONIOENCODING=utf-8); `pytest tracker_app/tests/ -v --tb=short`. Heavy runtime deps (tesseract/opencv/mediapipe/librosa/psutil/pynput) absent on CI - modules must degrade gracefully.
+- CI frontend (Node 20, working-directory tracker_app/web/frontend): `npm ci`; `npx tsc --noEmit`; `npm run build`.
 - No Python lint/type-check configured in CI.
+- Local venv: `C:\Users\hp\Desktop\FKT\venv\Scripts\python.exe` = **CPython 3.13.7**. Full suite: `venv\Scripts\python.exe -m pytest tracker_app/tests -q`. `db/__pycache__` contains both cpython-311 and cpython-313 pyc files (both interpreters have imported the db package).
 
 ## OpenSpec state
 
-- `openspec/config.yaml` exists (schema: spec-driven; githubCopilot.cloudAgent). `openspec/specs/` and `openspec/changes/` are **empty** (0 files; `changes/archive` empty). → No OpenSpec intent/change baseline currently; repo code + tests + ADRs are the intent evidence for v2.
+- `openspec/config.yaml` exists. `openspec/specs/` **exists but is empty** (0 files).
+- `openspec/changes/` has 3 active changes (each with .openspec.yaml + proposal.md + tasks.md, tasks all checked): `adopt-openspec-for-all-changes`, `interactive-function-dependency-map`, `plain-language-readme`. `changes/archive` empty.
+- Commit `bdc8194` requires an OpenSpec change for every modification; `e95c308` requires behavior-changing fixes be captured as OpenSpec changes. No main specs yet (specs/ empty) - deltas not synced.
 
 ## .audit state
 
-- Scaffold complete: `README.md`, `SCHEMA.md`, `context/`, `evidence/`, `findings/`, `patterns/`, `verification/` (each with README). **No findings recorded yet.** This file is the first context artifact.
+- `.audit/` is tracked. Files: `README.md`, `SCHEMA.md`, `context/README.md`, `context/recon.md` (this file), `evidence/README.md`, `findings/README.md`, `patterns/README.md`, `verification/README.md`. **No findings recorded yet.**
+- Untracked `fkt-audit-v3/` at repo root carries a newer audit-tooling snapshot (incl. `AGENTS.v3.md`) - awareness item, not repo state.
 
-## Migration status (in progress — per `MIGRATION.md`)
+## High-risk triage - DB subsystem (observations for hunters, NOT confirmed bugs)
 
-- Add step: v2 agents/skills/commands + `.audit/` + `AGENTS.v2.md` — copied (untracked) but not committed.
-- Replace step: `AGENTS.md` merge from `AGENTS.v2.md` — **not done** (AGENTS.md untouched).
-- Retire step: `.opencode/agents/adversarial-debugger.md` after `/audit` verified — **not done**.
-- First run step: start with narrow scope, inspect `recon.md` + first candidate records, then repository-wide.
-- Note: tracked `README.md` already overwritten with the audit-package description (uncommitted); original content preserved in git history.
-
-## High-risk subsystem triage for v2 (grounded in v1 findings)
-
-1. `web/api.py` — 26-route contract surface; v1 bugs clustered here (bool parsing, None/crash guards, date boundary). Contract + logic focus.
-2. `tracking/knowledge_graph.py` — process-cached graph + 60 s periodic resync; cross-process staleness with DB; drift/gap math.
-3. `db/repository.py` + `db/models.py` — datetime/boundary handling (v1 `get_trend_analysis` pattern), lazy session lifecycle, schema-vs-models drift.
-4. `tracking/loop.py` + `quiz_engine.py` + `session_state.py` — cross-module state flow and quiz triggering.
-5. `db/migrations.py` — idempotency vs ORM models.
-6. Frontend TS ↔ `api.py` JSON contract mismatches (tsc/build only type-check frontend; no cross-contract check).
+1. Models <-> migrations drift, both directions:
+   - Migration 005 adds `last_review_date TEXT` to `learning_items`, but the `LearningItem` ORM model does **not** declare it. Code only touches it defensively: `learning_tracker._row_to_dict` uses `getattr(row, 'last_review_date', None)` (always None through the ORM); `sm2_memory_model.SM2Item.last_review_date` is a plain non-ORM attribute. The DB column exists but is neither mapped nor read/written via the ORM. Observation: orphan column + defensive reads that silently return None.
+   - Only 005 shows model-less columns today; conversely any future model column without a migration won't exist on legacy DBs (`create_all` never ALTERs). `ensure_base_schema` runs create_all before migrations, and ADD COLUMN is guarded by `_column_exists`, so ordering is safe for current set.
+2. Lazy engine, eager config: `get_engine()` re-imports `tracker_app.config` to "re-read" `DB_PATH`, but config.py evaluates `DB_PATH` at module import time (line 32) and Python caches modules - so the re-read returns the same value if `tracker_app.config` was imported first. models.py line 13 imports config at module level, so importing models eagerly pins DB_PATH. The engine is lazy; the config value is not. Tests must set `FKT_TEST_DB` before any `tracker_app.config` import. db_module.py and migrations.py also read DB_PATH at module level. Observation: lazy-engine docstring (lines 18-23) overstates the guarantee.
+3. after_flush logger: fires for every Session in every process (incl. tests), logs `obj.__dict__` (includes `_sa_instance_state`) at INFO for new/dirty/deleted, including sensitive fields (window_title, context_snippet, question/answer). Logger "DB_Models" has no handler. Observation: noise, PII-in-logs surface, per-flush cost on the ~5 s intent-prediction hot loop.
+4. `LearningItem.id` is a String PK with **no default** - id must be supplied by every creation path (web/api.py create_item, concept_promotion:120, quiz flows). No ORM-side generation; NULL/duplicate string ids fail at flush/commit. Observation: audit every creation site.
+5. Write-orphaned tables: grep for `Metric(`, `SystemSession(`, `DailySummary(`, `MultiModalLog(`, `MemoryDecay(` across all `*.py` finds **only** the class definitions in models.py - no construction sites in tracker_app/. They are only read/deleted: `/tracking/history` DELETE (web/api.py:291-319) deletes ConceptEncounter, TrackingSession, MultiModalLog, MemoryDecay, Metric, DailySummary, IntentPrediction, IntentAccuracy, FeedbackTrainingSample (keeps learning_items). Two session tables exist: `tracking_sessions` (written by activity_monitor) vs `sessions` (SystemSession, never written in tracker_app/). Observation: check whether writers live outside tracker_app/ (scripts/) or whether tables are dead weight.
+6. FK/cascade pattern: ReviewHistory.item_id FK -> learning_items.id (String PK, ondelete=CASCADE, passive_deletes=True, cascade delete-orphan); ConceptEncounter -> tracked_concepts same pattern. Engine sets `PRAGMA foreign_keys=ON` per connect; migrations.py also sets it on its raw connection. String PK vs Integer FK value matching is a SQLite-affinity nuance worth verifying on actual delete paths.
+7. Session lifecycle: `get_db()` never commits (callers must); repository methods commit internally; sessionmaker has `autoflush=False` - implicit-flush-before-query assumptions could surface ordering issues (e.g., add-then-query-due in the same session).
+8. Known-good boundary code (v1 fixes live here): `get_trend_analysis` binds datetime objects (comment explains space-vs-T string-compare bug); `get_review_trend` aggregates per-day from stored timestamps with quality >= 3 correctness threshold; `get_learning_today` uses start-of-day/now boundaries. These are the established patterns to compare new findings against.
+9. Concurrency: WAL + check_same_thread=False + pool_pre_ping; Flask + SocketIO threads share SessionLocal. No evidence of explicit locking around cross-process access (knowledge_graph resync is a known v1-stability area, not this cycle's scope).
 
 ## Uncertainties / open questions
 
-- Pytest cache shows 239 node IDs vs 236 at v1 commit — re-run full suite to establish current green baseline.
-- CI state on origin/main unknown (last upstream CI ran on `d914a67`; 4 local commits unpushed).
-- `Measure-Object -Line` undercounts lines in `api.py` (reported 622; actual 727 via `.Count`) — use `.Count` for line counting.
+- Full pytest suite not executed during this recon (read-only). `.pytest_cache` (239 node IDs, lastfailed {}) implies a later green run than the 236-passed baseline at v1 commit; confirm with `venv\Scripts\python.exe -m pytest tracker_app/tests -q`.
+- CI status of origin/main unknown (HEAD == origin/main; no run performed here).
+- Whether orphan tables (metrics, sessions, multi_modal_logs, daily_summary, memory_decay) are written by code outside tracker_app/ (grep covered tracker_app/ only).
+- Whether any path writes `last_review_date` via raw SQL (no evidence in tracker_app/).
+- `fkt-audit-v3/` (untracked) suggests a v3 tooling migration may be intended; not reflected in tracked repo state.
