@@ -86,6 +86,8 @@ FKT shows you a simple dashboard in your browser:
 - **Knowledge base** — every idea FKT has captured, searchable in one place.
 - **Add idea** — if you want, add your own items for FKT to track.
 
+Curious how all the pieces connect? See the [interactive map of every function](docs/dependency-map/index.html).
+
 ---
 
 ## Getting started
@@ -181,6 +183,23 @@ Your keyboard──► CLE estimation   ──►│        │                 
 ```
 
 Every 5 seconds, FKT's tracking loop runs one cycle. OCR runs every 20 s, audio every 15 s, webcam every 45 s. All pipelines are lazy-loaded and run asynchronously so the loop never blocks. The loop idles (no capture at all) whenever no study session is active.
+
+---
+
+## Interactive Function Dependency Map
+
+Want to see how the whole backend fits together? Open [docs/dependency-map/index.html](docs/dependency-map/index.html) in any browser (double-click the file — no server needed).
+
+- **Nodes** are functions and methods; **edges** are call dependencies between them.
+- **Click a node** to see what it calls and what calls it.
+- **Search** filters nodes by name or module; the **group checkboxes** show/hide whole subsystems (tracking, learning, db, web, tests, ...).
+- The graph is built by static AST analysis, so it is a close approximation of the real call structure, not a runtime trace.
+
+Agents and scripts can consume the raw machine-readable graph at [docs/dependency-map/data.json](docs/dependency-map/data.json) and regenerate it after any code change with:
+
+```bash
+python tools/generate_dependency_map.py
+```
 
 ---
 
