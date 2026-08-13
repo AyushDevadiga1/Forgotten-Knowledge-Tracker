@@ -58,7 +58,7 @@ class IntentValidator:
                     timestamp=datetime.utcnow(),
                     predicted_intent=predicted_intent,
                     confidence=confidence,
-                    context_keywords=json.dumps(features) if features else (context or ""),
+                    context_keywords=json.dumps(features) if features else "[]",
                     window_title=context or "",
                 )
                 TrackingRepository.log_intent_prediction(db, pred)

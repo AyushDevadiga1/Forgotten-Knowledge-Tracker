@@ -26,6 +26,11 @@ from tracker_app.web.app import app
 from tracker_app.db import models
 from tracker_app.db.models import Base, IntentPrediction, FeedbackTrainingSample
 from tracker_app.tracking.intent_module import predict_intent
+# Module-scope SessionLocal importer (activity_monitor.py does
+# `from tracker_app.db.models import SessionLocal`): its captured value is
+# whatever is bound at first import, so the harness must rebind it per-test
+# (same convention as test_api.py's cs_mod.SessionLocal patch).
+from tracker_app.tracking import activity_monitor as am_mod
 
 
 class FeedbackPipelineBase(unittest.TestCase):
@@ -39,6 +44,9 @@ class FeedbackPipelineBase(unittest.TestCase):
         models.engine = self.test_engine
         models.SessionLocal = self.TestingSessionLocal
 
+        self._orig_am_session = am_mod.SessionLocal
+        am_mod.SessionLocal = self.TestingSessionLocal
+
         Base.metadata.create_all(bind=self.test_engine)
 
         app.config['TESTING'] = True
@@ -49,6 +57,7 @@ class FeedbackPipelineBase(unittest.TestCase):
         Base.metadata.drop_all(bind=self.test_engine)
         models.engine = self.orig_engine
         models.SessionLocal = self.orig_session
+        am_mod.SessionLocal = self._orig_am_session
 
     def _add_prediction(self, **kw):
         with self.TestingSessionLocal() as db:
@@ -143,6 +152,93 @@ class TestFeedbackRoundTrip(FeedbackPipelineBase):
         self.assertEqual(len(y_fb), 0)
 
 
+class TestFeatureVectorJsonContract(FeedbackPipelineBase):
+    """FKT-F-005: context_keywords / feature_vector must always be valid JSON.
+
+    The producer must never store a raw window title in the JSON-documented
+    context_keywords column, and the bridge must never forward malformed
+    values into the training pipeline.
+    """
+
+    def test_log_prediction_without_features_stores_empty_vector_json(self):
+        from tracker_app.tracking.activity_monitor import IntentValidator
+        validator = IntentValidator()
+        validator.log_prediction('idle', 0.5, context='Some Window Title',
+                                 features=None)
+
+        with self.TestingSessionLocal() as db:
+            pred = db.query(IntentPrediction).first()
+            self.assertIsNotNone(pred)
+            self.assertEqual(pred.context_keywords, '[]')   # valid JSON, not a title
+            self.assertEqual(json.loads(pred.context_keywords), [])
+            # The title is kept in its own column, not the JSON one.
+            self.assertEqual(pred.window_title, 'Some Window Title')
+
+    def test_feedback_on_non_json_vector_records_correction_but_no_sample(self):
+        # Legacy rows stored the window title in context_keywords (not JSON).
+        pid = self._add_prediction(
+            context_keywords="FKT - Antigravity IDE", predicted_intent='idle',
+            window_title="FKT - Antigravity IDE")
+
+        resp = self._submit_feedback(pid, actual_intent='Coding')
+        self.assertEqual(resp.status_code, 200)
+
+        with self.TestingSessionLocal() as db:
+            pred = db.query(IntentPrediction).filter(IntentPrediction.id == pid).first()
+            self.assertEqual(pred.user_feedback, 0)        # feedback still recorded
+            self.assertEqual(pred.actual_intent, 'Coding')
+            self.assertIsNotNone(pred.feedback_timestamp)
+            self.assertIsNone(db.query(FeedbackTrainingSample).first())  # no garbage sample
+
+    def test_feedback_on_json_non_list_vector_skips_sample(self):
+        # JSON that parses but is not a list (live DB had scalar '3') must not
+        # create a training sample either.
+        from tracker_app.web.api import FeedbackService
+        pid = self._add_prediction(context_keywords='3', predicted_intent='idle')
+
+        FeedbackService.record_feedback(pid, is_correct=False, actual_intent='Coding')
+
+        with self.TestingSessionLocal() as db:
+            pred = db.query(IntentPrediction).filter(IntentPrediction.id == pid).first()
+            self.assertEqual(pred.user_feedback, 0)
+            self.assertIsNone(db.query(FeedbackTrainingSample).first())
+
+    def test_feedback_on_wrong_length_vector_skips_sample(self):
+        # '[]' parses as JSON but is not a 6-element vector — no sample.
+        from tracker_app.web.api import FeedbackService
+        pid = self._add_prediction(context_keywords='[]', predicted_intent='idle')
+
+        FeedbackService.record_feedback(pid, is_correct=False, actual_intent='Coding')
+
+        with self.TestingSessionLocal() as db:
+            self.assertIsNone(db.query(FeedbackTrainingSample).first())
+
+    def test_log_prediction_with_features_round_trips_to_training_sample(self):
+        # Positive control: a real 6-vector from the producer still flows into
+        # a training sample through the bridge.
+        from tracker_app.tracking.activity_monitor import IntentValidator
+        from tracker_app.web.api import FeedbackService
+        feats = [3.0, 0.0, 45.0, 2.0, 0.4, 0.7]
+        validator = IntentValidator()
+        validator.log_prediction('studying', 0.9, context='FKT - Antigravity IDE',
+                                 features=feats)
+
+        with self.TestingSessionLocal() as db:
+            pred = db.query(IntentPrediction).first()
+            self.assertIsNotNone(pred)
+            self.assertEqual(json.loads(pred.context_keywords), feats)
+            pid = pred.id
+
+        FeedbackService.record_feedback(pid, is_correct=False, actual_intent='studying')
+
+        with self.TestingSessionLocal() as db:
+            sample = db.query(FeedbackTrainingSample).first()
+            self.assertIsNotNone(sample)
+            self.assertEqual(json.loads(sample.feature_vector), feats)
+            self.assertEqual(sample.actual_label, 'studying')
+            self.assertEqual(sample.window_title, 'FKT - Antigravity IDE')
+
+
 class TestStrictBooleanFeedback(FeedbackPipelineBase):
     """The API must not treat the string "false" as True.
 
@@ -152,7 +248,9 @@ class TestStrictBooleanFeedback(FeedbackPipelineBase):
     """
 
     def test_string_false_is_treated_as_false(self):
-        pid = self._add_prediction(context_keywords='[]')
+        # Sample creation requires a valid 6-element feature vector (FKT-F-005),
+        # so the fixture carries one instead of the old '[]' placeholder.
+        pid = self._add_prediction(context_keywords=json.dumps([2.0, 1.0, 60.0, 8.0, 0.6, 0.5]))
         resp = self.client.post('/api/v1/intent/feedback',
             data=json.dumps({'prediction_id': pid, 'is_correct': "false",
                              'actual_intent': 'idle'}),

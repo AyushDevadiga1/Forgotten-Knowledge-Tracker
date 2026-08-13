@@ -71,15 +71,35 @@ class FeedbackService:
 
                 if not is_correct and actual_intent:
                     pred.actual_intent = actual_intent
-                    sample = FeedbackTrainingSample(
-                        timestamp=now,
-                        feature_vector=pred.context_keywords or "[]",
-                        predicted_label=pred.predicted_intent or "unknown",
-                        actual_label=actual_intent,
-                        confidence=pred.confidence or 0.0,
-                        window_title=pred.window_title or "",
-                    )
-                    FeedbackRepository.log_feedback_sample(db, sample)
+
+                    # FKT-F-005: only persist a training sample when the stored
+                    # feature vector is valid JSON AND a 6-element list. Legacy
+                    # rows (e.g. window titles stored in context_keywords) must
+                    # never be forwarded into the training pipeline; the
+                    # correction itself is still recorded above.
+                    valid_vector = False
+                    try:
+                        parsed = json.loads(pred.context_keywords or "[]")
+                        valid_vector = isinstance(parsed, list) and len(parsed) == 6
+                    except (json.JSONDecodeError, TypeError):
+                        valid_vector = False
+
+                    if valid_vector:
+                        sample = FeedbackTrainingSample(
+                            timestamp=now,
+                            feature_vector=pred.context_keywords or "[]",
+                            predicted_label=pred.predicted_intent or "unknown",
+                            actual_label=actual_intent,
+                            confidence=pred.confidence or 0.0,
+                            window_title=pred.window_title or "",
+                        )
+                        FeedbackRepository.log_feedback_sample(db, sample)
+                    else:
+                        logger.warning(
+                            f"record_feedback: skipping FeedbackTrainingSample for prediction "
+                            f"{prediction_id} — context_keywords is not a JSON 6-element "
+                            f"feature vector; user feedback still recorded"
+                        )
 
                 intent = pred.predicted_intent or "unknown"
                 TrackingRepository.update_intent_accuracy(db, intent, is_correct)
