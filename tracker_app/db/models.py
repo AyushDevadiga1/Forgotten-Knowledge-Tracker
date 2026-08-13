@@ -10,7 +10,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship, Session
 import logging
 
-from tracker_app.config import DB_PATH
+from tracker_app.config import get_db_path
 
 Base = declarative_base()
 
@@ -30,10 +30,12 @@ def get_engine():
     """Return the shared SQLAlchemy engine, creating it on first call."""
     global _engine
     if _engine is None:
-        from tracker_app.config import DB_PATH  # re-read here so tests that
-        # set FKT_TEST_DB before importing see the updated value
+        # Re-read the DB path at call time: get_db_path() queries the
+        # environment fresh, so FKT_TEST_DB set after this module was
+        # imported still selects the right database. (config.DB_PATH is
+        # frozen at import time and would be a no-op here.)
         _engine = create_engine(
-            f"sqlite:///{DB_PATH}",
+            f"sqlite:///{get_db_path()}",
             connect_args={"check_same_thread": False},
             echo=False,
             pool_pre_ping=True,
@@ -67,6 +69,15 @@ def get_session_local():
 class _LazySessionProxy:
     """Proxy that forwards all calls to the lazily-created SessionLocal."""
     def __call__(self, *args, **kwargs):
+        # Re-resolve the current module attribute: module-scope importers
+        # (e.g. `from tracker_app.db.models import SessionLocal`) capture this
+        # proxy, so if models.SessionLocal was rebound afterwards (tests
+        # patching models.SessionLocal), delegate to the rebound object
+        # instead of silently forwarding to the global _SessionLocal.
+        import tracker_app.db.models as models_mod
+        current = getattr(models_mod, "SessionLocal", self)
+        if current is not self:
+            return current(*args, **kwargs)
         return get_session_local()(*args, **kwargs)
 
     def __getattr__(self, name):
@@ -81,6 +92,14 @@ SessionLocal = _LazySessionProxy()
 # It resolves lazily via the property-like function below.
 class _LazyEngineProxy:
     def __getattr__(self, name):
+        # Re-resolve the current module attribute: a proxy captured at import
+        # time (e.g. `from tracker_app.db.models import engine`) must honor a
+        # later rebinding of models.engine instead of always resolving the
+        # default get_engine().
+        import tracker_app.db.models as models_mod
+        current = getattr(models_mod, "engine", self)
+        if current is not self:
+            return getattr(current, name)
         return getattr(get_engine(), name)
 
     def __repr__(self):

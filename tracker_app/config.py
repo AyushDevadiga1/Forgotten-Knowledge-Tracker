@@ -29,7 +29,17 @@ def setup_directories():
 # ----------------------------
 # Database
 # ----------------------------
-DB_PATH = os.environ.get('FKT_TEST_DB', str(DATA_DIR / "sessions.db"))
+def get_db_path() -> str:
+    """Resolve the SQLite DB path at call time.
+
+    Reads FKT_TEST_DB from the environment on every call (falling back to
+    DATA_DIR / "sessions.db"), so a value set AFTER this module was imported
+    is still honored by callers. DB_PATH below stays frozen at import time
+    for backward compatibility.
+    """
+    return os.environ.get('FKT_TEST_DB', str(DATA_DIR / "sessions.db"))
+
+DB_PATH = get_db_path()
 
 # ----------------------------
 # Tesseract OCR
