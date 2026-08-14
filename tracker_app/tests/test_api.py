@@ -397,5 +397,63 @@ class TestAPIQuizAnswerStrictBoolean(TestAPIBase):
         self.assertEqual(resp.status_code, 400)
 
 
+
+class TestAPIInputValidationNoCrash(TestAPIBase):
+    """Runtime-monitoring regression (FKT-R-001/002/003/004): malformed JSON
+    bodies, non-object JSON bodies, bad enums, and non-integer query params
+    must return 400 -- never an unhandled 500.
+
+    Before the fix: data.get / 'x' in data on a JSON string/array crashed
+    with AttributeError/TypeError, LearningItemType('nope') raised inside the
+    try block, and int('abc') fell into the catch-all -> 500.
+    """
+
+    def _post_raw_json(self, path, raw):
+        return self.client.post(path, data=raw, content_type='application/json')
+
+    def test_items_string_body_is_400(self):
+        resp = self._post_raw_json('/api/v1/items', '"solo string"')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_items_array_body_is_400(self):
+        resp = self._post_raw_json('/api/v1/items', '[1,2,3]')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_reviews_string_body_is_400(self):
+        resp = self._post_raw_json('/api/v1/reviews', '"solo string"')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_quiz_answer_number_body_is_400(self):
+        resp = self._post_raw_json('/api/v1/quiz/answer', '123')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_ingest_number_body_is_400(self):
+        resp = self._post_raw_json('/api/v1/ingest', '123')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_intent_feedback_number_body_is_400(self):
+        resp = self._post_raw_json('/api/v1/intent/feedback', '123')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_items_invalid_item_type_is_400(self):
+        resp = self._post_raw_json('/api/v1/items',
+            '{"question": "q", "answer": "a", "item_type": "nope"}')
+        self.assertEqual(resp.status_code, 400)
+        self.assertIn('item_type', json.loads(resp.data)['error'])
+
+    def test_intent_feedback_noninteger_prediction_id_is_400(self):
+        resp = self._post_raw_json('/api/v1/intent/feedback',
+            '{"prediction_id": "abc", "is_correct": true}')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_graph_gaps_noninteger_limit_is_400(self):
+        resp = self.client.get('/api/v1/graph/gaps?limit=abc')
+        self.assertEqual(resp.status_code, 400)
+
+    def test_graph_gaps_out_of_range_limit_is_400(self):
+        resp = self.client.get('/api/v1/graph/gaps?limit=999')
+        self.assertEqual(resp.status_code, 400)
+
+
 if __name__ == '__main__':
     unittest.main()

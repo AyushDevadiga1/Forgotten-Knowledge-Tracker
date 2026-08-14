@@ -174,6 +174,8 @@ def create_item():
     data = request.get_json(silent=True)
     if not data:
         return jsonify({'success': False, 'error': 'Request body must be valid JSON'}), 400
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'error': 'Request body must be a JSON object'}), 400
 
     question = data.get('question', '') or ''
     answer   = data.get('answer', '') or ''
@@ -195,12 +197,18 @@ def create_item():
     if difficulty not in {'easy', 'medium', 'hard'}:
         return jsonify({'success': False, 'error': 'difficulty must be easy/medium/hard'}), 400
 
+    item_type = data.get('item_type', 'concept')
+    valid_item_types = {t.value for t in LearningItemType}
+    if item_type not in valid_item_types:
+        return jsonify({'success': False, 'error': 'item_type must be one of: '
+                        + ', '.join(sorted(valid_item_types))}), 400
+
     try:
         item_id = get_tracker().add_learning_item(
             question=question,
             answer=answer,
             difficulty=DifficultyLevel(difficulty).value,
-            item_type=LearningItemType(data.get('item_type', 'concept')).value,
+            item_type=LearningItemType(item_type).value,
             tags=data.get('tags', []),
         )
         return jsonify({'success': True, 'data': {'id': item_id}}), 201
@@ -344,6 +352,8 @@ def record_review():
     data = request.get_json(silent=True)
     if not data:
         return jsonify({'success': False, 'error': 'Request body must be valid JSON'}), 400
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'error': 'Request body must be a JSON object'}), 400
 
     item_id = data.get('item_id', '')
     if item_id is None:
@@ -476,7 +486,13 @@ def send_intent_feedback():
       2. Triggers background retraining after every 50 corrections
     """
     data = request.get_json(silent=True)
-    if not data or 'prediction_id' not in data or 'is_correct' not in data:
+    if not data:
+        return jsonify({'success': False,
+                        'error': 'Request body must be valid JSON'}), 400
+    if not isinstance(data, dict):
+        return jsonify({'success': False,
+                        'error': 'Request body must be a JSON object'}), 400
+    if 'prediction_id' not in data or 'is_correct' not in data:
         return jsonify({'success': False,
                         'error': 'prediction_id and is_correct are required'}), 400
 
@@ -490,8 +506,14 @@ def send_intent_feedback():
                         'error': 'actual_intent required when is_correct=false'}), 400
 
     try:
+        prediction_id = int(data['prediction_id'])
+    except (ValueError, TypeError):
+        return jsonify({'success': False,
+                        'error': 'prediction_id must be an integer'}), 400
+
+    try:
         FeedbackService.record_feedback(
-            prediction_id=int(data['prediction_id']),
+            prediction_id=prediction_id,
             is_correct=is_correct,
             actual_intent=data.get('actual_intent'),
         )
@@ -519,7 +541,12 @@ def get_graph_stats():
 def get_knowledge_gaps():
     try:
         from tracker_app.tracking.knowledge_graph import find_knowledge_gaps
-        limit = int(request.args.get('limit', 5))
+        try:
+            limit = int(request.args.get('limit', 5))
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': 'limit must be an integer'}), 400
+        if not (1 <= limit <= 50):
+            return jsonify({'success': False, 'error': 'limit must be 1\u201350'}), 400
         gaps  = find_knowledge_gaps(top_k=limit)
         if gaps:
             from tracker_app.db.models import SessionLocal, TrackedConcept
@@ -585,7 +612,13 @@ def get_current_quiz():
 @api_bp.route('/quiz/answer', methods=['POST'])
 def submit_quiz_answer():
     data = request.get_json(silent=True)
-    if not data or 'concept' not in data or 'was_correct' not in data:
+    if not data:
+        return jsonify({'success': False,
+                        'error': 'Request body must be valid JSON'}), 400
+    if not isinstance(data, dict):
+        return jsonify({'success': False,
+                        'error': 'Request body must be a JSON object'}), 400
+    if 'concept' not in data or 'was_correct' not in data:
         return jsonify({'success': False,
                         'error': 'concept and was_correct are required'}), 400
     was_correct = _parse_bool_flag(data['was_correct'])
@@ -612,7 +645,11 @@ def browser_ingest():
     Primary OCR alternative for web-based study sessions.
     """
     data = request.get_json(silent=True)
-    if not data or 'text' not in data:
+    if not data:
+        return jsonify({'success': False, 'error': 'Request body must be valid JSON'}), 400
+    if not isinstance(data, dict):
+        return jsonify({'success': False, 'error': 'Request body must be a JSON object'}), 400
+    if 'text' not in data:
         return jsonify({'success': False, 'error': 'text field required'}), 400
 
     text  = str(data.get('text', ''))[:10000]
