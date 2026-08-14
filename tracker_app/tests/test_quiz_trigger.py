@@ -65,6 +65,15 @@ class TestQuizTrigger(unittest.TestCase):
             minutes=quiz_engine.QUIZ_COOLDOWN_MINUTES + 1)
         self.assertTrue(quiz_engine.should_show_quiz(12, False, 0.0))
 
+    def test_reset_quiz_state_clears_cooldown(self):
+        # H-1: a stale cooldown timer from a previous track_loop() run in
+        # the same process must not censor the first quiz of a new session.
+        quiz_engine._last_quiz_time = datetime.utcnow()
+        self.assertFalse(quiz_engine.should_show_quiz(12, False, 0.0))
+        quiz_engine.reset_quiz_state()
+        self.assertIsNone(quiz_engine._last_quiz_time)
+        self.assertTrue(quiz_engine.should_show_quiz(12, False, 0.0))
+
     def test_idle_threshold_is_12_cycles(self):
         # Regression guard: 3 cycles (~15 s) was far too aggressive.
         self.assertEqual(quiz_engine.IDLE_CYCLES_REQUIRED, 12)

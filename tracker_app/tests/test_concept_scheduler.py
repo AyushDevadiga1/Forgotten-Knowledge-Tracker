@@ -338,6 +338,14 @@ def test_add_concept_default_source_is_ocr(db, no_graph_sync):
     assert rows[0].source == "ocr"
 
 
+def test_get_scheduler_is_singleton():
+    # H-2: record_quiz_result must reuse one shared scheduler instead of
+    # spawning a throw-away ConceptScheduler on every call.
+    from tracker_app.learning.concept_scheduler import get_scheduler
+    assert get_scheduler() is get_scheduler()
+    assert isinstance(get_scheduler(), ConceptScheduler)
+
+
 if __name__ == '__main__':
     import sys
     sys.exit(pytest.main([__file__, '-v']))

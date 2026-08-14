@@ -23,6 +23,18 @@ ATTENTION_PRESENT_MIN = 35
 _last_quiz_time: Optional[datetime] = None
 
 
+def reset_quiz_state():
+    """Clear the quiz cooldown timer (H-1).
+
+    Called when a fresh tracking session starts so a `_last_quiz_time` left
+    over from a previous track_loop() run cannot censor the first quiz of
+    the new session for the full QUIZ_COOLDOWN_MINUTES. Also used by tests
+    for state isolation.
+    """
+    global _last_quiz_time
+    _last_quiz_time = None
+
+
 # ─── Trigger logic ────────────────────────────────────────────────────────────
 
 def should_show_quiz(
@@ -156,8 +168,8 @@ def record_quiz_result(concept: str, was_correct: bool):
     """
     quality = 4 if was_correct else 0
     try:
-        from tracker_app.learning.concept_scheduler import ConceptScheduler
-        scheduler = ConceptScheduler()
+        from tracker_app.learning.concept_scheduler import get_scheduler
+        scheduler = get_scheduler()
         scheduler.schedule_next_review(concept, quality=quality)
         logger.info(
             f"Quiz: '{concept}' {'correct' if was_correct else 'wrong'} "

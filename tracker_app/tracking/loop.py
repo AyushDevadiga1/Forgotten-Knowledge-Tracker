@@ -272,6 +272,15 @@ def track_loop(
 
     init_all_databases()
 
+    # H-1: a previous track_loop() run in the same process (test runs,
+    # signal-based reload) leaves stale state behind -- accumulated idle
+    # cycles could fire a quiz on the very first cycle of a fresh run, and
+    # a leftover cooldown timer could censor the first quiz of the session.
+    global _idle_cycles
+    _idle_cycles = 0
+    from tracker_app.tracking.quiz_engine import reset_quiz_state
+    reset_quiz_state()
+
     # ── Create session-scoped singletons here, not at module import ───────────
     monitor = ActivityMonitor()
     cle     = get_cle()

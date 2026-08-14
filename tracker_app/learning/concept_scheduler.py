@@ -299,6 +299,17 @@ class ConceptScheduler:
             ]
 
 
+_default_scheduler: Optional["ConceptScheduler"] = None
+
+
+def get_scheduler() -> "ConceptScheduler":
+    """Return the shared module-level ConceptScheduler singleton (H-2)."""
+    global _default_scheduler
+    if _default_scheduler is None:
+        _default_scheduler = ConceptScheduler()
+    return _default_scheduler
+
+
 if __name__ == "__main__":
     from tracker_app.db.db_module import init_all_databases
     init_all_databases()
