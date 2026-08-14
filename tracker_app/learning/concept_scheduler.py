@@ -191,6 +191,9 @@ class ConceptScheduler:
             tracked.memory_strength = new_ease
             tracked.repetitions     = repetitions
             tracked.next_review     = datetime.utcnow() + timedelta(days=new_interval)
+            # Recalibration needs the decay window since the PREVIOUS
+            # reinforcement, so snapshot last_seen before this review resets it.
+            prev_last_seen = tracked.last_seen
             # A review is a reinforcement event: reset the retention clock so
             # the AWFC memory score (and the graph's live copy) reflect the
             # fresh recall rather than the last OCR encounter.
@@ -215,7 +218,7 @@ class ConceptScheduler:
                         tracked.lambda_personalised or DEFAULT_LAMBDA,
                         actual_success_rate=correct_rate,
                         n_reviews=review_count,
-                        first_seen=tracked.first_seen,
+                        last_seen=prev_last_seen,
                     )
                 except Exception as e:
                     logger.debug(f"╬╗ recalibration skipped: {e}")

@@ -131,7 +131,7 @@ def recalibrate_lambda(
     current_lambda: float,
     actual_success_rate: float,
     n_reviews: int,
-    first_seen: Optional[datetime] = None,
+    last_seen: Optional[datetime] = None,
 ) -> float:
     """
     Adjust personalised λ based on actual vs. predicted recall.
@@ -145,10 +145,14 @@ def recalibrate_lambda(
     if n_reviews < 5:
         return current_lambda
 
-    if first_seen is None:
-        first_seen = datetime.utcnow() - timedelta(days=7)
+    if last_seen is None:
+        last_seen = datetime.utcnow() - timedelta(days=7)
 
-    t_hours = (datetime.utcnow() - first_seen).total_seconds() / 3600.0
+    # Decay window = time since the LAST review/encounter (last_seen), not
+    # the concept's total age. first_seen makes predicted retention ~0 for
+    # any long-lived concept (exp(-0.1 * 2000) ~= 0), so the adjustment
+    # stops responding to actual recall and drives lambda to a bound (H-3).
+    t_hours = (datetime.utcnow() - last_seen).total_seconds() / 3600.0
     predicted_rate = math.exp(-current_lambda * t_hours) if t_hours > 0 else 1.0
 
     # Nudge λ toward the right decay rate

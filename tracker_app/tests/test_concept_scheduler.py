@@ -193,15 +193,16 @@ def test_recalibration_waits_for_five_reviews(db, scheduler, no_graph_sync):
 def test_recalibration_uses_cumulative_success_rate(db, scheduler, no_graph_sync):
     # M-6: at the 5th review, lambda must be recalibrated from the CUMULATIVE
     # success rate (4/5), not the last review's single rating (quality 2 -> 0.4).
+    # H-3: the decay window is time since the LAST review, not the concept's
+    # total age (first_seen) -- an old concept must not have its adjustment
+    # decoupled from actual recall and driven to a bound.
     from datetime import datetime, timedelta
-    import math
 
-    first_seen = datetime.utcnow() - timedelta(days=2)
     with db() as session:
         row = session.query(TrackedConcept).filter(
             TrackedConcept.concept == "backpropagation"
         ).first()
-        row.first_seen = first_seen
+        row.first_seen = datetime.utcnow() - timedelta(days=83)  # long-lived
         row.lambda_personalised = 0.1
         session.commit()
 
@@ -210,19 +211,37 @@ def test_recalibration_uses_cumulative_success_rate(db, scheduler, no_graph_sync
     scheduler.schedule_next_review("backpropagation", quality=2)
 
     row = _row(db)
-    t_hours = (datetime.utcnow() - row.first_seen).total_seconds() / 3600.0
-    predicted = math.exp(-0.1 * t_hours)  # predicted at recalibration time (λ was 0.1)
-
     # Recompute with the corrected inputs to prove what was passed: n=5,
     # actual_success_rate = correct_count/review_count = 4/5, NOT quality/5.
     assert row.review_count == 5
     assert row.correct_count == 4
-    expected = 0.1 + 0.05 * (predicted - 0.8)
+    # The reviews ran back-to-back, so the decay window since the previous
+    # review is ~0 h and predicted retention ~= 1.0 -- NOT exp(-0.1 * 2000)
+    # from the 83-day-old first_seen, which would stop tracking recall.
+    expected = 0.1 + 0.05 * (1.0 - 0.8)
     assert abs(row.lambda_personalised - expected) < 1e-6
-    # And the old buggy value (quality/5 = 0.4) would have produced a
-    # measurably different lambda than (4/5 = 0.8).
-    buggy = 0.1 + 0.05 * (predicted - 0.4)
-    assert abs(row.lambda_personalised - buggy) > 1e-3
+
+
+def test_recalibrate_lambda_decay_window_is_last_seen():
+    # H-3: predicted retention must be computed over the time since the last
+    # review (last_seen), so the adjustment responds to the user's actual
+    # recall instead of being ~0 for every long-lived concept.
+    from datetime import datetime, timedelta
+    import math
+    from tracker_app.learning.memory_model import recalibrate_lambda
+
+    last_seen = datetime.utcnow() - timedelta(hours=48)
+    result = recalibrate_lambda(
+        "backpropagation",
+        0.1,
+        actual_success_rate=0.8,
+        n_reviews=5,
+        last_seen=last_seen,
+    )
+    predicted = math.exp(-0.1 * 48.0)
+    expected = 0.1 + 0.05 * (predicted - 0.8)
+    assert abs(result - expected) < 1e-9
+    assert expected < 0.1  # good recall over the window -> decay slows
 
 
 def test_reexposure_auto_promotes_to_deck_at_threshold(db, monkeypatch, no_graph_sync):
