@@ -159,3 +159,31 @@ def test_schedule_next_review_bounces_memory_score(isolated_graph_path, clean_gr
 if __name__ == '__main__':
     import sys
     sys.exit(pytest.main([__file__, '-v']))
+
+
+def test_get_graph_stats_is_json_safe_with_numpy_values(clean_graph, isolated_graph_path):
+    """FKT-R-005: cosine-similarity edge weights are stored as np.float32, and
+    get_graph_stats fed them to jsonify untouched -> 'Object of type float32 is
+    not JSON serializable' -> the dashboard graph page 500'd. The API boundary
+    must coerce every numeric to a plain float."""
+    import json
+    import numpy as np
+    import time as _time
+    with kg._graph_lock:
+        kg.knowledge_graph.clear()
+        kg.knowledge_graph.add_node("alpha", memory_score=np.float32(0.5))
+        kg.knowledge_graph.add_node("beta",  memory_score=np.float32(0.9))
+        kg.knowledge_graph.add_edge("alpha", "beta", weight=np.float32(0.8918))
+        kg._loaded = True
+        kg._last_db_sync = _time.monotonic()
+
+    stats = kg.get_graph_stats()
+
+    assert isinstance(stats['avg_memory_score'], float)
+    assert isinstance(stats['density'], float)
+    for n in stats['nodes']:
+        assert isinstance(n['memory_score'], float)
+    for e in stats['edges']:
+        assert isinstance(e[2], float)
+    json.dumps(stats)  # must not raise TypeError
+

@@ -553,7 +553,7 @@ def get_graph_stats() -> dict:
                 knowledge_graph.nodes[n].get('memory_score', 0.5)
                 for n in string_nodes
             ]
-            avg_memory = sum(scores) / len(scores)
+            avg_memory = float(sum(scores)) / len(scores)
 
         top_concepts = sorted(
             (n for n in string_nodes),
@@ -567,7 +567,7 @@ def get_graph_stats() -> dict:
         top_set = set(top_concepts)
         edges = sorted(
             (
-                [u, v, round(data.get('weight', 1.0), 4)]
+                [u, v, round(float(data.get('weight', 1.0)), 4)]
                 for u, v, data in knowledge_graph.edges(data=True)
                 if u in top_set and v in top_set
             ),
@@ -580,7 +580,7 @@ def get_graph_stats() -> dict:
         nodes = [
             {
                 'concept': n,
-                'memory_score': knowledge_graph.nodes[n].get('memory_score', 0.5),
+                'memory_score': float(knowledge_graph.nodes[n].get('memory_score', 0.5)),
             }
             for n in top_concepts
         ]
