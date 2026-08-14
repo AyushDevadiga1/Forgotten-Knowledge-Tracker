@@ -34,8 +34,14 @@ frontend_dist = os.path.join(os.path.dirname(__file__), 'frontend', 'dist')
 app = Flask(__name__, static_folder=frontend_dist)
 app.logger = logging.getLogger("Dashboard")
 
-# Security Configuration
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+_secret = os.getenv('SECRET_KEY')
+if not _secret:
+    if os.getenv('DEBUG', 'false').lower() == 'true':
+        _secret = 'dev-secret-key-change-in-production'
+        app.logger.warning("Using insecure development SECRET_KEY - set SECRET_KEY in .env")
+    else:
+        raise RuntimeError('SECRET_KEY must be set in production (set DEBUG=true or provide SECRET_KEY in .env)')
+app.config['SECRET_KEY'] = _secret
 app.config['WTF_CSRF_ENABLED'] = True
 app.config['WTF_CSRF_TIME_LIMIT'] = None  # No time limit for CSRF tokens
 

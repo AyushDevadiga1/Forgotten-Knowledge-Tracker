@@ -8,11 +8,14 @@ Usage:
 
 import os
 import functools
+import logging
 from flask import request, jsonify
 
 # Loaded from environment. If empty or not set, auth is disabled (dev mode).
 _API_KEY = os.getenv("API_KEY", "")
-_NO_AUTH = os.getenv("NO_AUTH", "true").lower() == "true"  # Default: no auth in dev
+_NO_AUTH = os.getenv("NO_AUTH", "false").lower() == "true"
+
+logger = logging.getLogger("Auth")
 
 
 def require_api_key(f):
@@ -48,6 +51,12 @@ def apply_auth_to_blueprint(bp):
     Apply the API key check as a before_request hook to an entire Blueprint.
     This avoids decorating each route individually.
     """
+    if _NO_AUTH:
+        logger.warning("API authentication is DISABLED (NO_AUTH=true). "
+                       "Set NO_AUTH=false and API_KEY to protect the API.")
+    elif not _API_KEY:
+        logger.warning("API authentication is DISABLED (API_KEY not set). "
+                       "Set API_KEY in .env to protect the API.")
     @bp.before_request
     def check_key():
         if _NO_AUTH or not _API_KEY:
