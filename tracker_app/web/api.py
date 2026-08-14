@@ -13,6 +13,10 @@ logger = logging.getLogger("API")
 
 api_bp = Blueprint('api', __name__, url_prefix='/api/v1')
 
+# C-2: only one background retraining subprocess may run at a time — two
+# concurrent writes to models/intent_classifier.pkl corrupt the pickle.
+_retrain_lock = threading.Lock()
+
 # ── Singleton tracker (fixes double-instantiation) ────────────────────────────
 _tracker: LearningTracker | None = None
 
@@ -113,11 +117,18 @@ class FeedbackService:
             with SessionLocal() as db:
                 count = FeedbackRepository.get_total_count(db)
             if count > 0 and count % 50 == 0:
-                t = threading.Thread(
-                    target=FeedbackService._retrain_from_feedback,
-                    daemon=True, name="fkt-retrain"
-                )
-                t.start()
+                if not _retrain_lock.acquire(blocking=False):
+                    logger.info("Auto-retrain skipped: a retraining run is already active.")
+                    return
+                try:
+                    t = threading.Thread(
+                        target=FeedbackService._retrain_from_feedback,
+                        daemon=True, name="fkt-retrain"
+                    )
+                    t.start()
+                except Exception:
+                    _retrain_lock.release()
+                    raise
                 logger.info(f"Auto-retrain triggered at {count} feedback samples.")
         except Exception as e:
             logger.debug(f"maybe_trigger_retrain: {e}")
@@ -142,6 +153,8 @@ class FeedbackService:
                 log.warning(f"Retraining failed: {result.stderr[:300]}")
         except Exception as e:
             log.error(f"Retraining error: {e}")
+        finally:
+            _retrain_lock.release()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
