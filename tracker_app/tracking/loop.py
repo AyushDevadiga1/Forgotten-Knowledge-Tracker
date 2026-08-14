@@ -176,8 +176,7 @@ def warm_up_all_pipelines(webcam_enabled: bool = True):
         log.warning(f"  intent classifier: {e}")
 
     try:
-        from tracker_app.tracking.audio_module import _load_classifier
-        _load_classifier()
+        import tracker_app.tracking.audio_module  # heuristics-only since ADR-002; import warms sounddevice
         log.info("  audio classifier ready")
     except Exception as e:
         log.warning(f"  audio classifier: {e}")
