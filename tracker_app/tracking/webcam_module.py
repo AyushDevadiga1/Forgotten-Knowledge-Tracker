@@ -1,4 +1,5 @@
 """Webcam pipeline: MediaPipe FaceMesh-based attention tracking (lazy-loaded)."""
+import atexit
 import cv2
 import numpy as np
 import time
@@ -74,29 +75,61 @@ def compute_attention_score(ear_values):
         return 40.0 + ((avg_ear - 0.2) / 0.15) * 60.0 # 40-100 linear mapping
 
 # ----------------------------
+# Persistent camera handle
+# ----------------------------
+_cap = None  # cv2.VideoCapture opened once and reused (H-4)
+
+
+def _get_cap():
+    """Return the persistent camera handle, opening it on first use."""
+    global _cap
+    if _cap is None:
+        try:
+            cap = cv2.VideoCapture(0)
+            if not cap.isOpened():
+                cap.release()
+                return None
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            _cap = cap
+        except Exception as e:
+            print(f"Error opening camera: {e}")
+            return None
+    return _cap
+
+
+def _release_cap():
+    """Release the persistent camera handle (registered via atexit)."""
+    global _cap
+    if _cap is not None:
+        try:
+            _cap.release()
+        except Exception:
+            pass
+        _cap = None
+
+
+atexit.register(_release_cap)
+
+
+# ----------------------------
 # Capture a single frame
 # ----------------------------
 def capture_frame():
-    cap = None
+    cap = _get_cap()
+    if cap is None:
+        return None
     try:
-        cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
-            return None
-        # Set resolution for faster processing
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        
         ret, frame = cap.read()
         if not ret or frame is None:
+            # Camera dropped or returned no frame -- release so the next
+            # cycle attempts a fresh open instead of reading a dead handle.
+            _release_cap()
             return None
-            
         return frame
     except Exception as e:
         print(f"Error capturing frame: {e}")
         return None
-    finally:
-        if cap is not None:
-            cap.release()
 
 # ----------------------------
 # Unified webcam pipeline
