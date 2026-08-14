@@ -27,27 +27,45 @@ _last_db_sync = 0.0
 # ----------------------------
 # Lazy embedding model
 # ----------------------------
+# None = never tried; _EMBED_FAILED = load failed (stop retrying + log spam)
+_EMBED_FAILED = object()
 _embed_model = None
 
 def _get_embed_model():
     """Lazily load SentenceTransformer only when actually needed."""
     global _embed_model
+    if _embed_model is _EMBED_FAILED:
+        return None
     if _embed_model is None:
         try:
             from sentence_transformers import SentenceTransformer
             _embed_model = SentenceTransformer('all-MiniLM-L6-v2')
             logger.info("SentenceTransformer loaded for knowledge graph.")
         except Exception as e:
-            logger.warning(f"SentenceTransformer unavailable ({e}). Falling back to spaCy vectors.")
-            _embed_model = None
+            logger.warning(f"SentenceTransformer unavailable ({e}). Falling back to spaCy vectors. Will not retry.")
+            _embed_model = _EMBED_FAILED
+            return None
     return _embed_model
+
+# None = never tried; _SPACY_FAILED = load failed (stop retrying + log spam)
+_SPACY_FAILED = object()
+_nlp = None
 
 def _get_spacy_vectors(concepts):
     """Fallback: use spaCy word vectors for similarity."""
+    global _nlp
+    if _nlp is _SPACY_FAILED:
+        return None
+    if _nlp is None:
+        try:
+            import spacy
+            _nlp = spacy.load("en_core_web_sm")
+        except Exception as e:
+            logger.warning(f"spaCy vector fallback unavailable: {e}. Will not retry.")
+            _nlp = _SPACY_FAILED
+            return None
     try:
-        import spacy
-        nlp = spacy.load("en_core_web_sm")
-        return np.array([nlp(c).vector for c in concepts])
+        return np.array([_nlp(c).vector for c in concepts])
     except Exception as e:
         logger.warning(f"spaCy vector fallback failed: {e}")
         return None

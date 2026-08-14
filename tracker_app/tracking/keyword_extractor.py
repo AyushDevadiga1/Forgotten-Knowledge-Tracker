@@ -50,17 +50,23 @@ def _get_yake(language="en", max_ngram=2, top_n=20):
             _yake_extractor = None
     return _yake_extractor
 
+# None = never tried; _SPACY_NLP_FAILED = load failed (stop retrying + log spam)
+_SPACY_NLP_FAILED = object()
+
 def _get_nlp():
     """Return spaCy nlp model (lazy init)."""
     global _spacy_nlp
+    if _spacy_nlp is _SPACY_NLP_FAILED:
+        return None
     if _spacy_nlp is None:
         try:
             import spacy
             _spacy_nlp = spacy.load("en_core_web_sm")
             logger.info("spaCy en_core_web_sm loaded for keyword extraction.")
         except Exception as e:
-            logger.warning(f"spaCy load failed: {e}")
-            _spacy_nlp = None
+            logger.warning(f"spaCy load failed: {e}. Will not retry.")
+            _spacy_nlp = _SPACY_NLP_FAILED
+            return None
     return _spacy_nlp
 
 
