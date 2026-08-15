@@ -236,7 +236,7 @@ def _maybe_trigger_quiz(
 
     try:
         from tracker_app.tracking.quiz_engine import (
-            should_show_quiz, generate_micro_quiz
+            should_show_quiz, generate_micro_quiz, record_quiz_broadcast
         )
         from tracker_app.tracking.knowledge_graph import get_graph
         if should_show_quiz(
@@ -251,6 +251,9 @@ def _maybe_trigger_quiz(
                     broadcast_micro_quiz(quiz)
                 except Exception:
                     pass  # dashboard may not be running
+                else:
+                    # M-6: cooldown starts only after a successful broadcast.
+                    record_quiz_broadcast()
                 logger.info(f"Micro-quiz triggered: '{quiz['concept']}'")
     except Exception as e:
         logger.debug(f"Quiz engine skipped: {e}")

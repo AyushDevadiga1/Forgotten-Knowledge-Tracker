@@ -35,6 +35,19 @@ def reset_quiz_state():
     _last_quiz_time = None
 
 
+def record_quiz_broadcast():
+    """Stamp the cooldown AFTER a quiz is actually delivered (M-6).
+
+    generate_micro_quiz() no longer stamps the timer at generation time --
+    the broadcast can fail (dashboard not running, client disconnected),
+    and a quiz the user never saw must not consume the
+    QUIZ_COOLDOWN_MINUTES window. Called by loop.py only once
+    broadcast_micro_quiz() has succeeded.
+    """
+    global _last_quiz_time
+    _last_quiz_time = datetime.utcnow()
+
+
 # ─── Trigger logic ────────────────────────────────────────────────────────────
 
 def should_show_quiz(
@@ -101,8 +114,6 @@ def generate_micro_quiz(graph) -> Optional[dict]:
         }
         or None if graph is too small.
     """
-    global _last_quiz_time
-
     nodes = [(n, d) for n, d in graph.nodes(data=True) if isinstance(n, str) and len(n) > 2]
     if len(nodes) < MIN_GRAPH_SIZE:
         logger.debug(f"Graph too small for quiz ({len(nodes)} < {MIN_GRAPH_SIZE})")
@@ -140,8 +151,6 @@ def generate_micro_quiz(graph) -> Optional[dict]:
     all_options = [concept_name] + distractors[:3]
     random.shuffle(all_options)
     correct_index = all_options.index(concept_name)
-
-    _last_quiz_time = datetime.utcnow()
 
     return {
         'concept':        concept_name,
