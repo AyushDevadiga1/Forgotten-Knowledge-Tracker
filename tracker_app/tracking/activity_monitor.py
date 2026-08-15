@@ -1,6 +1,7 @@
 import time
 import os
 import json
+from collections import deque
 from datetime import datetime, timedelta
 from threading import Lock
 from typing import Dict, Any, Optional
@@ -41,7 +42,7 @@ class IntentValidator:
     def __init__(self, db_path: str = None):
         # db_path parameter kept for backward-compat but ignored; all writes
         # now go through the shared SQLAlchemy engine in models.py.
-        self.prediction_buffer = []
+        self.prediction_buffer = deque(maxlen=100)
     
     def log_prediction(self, predicted_intent: str, confidence: float, context: str = "",
                        features=None):
@@ -143,7 +144,8 @@ class ActivityMonitor:
         
         self.session_start = None
         self.session_concepts = []
-        self.session_attention_scores = []
+        self._attention_sum = 0.0
+        self._attention_count = 0
         
         # State tracking
         self.is_running = False
@@ -154,7 +156,8 @@ class ActivityMonitor:
         with self._lock:
             self.session_start = datetime.utcnow()
             self.session_concepts = []
-            self.session_attention_scores = []
+            self._attention_sum = 0.0
+            self._attention_count = 0
             self.is_running = True
         logger.info(f"Tracking session started at {self.session_start}")
     
@@ -168,7 +171,7 @@ class ActivityMonitor:
             
             # Calculate session stats
             concepts_count = len(set(self.session_concepts))
-            avg_attention = sum(self.session_attention_scores) / len(self.session_attention_scores) if self.session_attention_scores else 0
+            avg_attention = self._attention_sum / self._attention_count if self._attention_count else 0
             
             # Determine primary activity
             primary_activity = "general_browsing"
@@ -235,7 +238,8 @@ class ActivityMonitor:
     
     def update_attention(self, attention_score: float):
         """Track attention/focus levels"""
-        self.session_attention_scores.append(attention_score)
+        self._attention_sum += attention_score
+        self._attention_count += 1
     
     def get_session_stats(self) -> Dict[str, Any]:
         """Get current session statistics"""
@@ -248,7 +252,7 @@ class ActivityMonitor:
             return {
                 'session_duration_minutes': elapsed,
                 'concepts_encountered': len(set(self.session_concepts)),
-                'avg_attention': sum(self.session_attention_scores) / len(self.session_attention_scores) if self.session_attention_scores else 0,
+                'avg_attention': self._attention_sum / self._attention_count if self._attention_count else 0,
                 'is_active': self.is_running
             }
     
