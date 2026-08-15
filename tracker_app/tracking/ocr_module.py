@@ -110,7 +110,7 @@ def capture_screenshot(use_roi=True):
                 if img is not None and window_info:
                     # Privacy check
                     if should_skip_window(window_info['title']):
-                        print(f"[PRIVACY] Skipped sensitive window: {window_info['title']}")
+                        logger.warning(f"[PRIVACY] Skipped sensitive window: {window_info['title']}")
                         return None
                     
                     # Deduplication check — hash a small thumbnail (~100x faster than full frame)
@@ -145,7 +145,7 @@ def capture_screenshot(use_roi=True):
                 
             return img
     except Exception as e:
-        print(f"Error capturing screenshot: {e}")
+        logger.warning(f"Error capturing screenshot: {e}")
         return None
 
 def preprocess_image(img):
@@ -174,7 +174,7 @@ def preprocess_image(img):
         return cleaned
         
     except Exception as e:
-        print(f"Error preprocessing image: {e}")
+        logger.warning(f"Error preprocessing image: {e}")
         return gray if 'gray' in locals() else img
 
 def extract_text(img, min_confidence: int = None):
@@ -223,7 +223,7 @@ def extract_text(img, min_confidence: int = None):
         return '\n'.join(pieces).strip()
 
     except Exception as e:
-        print(f"Error extracting text with OCR: {e}")
+        logger.warning(f"Error extracting text with OCR: {e}")
         return ""
 
 def extract_keywords(text, top_n=15, boost_repeats=True, graph=None):
@@ -241,14 +241,14 @@ def extract_keywords(text, top_n=15, boost_repeats=True, graph=None):
     sanitized = sanitize_text_for_storage(text)
 
     if not sanitized['safe_to_store']:
-        print("[PRIVACY] Text rejected due to sensitive content")
+        logger.warning("[PRIVACY] Text rejected due to sensitive content")
         return {}
 
     # Use sanitized text
     text = sanitized['text']
 
     if sanitized['is_sanitized']:
-        print(f"[PRIVACY] Redacted {sanitized['num_redactions']} sensitive items")
+        logger.warning(f"[PRIVACY] Redacted {sanitized['num_redactions']} sensitive items")
 
     # Strip [REDACTED:TYPE] markers so 'email'/'phone'/'password' etc. can
     # never become extracted concepts (they are marker noise, not study terms).
@@ -259,7 +259,7 @@ def extract_keywords(text, top_n=15, boost_repeats=True, graph=None):
     
     # Reject garbage immediately
     if not validation['is_useful']:
-        print(f"[FILTERED] Rejected text: {validation['reason']}")
+        logger.info(f"[FILTERED] Rejected text: {validation['reason']}")
         return {}
     
     # Use cleaned text for extraction
@@ -275,7 +275,7 @@ def extract_keywords(text, top_n=15, boost_repeats=True, graph=None):
                 if len(kw) > 2 and kw.lower() not in {'the', 'and', 'for', 'with'}:
                     kw_dict[kw] = score * 0.8
     except Exception as e:
-        print(f"Keyword extraction failed: {e}")
+        logger.warning(f"Keyword extraction failed: {e}")
 
     try:
         # 2️⃣ NLP nouns/proper nouns & entities (if available)
@@ -298,7 +298,7 @@ def extract_keywords(text, top_n=15, boost_repeats=True, graph=None):
                 if kw not in kw_dict:
                     kw_dict[kw] = 0.3
     except Exception as e:
-        print(f"spaCy processing failed: {e}")
+        logger.warning(f"spaCy processing failed: {e}")
 
     # 3️⃣ Split camelCase / snake_case — but keep multi-word phrases intact:
     # 'calvin cycle' is a better concept than 'calvin' + 'cycle', and the old
@@ -321,7 +321,7 @@ def extract_keywords(text, top_n=15, boost_repeats=True, graph=None):
                 if len(p) > 2:  # Only keep meaningful parts
                     split_keywords[p] = max(score, split_keywords.get(p, 0.0))
         except Exception as e:
-            print(f"Error splitting keyword {kw}: {e}")
+            logger.warning(f"Error splitting keyword {kw}: {e}")
             continue
             
     kw_dict = split_keywords
@@ -338,7 +338,7 @@ def extract_keywords(text, top_n=15, boost_repeats=True, graph=None):
                 if kw in word_counts and word_counts[kw] > 1:
                     kw_dict[kw] += 0.05 * (word_counts[kw] - 1)  # Small boost per repetition
         except Exception as e:
-            print(f"Repetition boosting failed: {e}")
+            logger.warning(f"Repetition boosting failed: {e}")
 
     # 5️⃣ Boost keywords existing in knowledge graph
     try:
@@ -348,7 +348,7 @@ def extract_keywords(text, top_n=15, boost_repeats=True, graph=None):
             if kw in graph.nodes:
                 kw_dict[kw] = min(1.0, kw_dict[kw] + 0.1)  # Small consistent boost
     except Exception as e:
-        print(f"Knowledge graph boosting failed: {e}")
+        logger.warning(f"Knowledge graph boosting failed: {e}")
 
     # 6️ Sort by score and return top_n
     try:
@@ -357,7 +357,7 @@ def extract_keywords(text, top_n=15, boost_repeats=True, graph=None):
         # Drop any keyword that is itself sensitive data or marker noise.
         return filter_sensitive_keywords(top)
     except Exception as e:
-        print(f"Error sorting keywords: {e}")
+        logger.warning(f"Error sorting keywords: {e}")
         return {}
 
 @lru_cache(maxsize=32)
@@ -380,7 +380,7 @@ def extract_concepts_v2(text, top_n=5):
                         dict(keywords)).items() if score > 0.1][:top_n]
         return []
     except Exception as e:
-        print(f"[WARN] extract_concepts_v2 failed: {e}")
+        logger.warning(f"extract_concepts_v2 failed: {e}")
         return []
 
 
@@ -397,7 +397,7 @@ def get_text_embedding_v2(text):
     try:
         return embedding_model.encode([text])[0]
     except Exception as e:
-        print("[WARN] get_text_embedding_v2 failed:", e)
+        logger.warning(f"get_text_embedding_v2 failed: {e}")
         return np.zeros(384)
 
 def ocr_pipeline():
@@ -438,7 +438,7 @@ def ocr_pipeline():
                     "count": int(count)
                 }
             except Exception as e:
-                print(f"Error processing keyword {kw}: {e}")
+                logger.warning(f"Error processing keyword {kw}: {e}")
                 continue
 
         return {
@@ -449,7 +449,7 @@ def ocr_pipeline():
         }
         
     except Exception as e:
-        print(f"Error in OCR pipeline: {e}")
+        logger.warning(f"Error in OCR pipeline: {e}")
         return {"keywords": {}, "concepts_v2": [], "embedding_v2": [], "raw_text": ""}
 
 if __name__ == "__main__":

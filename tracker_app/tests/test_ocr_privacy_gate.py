@@ -128,3 +128,11 @@ def test_extract_keywords_uses_passed_graph_without_get_graph(monkeypatch):
 
     assert calls["n"] == 0
     assert keywords.get("machinelearning") == pytest.approx(0.74)
+
+
+def test_runtime_code_uses_logger_not_print():
+    import inspect
+    src = inspect.getsource(ocr_module)
+    main_idx = src.find('if __name__ == "__main__":')
+    body = src if main_idx == -1 else src[:main_idx]
+    assert "print(" not in body  # M-7: runtime messages must reach the log

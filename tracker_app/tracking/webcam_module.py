@@ -55,7 +55,7 @@ def eye_aspect_ratio(landmarks, eye_indices):
         ear = (A + B) / (2.0 * C)
         return ear
     except Exception as e:
-        print(f"Error calculating EAR: {e}")
+        logger.warning(f"Error calculating EAR: {e}")
         return 0.0
 
 def compute_attention_score(ear_values):
@@ -93,7 +93,7 @@ def _get_cap():
             cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             _cap = cap
         except Exception as e:
-            print(f"Error opening camera: {e}")
+            logger.warning(f"Error opening camera: {e}")
             return None
     return _cap
 
@@ -128,7 +128,7 @@ def capture_frame():
             return None
         return frame
     except Exception as e:
-        print(f"Error capturing frame: {e}")
+        logger.warning(f"Error capturing frame: {e}")
         return None
 
 # ----------------------------

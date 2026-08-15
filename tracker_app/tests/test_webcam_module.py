@@ -98,3 +98,11 @@ def test_read_failure_releases_and_recovers(monkeypatch):
     assert wm._cap is cap2
     wm._release_cap()
     assert cap2.release_calls == 1
+
+
+def test_runtime_code_uses_logger_not_print():
+    import inspect
+    src = inspect.getsource(wm)
+    main_idx = src.find('if __name__ == "__main__":')
+    body = src if main_idx == -1 else src[:main_idx]
+    assert "print(" not in body  # M-7: runtime messages must reach the log
