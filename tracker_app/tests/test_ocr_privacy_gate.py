@@ -98,3 +98,33 @@ def test_extract_keywords_retains_camelcase_compound(monkeypatch):
     )
 
     assert "backpropagation" in keywords, "camelCase compound must survive the split"
+
+
+def test_extract_keywords_uses_passed_graph_without_get_graph(monkeypatch):
+    # M-4 regression: the OCR pipeline hands extract_keywords a preloaded graph
+    # so the node-boost never re-triggers _ensure_graph_loaded()/DB sync.
+    calls = {"n": 0}
+
+    def boom():
+        calls["n"] += 1
+        raise AssertionError("get_graph() must not be called when graph is passed")
+
+    class FakeExtractor:
+        def extract_keywords(self, text, top_n=15):
+            return [("machinelearning", 0.8)]
+
+    monkeypatch.setattr(ocr_module, "kw_extractor", FakeExtractor())
+    monkeypatch.setattr(ocr_module, "nlp", None)
+    monkeypatch.setattr(ocr_module, "get_graph", boom)
+
+    G = nx.Graph()
+    G.add_node("machinelearning")
+
+    keywords = ocr_module.extract_keywords(
+        "MachineLearning is the core of modern artificial intelligence systems.",
+        top_n=15,
+        graph=G,
+    )
+
+    assert calls["n"] == 0
+    assert keywords.get("machinelearning") == pytest.approx(0.74)

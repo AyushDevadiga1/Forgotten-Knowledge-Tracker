@@ -226,8 +226,13 @@ def extract_text(img, min_confidence: int = None):
         print(f"Error extracting text with OCR: {e}")
         return ""
 
-def extract_keywords(text, top_n=15, boost_repeats=True):
-    """Extract keywords with quality validation and privacy filtering"""
+def extract_keywords(text, top_n=15, boost_repeats=True, graph=None):
+    """Extract keywords with quality validation and privacy filtering.
+
+    graph: optional preloaded knowledge graph. When provided the node-boost
+    lookup uses it directly instead of calling get_graph() (which may
+    trigger a DB sync) from the OCR worker thread (M-4).
+    """
     if not text or len(text.strip()) < 10:
         return {}
     
@@ -337,9 +342,10 @@ def extract_keywords(text, top_n=15, boost_repeats=True):
 
     # 5️⃣ Boost keywords existing in knowledge graph
     try:
-        G = get_graph()
+        if graph is None:
+            graph = get_graph()
         for kw in list(kw_dict.keys()):
-            if kw in G.nodes:
+            if kw in graph.nodes:
                 kw_dict[kw] = min(1.0, kw_dict[kw] + 0.1)  # Small consistent boost
     except Exception as e:
         print(f"Knowledge graph boosting failed: {e}")
@@ -416,8 +422,9 @@ def ocr_pipeline():
         concepts = extract_concepts_v2(text)
         embedding = get_text_embedding_v2(text)
 
-        # Extract keywords with scores
-        keywords_with_scores = extract_keywords(text, top_n=15)
+        # Extract keywords with scores (graph loaded once per pipeline, M-4)
+        G = get_graph()
+        keywords_with_scores = extract_keywords(text, top_n=15, graph=G)
         
         # Convert to proper format with counts
         text_lower = text.lower()
