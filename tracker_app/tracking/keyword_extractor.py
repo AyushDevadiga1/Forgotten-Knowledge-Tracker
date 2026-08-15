@@ -29,19 +29,25 @@ logger = logging.getLogger("KeywordExtractor")
 _yake_extractor = None
 _spacy_nlp      = None
 
-def _get_yake(language="en", max_ngram=2, top_n=20):
-    """Return a YAKE extractor instance (lazy init)."""
+def _get_yake():
+    """Return the YAKE extractor singleton (lazy init).
+
+    The extractor is created once with FIXED parameters (English, bigram
+    window, top 20): YAKE bakes its configuration into the instance at
+    construction time, so per-call parameters would be silently ignored
+    after the first init (M-10). Callers slice the result to their own top_n.
+    """
     global _yake_extractor
     if _yake_extractor is None:
         try:
             import yake
             _yake_extractor = yake.KeywordExtractor(
-                lan=language,
-                n=max_ngram,
+                lan="en",
+                n=2,
                 dedupLim=0.7,      # deduplicate near-identical keywords
                 dedupFunc="seqm",
                 windowsSize=2,
-                top=top_n,
+                top=20,
                 features=None,
             )
             logger.info("YAKE! keyword extractor initialised.")
