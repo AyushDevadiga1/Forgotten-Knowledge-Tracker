@@ -39,7 +39,7 @@ def test_save_and_reload_graph(isolated_graph_path, clean_graph):
     # Simulate a fresh process: empty in-memory graph, then reload from pkl.
     with kg._graph_lock:
         kg.knowledge_graph.clear()
-    assert kg._load_graph() is True
+        assert kg._load_graph_locked() is True
 
     g = kg.knowledge_graph
     assert g.number_of_nodes() == 2
@@ -49,12 +49,14 @@ def test_save_and_reload_graph(isolated_graph_path, clean_graph):
 
 
 def test_load_missing_graph_returns_false(isolated_graph_path, clean_graph):
-    assert kg._load_graph() is False
+    with kg._graph_lock:
+        assert kg._load_graph_locked() is False
 
 
 def test_load_corrupt_graph_returns_false(isolated_graph_path, clean_graph):
     isolated_graph_path.write_bytes(b"not a pickle")
-    assert kg._load_graph() is False
+    with kg._graph_lock:
+        assert kg._load_graph_locked() is False
 
 
 def test_sync_db_to_graph_is_incremental(isolated_graph_path, clean_graph, monkeypatch):
@@ -95,7 +97,7 @@ def test_ensure_graph_loaded_reconciles_mid_process(clean_graph, monkeypatch):
             with kg._graph_lock:
                 kg.knowledge_graph.add_node(c, count=1, memory_score=0.5)
 
-    monkeypatch.setattr(kg, "_load_graph", lambda: True)
+    monkeypatch.setattr(kg, "_load_graph_locked", lambda: True)
     monkeypatch.setattr(kg, "fetch_concepts_from_db", fake_fetch)
     monkeypatch.setattr(kg, "add_concepts", fake_add)
     monkeypatch.setattr(kg, "_refresh_all_memory_scores", lambda concepts: None)
@@ -168,3 +170,42 @@ def test_graph_stats_includes_node_memory_scores(clean_graph):
     assert by_name["gamma"] == 0.7
     assert "low" not in by_name  # outside the visible top-10 set
     assert len(stats["nodes"]) == len(stats["top_concepts"])
+
+
+class _CountingLock:
+    def __init__(self):
+        self.acquires = 0
+
+    def acquire(self, *args, **kwargs):
+        self.acquires += 1
+
+    def release(self, *args, **kwargs):
+        pass
+
+    def __enter__(self):
+        self.acquire()
+        return self
+
+    def __exit__(self, *args):
+        self.release()
+
+
+def test_load_graph_renamed_to_locked_contract(clean_graph):
+    # M-9: the loader is explicitly a lock-holding helper, never a self-locking
+    # entry point.
+    assert not hasattr(kg, "_load_graph")
+    assert hasattr(kg, "_load_graph_locked")
+
+
+def test_load_graph_locked_does_not_acquire_lock(
+    isolated_graph_path, clean_graph, monkeypatch
+):
+    with kg._graph_lock:
+        kg.knowledge_graph.add_node("neural network", count=1, memory_score=0.3)
+    kg._save_graph()
+
+    lock = _CountingLock()
+    monkeypatch.setattr(kg, "_graph_lock", lock)
+    with lock:  # the caller holds the lock
+        assert kg._load_graph_locked() is True
+    assert lock.acquires == 1  # only the caller's acquire, never a re-acquire

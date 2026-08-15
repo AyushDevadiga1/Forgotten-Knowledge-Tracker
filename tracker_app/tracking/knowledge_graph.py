@@ -100,7 +100,7 @@ def _ensure_graph_loaded():
                 # bootstrap needed, but subsequent calls still re-reconcile.
                 _loaded = True
             else:
-                if not _load_graph():
+                if not _load_graph_locked():
                     logger.info("No persisted knowledge graph; building from DB.")
                 else:
                     logger.info("Knowledge graph loaded from %s", KNOWLEDGE_GRAPH_PATH)
@@ -111,8 +111,13 @@ def _ensure_graph_loaded():
             sync_db_to_graph()
             _last_db_sync = now
 
-def _load_graph() -> bool:
-    """Load a persisted graph from KNOWLEDGE_GRAPH_PATH. Returns True on success."""
+def _load_graph_locked() -> bool:
+    """Load a persisted graph from KNOWLEDGE_GRAPH_PATH. Returns True on success.
+
+    Must be called with `_graph_lock` already held (M-9): this function
+    mutates the shared in-memory graph and never acquires the lock itself --
+    the caller's acquire is the single point of entry.
+    """
     path = Path(KNOWLEDGE_GRAPH_PATH)
     if not path.exists():
         return False
@@ -121,10 +126,9 @@ def _load_graph() -> bool:
             data = pickle.load(f)
         if not isinstance(data, nx.Graph) or data.number_of_nodes() == 0:
             return False
-        with _graph_lock:
-            knowledge_graph.clear()
-            knowledge_graph.add_nodes_from(data.nodes(data=True))
-            knowledge_graph.add_edges_from(data.edges(data=True))
+        knowledge_graph.clear()
+        knowledge_graph.add_nodes_from(data.nodes(data=True))
+        knowledge_graph.add_edges_from(data.edges(data=True))
         return True
     except Exception as e:
         logger.warning("Failed to load knowledge graph from %s: %s", path, e)
