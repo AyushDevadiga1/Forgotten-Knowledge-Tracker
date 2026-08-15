@@ -24,6 +24,11 @@ DB_SYNC_INTERVAL_SECONDS = 60.0
 _loaded = False
 _last_db_sync = 0.0
 
+# Cap on in-memory graph size (H-6): _save_graph() evicts the lowest-
+# memory_score zero-edge nodes once the count exceeds this, keeping the
+# pkl small and _load_graph() fast after months of use.
+MAX_GRAPH_NODES = 5000
+
 # ----------------------------
 # Lazy embedding model
 # ----------------------------
@@ -125,9 +130,44 @@ def _load_graph() -> bool:
         logger.warning("Failed to load knowledge graph from %s: %s", path, e)
         return False
 
+def _evict_oversized_nodes():
+    """Trim the graph back to MAX_GRAPH_NODES (best-effort, H-6).
+
+    Only nodes with zero edges and the lowest memory_score are evicted, so
+    no semantic structure is destroyed. The graph is a rebuildable cache of
+    tracked_concepts; an evicted node is simply re-added by the next DB sync.
+    """
+    excess = knowledge_graph.number_of_nodes() - MAX_GRAPH_NODES
+    if excess <= 0:
+        return
+    with _graph_lock:
+        excess = knowledge_graph.number_of_nodes() - MAX_GRAPH_NODES
+        if excess <= 0:
+            return
+        candidates = [
+            n for n in knowledge_graph.nodes()
+            if knowledge_graph.degree(n) == 0
+        ]
+        candidates.sort(
+            key=lambda n: knowledge_graph.nodes[n].get('memory_score', 0.5)
+        )
+        evicted = 0
+        for node in candidates:
+            if evicted >= excess:
+                break
+            knowledge_graph.remove_node(node)
+            evicted += 1
+        if evicted:
+            logger.info(
+                "Evicted %d low-relevance zero-edge nodes (graph cap %d)",
+                evicted, MAX_GRAPH_NODES,
+            )
+
+
 def _save_graph():
     """Persist the in-memory graph to KNOWLEDGE_GRAPH_PATH (best-effort cache)."""
     try:
+        _evict_oversized_nodes()
         path = Path(KNOWLEDGE_GRAPH_PATH)
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix('.pkl.tmp')
