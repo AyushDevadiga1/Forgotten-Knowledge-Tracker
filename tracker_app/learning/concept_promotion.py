@@ -77,21 +77,52 @@ def _difficulty_for(relevance_score: Optional[float]) -> str:
     return 'hard'
 
 
-def _is_subsumed_single_word(concept: str) -> bool:
+def _load_subsuming_phrases() -> frozenset:
+    """Preload deck-eligible multi-word concepts for in-memory subsumption.
+
+    Backfill used to issue a leading-wildcard LIKE '%concept%' query per
+    candidate -- a full-table scan SQLite can never index. One query up-front
+    plus Python set membership replaces it (M-8).
+    """
+    with SessionLocal() as db:
+        rows = db.query(
+            TrackedConcept.concept, TrackedConcept.frequency_count
+        ).filter(TrackedConcept.concept.like('% %')).all()
+    phrases = set()
+    for concept, frequency_count in rows:
+        if (
+            concept and ' ' in concept
+            and frequency_count >= MIN_PROMOTION_FREQUENCY
+            and is_kb_worthy(concept)
+        ):
+            phrases.add(concept.strip().lower())
+    return frozenset(phrases)
+
+
+def _is_subsumed_single_word(
+    concept: str, subsuming_phrases: Optional[frozenset] = None
+) -> bool:
     """A single-word concept already covered by a tracked multi-word phrase
     ('cellular' vs 'cellular respiration') is a fragment, not a concept.
     Only subsumes when the larger phrase is itself deck-eligible, so a concept
     like 'atp' stays promotable when its phrase 'atp energy' is below the
-    promotion threshold."""
+    promotion threshold.
+
+    subsuming_phrases: preloaded frozenset of deck-eligible multi-word
+    concepts (M-8). When omitted, falls back to the per-concept DB lookup.
+    """
     if ' ' in concept:
         return False
+    lc = concept.lower()
+    if subsuming_phrases is not None:
+        return any(lc in phrase.split() for phrase in subsuming_phrases)
     with SessionLocal() as db:
         others = db.query(TrackedConcept).filter(
             TrackedConcept.concept != concept,
             TrackedConcept.concept.like(f"%{concept}%"),
         ).all()
     for other in others:
-        if concept.lower() not in other.concept.lower().split():
+        if lc not in other.concept.lower().split():
             continue
         if (
             other.frequency_count >= MIN_PROMOTION_FREQUENCY
@@ -101,7 +132,9 @@ def _is_subsumed_single_word(concept: str) -> bool:
     return False
 
 
-def promote_concept_to_deck(concept: str) -> Optional[str]:
+def promote_concept_to_deck(
+    concept: str, subsuming_phrases: Optional[frozenset] = None
+) -> Optional[str]:
     """Create a learning item for an extracted concept (idempotent).
 
     Returns the new item id, or None if the concept already has a deck item
@@ -111,7 +144,7 @@ def promote_concept_to_deck(concept: str) -> Optional[str]:
 
     if not is_kb_worthy(concept):
         return None
-    if _is_subsumed_single_word(concept):
+    if _is_subsumed_single_word(concept, subsuming_phrases=subsuming_phrases):
         logger.debug(f"Fragment of a larger concept, not promoting: {concept!r}")
         return None
 
@@ -158,13 +191,16 @@ def backfill_items(
             q = q.limit(limit)
         candidates = [r.concept for r in q.all()]
 
+    subsuming_phrases = _load_subsuming_phrases()
     promoted: List[str] = []
     skipped: List[str] = []
     for concept in candidates:
         if not is_kb_worthy(concept):
             skipped.append(concept)
             continue
-        item_id = promote_concept_to_deck(concept)
+        item_id = promote_concept_to_deck(
+            concept, subsuming_phrases=subsuming_phrases
+        )
         (promoted if item_id else skipped).append(concept)
 
     return {

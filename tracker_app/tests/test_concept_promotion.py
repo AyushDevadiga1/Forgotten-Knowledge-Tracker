@@ -105,3 +105,26 @@ def test_promote_concept_uses_context_snippet_as_answer(db):
     with db() as s:
         item = s.query(LearningItem).filter(LearningItem.question == "cellular respiration").first()
     assert "Biology notes" in item.answer
+
+
+def test_load_subsuming_phrases_prefilters_eligibility(db):
+    _seed(db, "cellular respiration", freq=20)
+    _seed(db, "atp energy", freq=2)   # below threshold -> excluded
+    _seed(db, "explorer", freq=10)    # UI chrome -> excluded
+    phrases = cp._load_subsuming_phrases()
+    assert phrases == frozenset({"cellular respiration"})
+
+
+def test_in_memory_subsumption_avoids_db(monkeypatch):
+    def boom():
+        raise AssertionError("SessionLocal must not be used with subsuming_phrases")
+
+    monkeypatch.setattr(cp, "SessionLocal", boom)
+    phrases = frozenset(["cellular respiration", "atp synthase"])
+
+    assert cp._is_subsumed_single_word("cellular", subsuming_phrases=phrases) is True
+    assert cp._is_subsumed_single_word("atp", subsuming_phrases=phrases) is True
+    assert cp._is_subsumed_single_word("hash", subsuming_phrases=phrases) is False
+    assert cp._is_subsumed_single_word(
+        "cellular respiration", subsuming_phrases=phrases
+    ) is False
