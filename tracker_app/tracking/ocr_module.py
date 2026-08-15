@@ -304,6 +304,7 @@ def extract_keywords(text, top_n=15, boost_repeats=True):
             if ' ' in kw:
                 split_keywords[kw] = max(score, split_keywords.get(kw, 0.0))
                 continue
+            split_keywords[kw.lower()] = max(score, split_keywords.get(kw.lower(), 0.0))
             parts = re.split(r'[_]', kw)
             final_parts = []
             for part in parts:

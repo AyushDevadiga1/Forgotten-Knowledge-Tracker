@@ -79,3 +79,22 @@ def test_extract_keywords_redacts_sensitive_content(monkeypatch):
     raw_card = "4111-1111-1111-1111"
     assert raw_card not in keywords, "Raw credit card must never surface as a keyword"
     assert not any("[REDACTED" in kw for kw in keywords)
+
+
+def test_extract_keywords_retains_camelcase_compound(monkeypatch):
+    # M-1 regression: 'backPropagation' is a meaningful YAKE unit and must be
+    # retained as 'backpropagation' - the split fragments are bonus entries.
+    class FakeExtractor:
+        def extract_keywords(self, text, top_n=15):
+            return [("backPropagation", 0.8), ("calvin cycle", 0.9)]
+
+    monkeypatch.setattr(ocr_module, "kw_extractor", FakeExtractor())
+    monkeypatch.setattr(ocr_module, "nlp", None)
+    monkeypatch.setattr(ocr_module, "get_graph", lambda: nx.Graph())
+
+    keywords = ocr_module.extract_keywords(
+        "BackPropagation is a key algorithm used to train neural networks today.",
+        top_n=15,
+    )
+
+    assert "backpropagation" in keywords, "camelCase compound must survive the split"
