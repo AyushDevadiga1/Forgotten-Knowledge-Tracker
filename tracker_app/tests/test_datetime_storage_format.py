@@ -52,9 +52,9 @@ BOUND = datetime(2026, 8, 13, 10, 0, 0)
 
 # Total migration count tracks the MIGRATIONS registry in
 # tracker_app/db/migrations.py — bump when a migration is appended
-# (currently 12: 001..012 including 011_datetime_storage_format and
-# 012_drop_duplicate_feedback_index).
-TOTAL_MIGRATIONS = 12
+# (currently 13: 001..013 including 011_datetime_storage_format, 012
+# drop_duplicate_feedback_index, and 013_feedback_used_in_training).
+TOTAL_MIGRATIONS = 13
 
 
 class _FixedUtcnow:
