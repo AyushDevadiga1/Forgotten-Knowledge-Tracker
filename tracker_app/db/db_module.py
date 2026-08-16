@@ -16,7 +16,8 @@ def ensure_db_directory():
 def init_db():
     ensure_db_directory()
     Base.metadata.create_all(bind=get_engine())
-    logger.info("SQLAlchemy tables constructed: sessions, multi_modal_logs, memory_decay, etc.")
+    logger.info("SQLAlchemy tables constructed: %s",
+                ", ".join(t.name for t in Base.metadata.sorted_tables))
 
 def init_all_databases():
     """Initialize all database tables using SQLAlchemy ORM."""
