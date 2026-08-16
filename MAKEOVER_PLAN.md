@@ -1,535 +1,620 @@
-# FKT Makeover Plan — Evidence-Based Architectural Audit
+# FKT Makeover Plan — Open Issues & Improvements
 
-> **Ground rules for this document:**
-> - *Working behavior* is documented as-is.
-> - *Broken behavior* is distinguished from *unclear/accidental behavior*.
-> - No recommendations are made unless a real problem was observed.
-> - Every finding cites the file and line range where it was confirmed.
-> - This plan is a living document — earlier assumptions will be corrected as investigation deepens.
+> **Ground rules:**
+> - Only **open, unresolved** issues are listed. Resolved items have been removed.
+> - Every finding cites the exact file and line(s) where it was confirmed.
+> - Issues are evidence-based — no speculation, no assumptions.
+> - This is a living document. Mark items `RESOLVED` with a short note when fixed.
 
 ---
 
-## 1. System Map — What the System Actually Does
-
-FKT is a two-process application:
-
-| Process | Entry point | Purpose |
-|---|---|---|
-| Tracking loop | `tracker_app/main.py` → `tracking/loop.py` | Background data collection |
-| Dashboard | `tracker_app/web/app.py` | Flask + React UI |
-
-### Data flow (confirmed, not assumed)
+## System Map (Quick Reference)
 
 ```
-Screen  ──► OCR pipeline      ──► keywords dict
-Mic     ──► audio pipeline    ──► {audio_label, confidence}
-Webcam  ──► webcam_pipeline   ──► {attentiveness_score, …}
-KB/Mouse ─► CLE module        ──► cle_score
+Screen   ──► OCR pipeline     ──► keywords dict
+Mic      ──► audio pipeline   ──► {audio_label, confidence}
+Webcam   ──► webcam_pipeline  ──► {attentiveness_score}
+KB/Mouse ──► CLE module       ──► cle_score
 
-All 4 feeds ──► predict_intent() ──► intent_label
+All 4 ──► predict_intent() ──► intent_label
 
-If session_active AND intent_label in SESSION_ALLOWED_INTENTS:
-    ──► ActivityMonitor.process_concepts()
-        ──► ConceptScheduler.add_concept()
-            ──► TrackedConcept (SQLite)
-            ──► ConceptEncounter (SQLite)
-            ──► sync_concept_to_graph()
-                ──► knowledge_graph (networkx, in-memory + .pkl cache)
+session_active AND intent_label in SESSION_ALLOWED_INTENTS:
+  ──► ActivityMonitor.process_concepts()
+      ──► ConceptScheduler.add_concept()
+          ──► TrackedConcept (SQLite)
+          ──► ConceptEncounter (SQLite)
+          ──► sync_concept_to_graph()
+              ──► knowledge_graph (networkx, in-memory + .pkl)
 
-session_state.json ──► shared toggle (write: Flask API; read: tracking loop)
+session_state.json ──► shared IPC toggle
 ```
 
-### SM-2 / AWFC model (confirmed)
+---
 
-Two distinct SM-2-capable subsystems exist:
-
-1. **`LearningItem`** (manual flashcards) — reviewed via `ReviewPage`, uses
-   `learning/learning_tracker.py` which drives `sm2_memory_model.py`.
-2. **`TrackedConcept`** (auto-captured) — reviewed via `QuizPage` /
-   `MicroQuizModal`, uses `concept_scheduler.py:schedule_next_review()`.
-
-Both systems implement the same canonical SM-2 formula but in separate classes,
-with no shared base class.
+## 1. CRITICAL — Must Fix Before Any Release
 
 ---
 
-## 2. Issues by Severity
+### [C-1] Authentication defaults to **off** with no startup warning
 
-### 2.1 CRITICAL
+**RESOLVED — 9f8d24c: production requires SECRET_KEY; NO_AUTH=true now logged at startup.**
 
----
+**File:** `web/app.py:38`, `web/auth.py:15`
 
-#### [C-1] Privacy filter is cosmetic, not structural
+Three compounding problems:
 
-**Status: RESOLVED** — `ocr_module.py` now hard-imports `sanitize_text_for_storage`
-and `is_sensitive_window` at module level; the `try/except ImportError` silent pass
-is gone and `should_skip_window()` delegates to `privacy_filter.is_sensitive_window()`.
-Regression coverage: `tests/test_ocr_privacy_gate.py`.
-
-**File:** `tracking/privacy_filter.py`, `tracking/ocr_module.py:206-220`
-
-**Behavior observed:** `sanitize_text_for_storage()` catches credit cards, SSNs,
-emails, IPs, and API keys using regex — good. But the threshold to **skip** an
-entire capture is `> 3` sensitive items (`should_skip_capture` line 101). This
-means a page with 1-3 credit card numbers is **sanitized but still stored**, not
-rejected entirely.
-
-More critically, `privacy_filter.py` is imported inside a `try/except ImportError`
-block in `ocr_module.py` (line 207). If the import fails for any reason, the
-**entire privacy layer is silently skipped** with no log. A user would have no
-indication their data is being stored unredacted.
-
-**Actual impact:** An OCR capture containing a password typed in plain text on
-screen (e.g., a notes app) will be stored unless the word `password` also appears
-in the **window title**. The content-level filter only acts after capture.
-
-**What should happen:** Privacy checks should be a mandatory structural gate, not
-a best-effort import. The `ImportError` silent pass is the most dangerous pattern
-in the codebase.
-
----
-
-#### [C-2] `session_state.json` — `started_at` never resets on restart
-
-**Status: RESOLVED** — `start()` now always stamps `started_at = now` and clears
-`stopped_at`, so restarts and crash-recovery both reset the clock.
-Regression coverage: `test_session_state.py::test_restart_resets_started_at` and
-`test_start_after_crash_resets_stale_clock`.
-
-**File:** `tracking/session_state.py:48-58`
+1. `SECRET_KEY` falls back to a hardcoded public string (`'dev-secret-key-change-in-production'`). Any deployment that doesn't explicitly set it in `.env` (common — `.env` is gitignored) has a predictable CSRF key. An attacker who reads the source can forge Flask-WTF CSRF tokens.
+2. `NO_AUTH` defaults to `"true"` so `apply_auth_to_blueprint()` is called but immediately exits doing nothing. All JSON mutation endpoints (`POST /items`, `POST /reviews`, `POST /session/start`) are unprotected.
+3. `api_bp` is explicitly CSRF-exempted (`csrf.exempt(api_bp)`), removing the last fallback.
 
 ```python
-def start() -> dict:
-    with _lock:
-        state = _load()
-        now = datetime.utcnow().isoformat()
-        state["active"] = True
-        if not state.get("started_at"):   # ← only sets if currently None
-            state["started_at"] = now
-        state["stopped_at"] = None
-        _save(state)
-        return state
+# web/app.py:38
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
+
+# web/auth.py:15
+_NO_AUTH = os.getenv("NO_AUTH", "true").lower() == "true"  # default = auth off
 ```
 
-**Behavior observed:** `started_at` is only written on the **first** start. If a
-session is stopped (which sets `stopped_at` but does NOT clear `started_at`) and
-then restarted, the new session's elapsed timer will count from the *previous*
-session's start time. After a crash that leaves `stopped_at = None`,
-`elapsed_seconds` in `get_status()` will report wall-clock time since the
-crashed session began — potentially hours or days.
-
-The threading `_lock` only protects within-process writes; the two processes share
-no OS-level lock. On Windows `Path.replace()` is atomic, so reads are safe in
-practice, but the semantics aren't documented.
+**Fix:**
+```python
+secret = os.getenv('SECRET_KEY')
+if not secret:
+    if os.getenv('DEBUG', 'false').lower() == 'true':
+        secret = 'dev-secret-key-change-in-production'
+        logger.warning("Using insecure dev SECRET_KEY — set SECRET_KEY in .env")
+    else:
+        raise RuntimeError("SECRET_KEY must be set in production (DEBUG != true)")
+app.config['SECRET_KEY'] = secret
+```
+Flip `NO_AUTH` default to `"false"` and log a startup warning when it is `"true"`.
 
 ---
 
-#### [C-3] Authentication exists but is never activated
+### [C-2] Concurrent model retraining can corrupt `intent_classifier.pkl`
 
-**File:** `web/auth.py:15`, `web/app.py` (entire file)
+**RESOLVED — 274a363: retraining serialized under a lock; single subprocess.**
+
+**File:** `web/api.py:108-121`
 
 ```python
-_NO_AUTH = os.getenv("NO_AUTH", "true").lower() == "true"  # Default: no auth in dev
+count = FeedbackRepository.get_total_count(db)
+if count > 0 and count % 50 == 0:   # no lock around this check
+    t = threading.Thread(target=FeedbackService._retrain_from_feedback, ...)
+    t.start()
 ```
 
-`apply_auth_to_blueprint()` is never called in `app.py`. The entire auth module
-is inert. For a personal localhost tool this is a deliberate tradeoff, but:
+`_retrain_from_feedback` spawns `subprocess.run(...)` which writes `intent_classifier.pkl`. If two HTTP requests arrive close together and both read the same `count % 50 == 0`, two subprocesses write to the same file simultaneously. One process writes a partial pickle while the other calls `pickle.load` in `_load_model`, producing a corrupt or truncated model.
 
-- The JSON mutation endpoints (`POST /items`, `POST /reviews`, `POST /session/start`)
-  have no CSRF protection on the JSON paths (Flask-WTF CSRF only fires on form
-  submissions, not JSON `Content-Type` bodies).
-- Any web page the user has open can silently trigger these endpoints via fetch.
+**Fix:** Add a module-level `threading.Lock` guarding the `Thread.start()` call so only one retraining subprocess can run at a time.
 
 ---
 
-#### [C-4] Audio training data is entirely synthetic
-
-**Status: RESOLVED** — the synthetic GaussianNB trainer (`train_audio_classifier`),
-its model loading, and its training `__main__` block were removed from
-`audio_module.py`; `classify_audio()` always uses the energy-based heuristic. The
-removed trainer is documented in `models/README.md`. Regression coverage:
-`tests/test_audio_heuristics.py`.
-
-**File:** `tracking/audio_module.py:180-234`
-
-`train_audio_classifier()` generates 600 samples per class from `numpy.random`.
-The "speech" distribution is hardcoded MFCC shapes with no real audio. The trained
-model will generalize poorly to real-world microphone input. The energy-based
-fallback (`energy_based_classification`) is actually more honest. The training
-function is a stub that creates a false sense of "trained" classifier quality.
+## 2. HIGH — Correctness Bugs
 
 ---
 
-### 2.2 HIGH
+### [H-1] `_idle_cycles` and `_last_quiz_time` are never reset between `track_loop()` restarts
 
----
+**RESOLVED — 0254cdd: idle/cooldown state reset on track_loop restart.**
 
-#### [H-1] Two parallel SM-2 implementations with diverging semantics
-
-**Status: RESOLVED (verified)** — Phase 11.6 gave `TrackedConcept` a real
-`repetitions` counter and unified all constants/formulas between the two
-subsystems. The remaining divergence was closed and locked in with
-`test_concept_scheduler.py::test_matches_tested_sm2_scheduler_across_quality_sequence`,
-which drives the same mixed success/failure quality sequence through both
-`SM2Scheduler` and `concept_scheduler.schedule_next_review()` and asserts
-identical interval, ease, and repetitions at every step. Correction to the audit
-below: `LeitnerSystem` is **not** dead code — it is imported by
-`learning/learning_tracker.py:8` and invoked at `:118` for the
-`algorithm="leitner"` path (see [L-1]).
-
-**Files:** `learning/sm2_memory_model.py:67-152`, `learning/concept_scheduler.py:116-193`
-
-Both implement SM-2. `concept_scheduler.py` imports constants from
-`sm2_memory_model.py` but re-implements the loop body. The ease factor field
-is stored as `TrackedConcept.memory_strength` in the database but is read with
-`getattr(tracked, "memory_strength", 2.5)` — a silent default of 2.5 means a
-concept with a NULL ease factor in the DB will always start with DEFAULT ease,
-silently discarding any previous calibration.
-
-The `LeitnerSystem` class (lines 196–245 of `sm2_memory_model.py`) is dead code —
-fully implemented, never imported, never called.
-
----
-
-#### [H-2] Sparklines on Overview page display random fabricated data
-
-**Status: RESOLVED** — new `GET /api/v1/stats/trend?days=N` backed by
-`LearningRepository.get_review_trend()` (real per-day reviews/correct/added/
-mastered/due from stored timestamps). `OverviewPage.tsx` fetches the trend and
-`miniSparkline(trend, pick)` renders it; the fabricated random `miniSparkline()`
-is gone. Regression coverage: `test_api.py::TestAPIStatsTrend`.
-
-**File:** `web/frontend/src/pages/OverviewPage.tsx:18-22`
-
-```tsx
-function miniSparkline(base: number): { v: number }[] {
-  return Array.from({ length: 7 }, (_, i) => ({
-    v: Math.max(0, base + Math.round((Math.random() - 0.5) * base * 0.2) + i),
-  }))
-}
-```
-
-Every component render (triggered every 5 seconds by the session poll) calls
-`miniSparkline()` and gets a **different** random array. The sparklines flicker
-and display fabricated trends. This is misleading UX — a user who watches their
-"mastery trend" go up and down is watching noise. There is no real time-series
-endpoint to back this up.
-
----
-
-#### [H-3] `FeedbackService` intent cooldown has a TOCTOU race
-
-**Status: RESOLVED** — `/intent/recent` now claims the prompt with an atomic
-`UPDATE ... WHERE prompted_at IS NULL AND user_feedback IS NULL` (SQLAlchemy
-`update()` + rowcount check); the losing concurrent request gets a null result
-instead of double-firing the toast. Regression coverage:
-`test_intent_toast_cooldown.py::TestAtomicClaim`.
-
-**File:** `web/api.py:33-104`
-
-`GET /intent/recent` reads `prompted_at`, decides if the prediction is eligible,
-and then writes `prompted_at` — all in the same HTTP handler but without a
-database row lock. Two simultaneous requests (two open browser tabs) can both
-read the eligible state before either writes, causing the toast to fire twice.
-
----
-
-#### [H-4] `_idle_cycles` and `_last_quiz_time` are module-level globals not reset between runs
-
-**Files:** `tracking/loop.py:218`, `tracking/quiz_engine.py:23`
-
-If `track_loop()` is called more than once in the same process (test restarts,
-signal-based reloads), these counters carry state from the previous run. The
-quiz trigger could fire prematurely in the second run, or be suppressed for the
-full cooldown period from the previous session.
-
----
-
-#### [H-5] Knowledge graph grows without bound; no eviction
-
-**File:** `tracking/knowledge_graph.py`
-
-No node limit, no TTL, no low-relevance pruning. After months of use the `.pkl`
-file can be large enough that `get_graph()` noticeably blocks the tracking loop.
-Each node also stores a 384-dimensional float32 embedding (1.5 KB per node);
-10,000 nodes = ~15 MB resident just for embeddings.
-
----
-
-### 2.3 MEDIUM
-
----
-
-#### [M-1] `ActivityMonitor.session_concepts` is an unbounded list
-
-**File:** `tracking/activity_monitor.py:145, 217`
-
-Every processed concept is appended to a list. For `end_session()` only a
-`Counter` and a `len(set(...))` are needed. Over a long session this list can
-hold thousands of duplicated strings. A `Counter` accumulator would avoid the
-issue entirely.
-
----
-
-#### [M-2] `extract_keywords()` discards compound keyword forms
-
-**File:** `tracking/ocr_module.py:268-286`
-
-The camelCase splitter (step 3) destroys the original compound token and replaces
-it with its parts. `backPropagation` → `back`, `propagation`. If TF-IDF scored
-the compound highly, that score is now split across two lower-value tokens. The
-compound form — which is often the better concept label — is lost.
-
----
-
-#### [M-3] `QuizPage.tsx` and `MicroQuizModal.tsx` duplicate identical UI logic
-
-**Status: RESOLVED** — the duplicated `handleSelect()`/`optionClass()`/result
-banner were extracted into a shared `hooks/useQuizAnswer.ts` (guard + selected/
-answerState + fire-and-forget SM-2 submission + option styling) and a shared
-`components/QuizResultBanner.tsx` (banner JSX; the Next/Close action button is
-passed as a `ReactNode`). Both pages now call the hook; `QuizPage` adds its
-score tally from the hook's returned correctness value. Verified: `npx tsc --noEmit`.
-
-**Files:** `web/frontend/src/pages/QuizPage.tsx:66-90`,
-`web/frontend/src/components/MicroQuizModal.tsx:28-51`
-
-`handleSelect()`, `optionClass()`, and the result banner are character-for-character
-identical in both components. Any fix or style change must be applied in both.
-
----
-
-#### [M-4] Date filter in `TrackingRepository` uses `LIKE` instead of range
-
-**Status: RESOLVED** — `get_daily_summary` now filters
-`start_time >= day_start` and `< next_day` (real datetime range). Regression
-coverage: `test_api.py::TestDailySummaryRange`.
-
-**File:** `db/repository.py:183`
+**File:** `tracking/loop.py:219`, `tracking/quiz_engine.py:23`
 
 ```python
-.filter(TrackingSession.start_time.like(f"{date_str}%"))
+_idle_cycles = 0                            # loop.py — module-level global
+_last_quiz_time: Optional[datetime] = None  # quiz_engine.py — same
 ```
 
-String `LIKE` for date filtering is fragile (breaks if format changes) and
-prevents SQLite from using an index. A `>= today_start` and `< tomorrow_start`
-range filter is correct.
+Both survive process restarts when `track_loop()` is re-called in the same process (test runs, signal-based reload). Stale values cause:
+- 10 accumulated idle cycles → quiz fires in the **first cycle** of a fresh run before the `IDLE_CYCLES_REQUIRED = 12` threshold.
+- A `_last_quiz_time` set before a crash → the 20-minute cooldown carries into the new session even though no quiz was seen.
+
+**Fix:** Reset both at the top of `track_loop()` before the main loop. Expose a `reset_quiz_state()` helper for test isolation.
 
 ---
 
-#### [M-5] Two independent definitions of `SENSITIVE_WINDOW_KEYWORDS`
+### [H-2] `record_quiz_result` spawns a throw-away `ConceptScheduler` on every call
 
-**Status: RESOLVED** — resolved as part of [C-1]: the local list and local
-`should_skip_window()` were removed from `ocr_module.py`; `privacy_filter.py`
-holds the single canonical keyword list and `ocr_module` delegates to it.
-Regression coverage: `test_ocr_privacy_gate.py` asserts union coverage of both
-old lists (`authentication`, `payment`, `health`, `prescription`, ...).
+**RESOLVED — 0254cdd: record_quiz_result reuses the scheduler singleton.**
 
-**Files:** `tracking/ocr_module.py:60-63`, `tracking/privacy_filter.py:28-33`
-
-The lists differ: `privacy_filter.py` includes `authentication`, `payment`,
-`medical`, `health`, `prescription` which the OCR module omits.
-`should_skip_window()` in `ocr_module.py` is a local reimplementation of
-`is_sensitive_window()` in `privacy_filter.py`. One should call the other.
-
----
-
-#### [M-6] Lambda recalibration uses a single review's quality as cumulative success rate
-
-**Status: RESOLVED** — migration 010 adds `review_count`/`correct_count` to
-`tracked_concepts`; `schedule_next_review()` increments them on every quiz review
-and recalibration now passes the true cumulative
-`correct_count / review_count` with `n_reviews = review_count` (gate raised from
-the old `frequency_count` OCR-encounter proxy to `review_count >= 5`). Regression
-coverage: `test_concept_scheduler.py` — counters test, "no recalibration before 5
-reviews" test, and a deterministic test proving the cumulative rate (4/5) is used
-instead of the last rating (quality 2 → 0.4).
-
-**File:** `learning/concept_scheduler.py:172-174`
+**File:** `tracking/quiz_engine.py:159-161`
 
 ```python
-correct_rate = (quality / 5.0)  # approximate from single rating
+def record_quiz_result(concept: str, was_correct: bool):
+    scheduler = ConceptScheduler()  # fresh instance every call
+    scheduler.schedule_next_review(concept, quality=quality)
 ```
 
-`recalibrate_lambda()` expects a cumulative success rate over `n_reviews`.
-Passing the last review's quality (0–1 scaled) conflates one data point with
-a historical average. The comment acknowledges it's approximate but doesn't
-fix the semantic error.
+`ConceptScheduler.__init__` is currently a no-op so the DB write works. But this bypasses the `ActivityMonitor.scheduler` singleton's in-memory state (session AWFC attention scores). If `__init__` ever gains state, divergence is silent and untestable without a live DB.
+
+**Fix:** Pass the existing `ConceptScheduler` singleton through (or expose it as a module-level singleton) rather than constructing a throw-away instance.
 
 ---
 
-#### [M-7] `BubbleGraph` in `GraphPage.tsx` renders a spoke diagram, not a graph
+### [H-3] `recalibrate_lambda` uses `first_seen` as the decay window — breaks for long-lived concepts
 
-**Status: RESOLVED** — `get_graph_stats()` now returns a real `edges` list
-(`[source, target, weight]` among the visible top concepts). `BubbleGraph`
-receives it and draws only actual semantic links, with stroke width/opacity
-scaled by weight; the fabricated "HUB" node and spokes are gone (the backend
-graph has no such node). An honest "no semantic links" caption shows when the
-visible set has no edges. Backend regression coverage:
-`test_knowledge_graph.py::test_graph_stats_includes_real_edges` (verifies
-exclusion of edges to out-of-set nodes and weight ordering). Frontend:
-`npx tsc --noEmit`.
+**RESOLVED — 33c17fe: lambda recalibrates over time since last review.**
 
-**File:** `web/frontend/src/pages/GraphPage.tsx:37-72`
-
-The visualization draws all concepts as equidistant spokes from a central "HUB"
-node. It does not use edge data (the API returns `top_concepts: string[]` with no
-edges). The total_edges counter is displayed but the edges are never drawn. The
-graph misleadingly implies all concepts are equally and directly related to a
-central hub, which contradicts the actual weighted semantic graph in the backend.
-
----
-
-### 2.4 LOW / DEAD CODE / STYLE
-
----
-
-#### [L-1] Dead code: `LeitnerSystem` class
-
-**Status: NOT A BUG (audit corrected)** — the audit's claim that `LeitnerSystem`
-is "never imported or called" is wrong. It is imported by
-`learning/learning_tracker.py:8` and invoked at `:118` for the
-`algorithm="leitner"` path (and imported by `tests/test_new_system.py`). It is
-live code for an alternate review algorithm; no action taken.
-
-**File:** `learning/sm2_memory_model.py:196-245`
-
-Fully implemented, never imported or called.
-
----
-
-#### [L-2] Dead code: entire `web/auth.py` module
-
-**File:** `web/auth.py:1-60`
-
-Both `@require_api_key` decorator and `apply_auth_to_blueprint()` are defined.
-Neither is called anywhere in `app.py`. The module is entirely inert.
-
----
-
-#### [L-3] Misleading log message in `db_module.py`
-
-**File:** `db/db_module.py:18`
+**File:** `learning/memory_model.py:151-156`
 
 ```python
-logger.info("SQLAlchemy tables constructed: sessions, multi_modal_logs, memory_decay, etc.")
+t_hours = (datetime.utcnow() - first_seen).total_seconds() / 3600.0
+predicted_rate = math.exp(-current_lambda * t_hours) if t_hours > 0 else 1.0
+adjustment = 0.05 * (predicted_rate - actual_success_rate)
 ```
 
-`multi_modal_logs` and `memory_decay` do not exist as table names in `models.py`.
-These are artifacts from a previous schema.
+For a concept 83 days old (`t_hours = 2000`) with `lambda = 0.1`:
+`predicted_rate = exp(-200) ≈ 0`. The adjustment always pushes lambda up regardless of actual recall, eventually pinning it to `LAMBDA_CEIL = 0.50`. Long-lived concepts with good recall get their decay rate *increased* — the opposite of the intended personalisation.
+
+**Fix:** Use `last_seen` (time since last review) as `t_hours`, not `first_seen`.
 
 ---
 
-#### [L-4] `IntentFeedbackToast` dismissed state resets on unmount
+### [H-4] `webcam_pipeline` opens and closes the camera on every call — no persistent capture
 
-**Status: RESOLVED** — dismissal is now persisted per prediction in
-`localStorage` (`fkt:dismissed-intent:<id>`), so a dismissed prediction stays
-hidden across navigation and page reloads. The backend already stamps
-`prompted_at` on first serve (atomic claim), so the same prediction can never be
-surfaced twice anyway — the local store is belt-and-suspenders for the toast's
-own display window. Verified: `npx tsc --noEmit`.
+**RESOLVED — 760d0c9: persistent camera handle.**
 
-**File:** `web/frontend/src/components/IntentFeedbackToast.tsx:26`
+**File:** `tracking/webcam_module.py:79-99`, `104-167`
 
-`const [dismissed, setDismissed] = useState(false)` — dismiss state is component-local.
-Navigating away and back causes the same prediction to reappear. No backend
-persistence for "user has seen and dismissed this prediction".
+```python
+def capture_frame():
+    cap = cv2.VideoCapture(0)  # opens camera
+    ...
+    finally:
+        cap.release()          # closes immediately
+
+def webcam_pipeline(num_frames=3):
+    for _ in range(num_frames):
+        frame = capture_frame()  # opens + closes 3 times per cycle
+```
+
+`cv2.VideoCapture(0)` takes ~300 ms on most laptops. At 3 frames per cycle: 900 ms of pure I/O overhead before any pixel is processed. On many Windows drivers, repeated open/close also toggles the "camera in use" LED, which is alarming to users.
+
+**Fix:** Hold a persistent `cap` in module state (opened once at first call, released on shutdown via `atexit`). `capture_frame()` becomes a simple `cap.read()`.
 
 ---
 
-#### [L-5] `export_tracking_data()` can fail with an empty dirname
+### [H-5] `_get_embed_model()` retries a failed load on every call — log spam storm
+
+**RESOLVED — cd9751a: failed embed-model load cached by a sentinel.**
+
+**File:** `tracking/knowledge_graph.py:32-43`
+
+```python
+def _get_embed_model():
+    global _embed_model
+    if _embed_model is None:           # re-entered after a failed load
+        try:
+            _embed_model = SentenceTransformer('all-MiniLM-L6-v2')
+        except Exception as e:
+            logger.warning(f"SentenceTransformer unavailable ({e})...")
+            _embed_model = None        # stays None → next call re-enters
+    return _embed_model
+```
+
+After a failed load `_embed_model` remains `None`, so every subsequent call re-attempts the import (may include a network download attempt) and logs another warning. Over a multi-hour session: hundreds of identical warnings. `_get_spacy_vectors` has the same problem.
+
+**Fix:** Use a sentinel to distinguish "never tried" from "tried and failed":
+```python
+_EMBED_FAILED = object()
+_embed_model = None   # None = untried; _EMBED_FAILED = load failed
+
+def _get_embed_model():
+    global _embed_model
+    if _embed_model is _EMBED_FAILED:
+        return None
+    if _embed_model is None:
+        try:
+            _embed_model = SentenceTransformer('all-MiniLM-L6-v2')
+        except Exception as e:
+            logger.warning(f"SentenceTransformer unavailable: {e}. Will not retry.")
+            _embed_model = _EMBED_FAILED
+            return None
+    return _embed_model
+```
+
+---
+
+### [H-6] Knowledge graph grows without bound — no node limit, no TTL eviction
+
+**RESOLVED — c264d08: node cap with low-memory eviction on save.**
+
+**File:** `tracking/knowledge_graph.py` (entire module)
+
+No cap on node count, no TTL, no low-relevance pruning. Each node stores a 384-dim float32 embedding (~1.5 KB). At 10,000 nodes: 15 MB just for embeddings plus NetworkX graph overhead. After months of use `_load_graph()` blocks the tracking thread for several seconds while deserializing the `.pkl`.
+
+**Fix:** Add a `MAX_GRAPH_NODES = 5000` constant. When exceeded during `_save_graph()`, evict the nodes with the lowest `memory_score` that also have zero edges. This is a best-effort background operation — no correctness risk.
+
+---
+
+## 3. MEDIUM — Data Quality & Performance
+
+---
+
+### [M-1] `extract_keywords()` camelCase splitter discards the original compound form
+
+**RESOLVED — 962a904: camelCase compound keyword retained.**
+
+**File:** `tracking/ocr_module.py:298-321`
+
+```python
+parts = re.split(r'[_]', kw)
+for p in final_parts:
+    split_keywords[p] = max(score, split_keywords.get(p, 0.0))
+# 'backPropagation' → only 'back' and 'propagation' are kept
+```
+
+The compound keyword (e.g. `backPropagation`) — scored highly by YAKE because it is a meaningful unit — is entirely replaced by its fragments. The original form is permanently discarded.
+
+**Fix:** Add `split_keywords[kw.lower()] = score` before the split loop so the compound is always retained as a primary entry; parts are bonus entries.
+
+---
+
+### [M-2] `ActivityMonitor.prediction_buffer` is unbounded and never consumed
+
+**RESOLVED — 2f70bcd: prediction_buffer is a bounded deque(100).**
+
+**File:** `tracking/activity_monitor.py:68-72`
+
+Populated every cycle (~every 5 s). After 8 hours: ~5,760 dicts. No code reads it — `get_accuracy_stats()` queries the DB directly.
+
+**Fix:** Remove or replace with `collections.deque(maxlen=100)`.
+
+---
+
+### [M-3] `session_attention_scores` in `ActivityMonitor` is also unbounded
+
+**RESOLVED — 2f70bcd: attention tracked as O(1) running mean.**
+
+**File:** `tracking/activity_monitor.py:146, 238`
+
+```python
+self.session_attention_scores = []
+...
+self.session_attention_scores.append(attention_score)  # grows forever
+```
+
+`end_session()` only needs the average. A running Welford mean uses O(1) memory.
+
+**Fix:** Replace the list with `_attention_sum: float = 0.0` and `_attention_count: int = 0`.
+
+---
+
+### [M-4] `get_graph()` called inside `extract_keywords()` inner loop triggers periodic DB sync on OCR thread
+
+**RESOLVED — 4e7c067: graph preloaded and passed into extract_keywords.**
+
+**File:** `tracking/ocr_module.py:338-343`
+
+```python
+G = get_graph()  # triggers _ensure_graph_loaded() → may run sync_db_to_graph()
+for kw in list(kw_dict.keys()):
+    if kw in G.nodes:
+        kw_dict[kw] = min(1.0, kw_dict[kw] + 0.1)
+```
+
+When `DB_SYNC_INTERVAL_SECONDS` (60 s) has elapsed, `sync_db_to_graph()` runs a full DB query plus possible re-embedding of new concepts — all blocking the OCR worker thread.
+
+**Fix:** Call `get_graph()` once at the top of `ocr_pipeline()`, pass the reference to `extract_keywords()`, and separate the node-boost lookup from the sync path.
+
+---
+
+### [M-5] `export_tracking_data()` crashes on a bare filename with no directory component
+
+**RESOLVED — ff5f33d: parent dir guarded; bare filenames work.**
 
 **File:** `tracking/activity_monitor.py:274`
 
 ```python
 os.makedirs(os.path.dirname(output_file), exist_ok=True)
+# "export.json" → dirname = '' → makedirs('') → FileNotFoundError
 ```
 
-If `output_file` has no directory component, `os.path.dirname()` returns `''`
-and `os.makedirs('')` raises `FileNotFoundError`. Harmless with the default
-`DATA_DIR`-based path, but breaks on any manually provided bare filename.
+**Fix:**
+```python
+parent = os.path.dirname(output_file)
+if parent:
+    os.makedirs(parent, exist_ok=True)
+```
 
 ---
 
-#### [L-6] Frontend sends unnecessary `{}` body on session toggle
+### [M-6] Quiz cooldown is stamped **before** broadcast confirmation
 
-**File:** `web/frontend/src/api.ts:131, 138`
+**RESOLVED — 1ab7335: cooldown stamped only after successful broadcast.**
 
-`POST /session/start` and `POST /session/stop` ignore the request body. Sending
-`JSON.stringify({})` implies future parameterization that doesn't exist.
+**File:** `tracking/quiz_engine.py:132`
 
----
+```python
+_last_quiz_time = datetime.utcnow()   # stamped at generation time
+return {'concept': concept_name, ...}
+# loop.py:251-254: broadcast_micro_quiz may silently fail
+```
 
-## 3. Architecture Observations
+If the WebSocket broadcast fails (dashboard not running, client disconnected), the user never sees the quiz but the 20-minute cooldown is already consumed.
 
-### What works well and should be preserved
-
-| Pattern | Why it works |
-|---|---|
-| Lazy pipeline loaders (`loop.py` `get_ocr_pipeline()` etc.) | No heavy imports at startup; cold-start stays fast |
-| `ThreadPoolExecutor` with 8-second timeout | Slow pipeline can't block the tracking cycle |
-| CPU-adaptive sampling intervals | Reduces tracker footprint during user-intensive work |
-| `session_state.json` atomic write (tmp→replace) | Safe single-writer IPC; correct for this use case |
-| `is_plausible_concept()` quality filter | Real, tested OCR noise gate |
-| Session-gated + intent-gated concept capture | Prevents noise from non-study activity |
-| Background warm-up thread | Moves model cold-start latency away from first cycle |
-
-### Structural risks (not bugs, but design constraints)
-
-1. **JSON file IPC does not scale.** The Start/Stop toggle works via file IPC.
-   Any new cross-process signal (flush buffers, quiz answered, etc.) would need
-   another file or a proper IPC channel (pipe, socket, Redis).
-
-2. **Knowledge graph and database can diverge.** The graph is the quiz engine's
-   source of truth for memory scores; the database is the SM-2 engine's source
-   of truth. External DB edits (e.g., DB browser) are not reflected in the graph
-   until `sync_all_from_db()` runs.
-
-3. **`track_loop()` itself has no tests.** The 145-test suite covers SM-2 logic,
-   API endpoints, and NLP utilities, but the main loop and `_maybe_trigger_quiz()`
-   are untested. These contain the most stateful logic (globals, session gating,
-   inter-thread counters).
-
-4. **Flask serves the built Vite bundle.** Frontend changes require a rebuild
-   (`npm run build`) before they appear at `:5000`. The recommended dev mode
-   (Vite at `:5173` + Flask at `:5000`) works but doubles process management.
+**Fix:** Move `_last_quiz_time = datetime.utcnow()` into `loop.py` — only set it after a successful `broadcast_micro_quiz` call.
 
 ---
 
-## 4. Recommended Fix Priority
+### [M-7] `webcam_module` and `ocr_module` use `print()` instead of logger
 
-| Pri | Issue | Effort | Impact |
-|---|---|---|---|
-| 1 | [C-1] Privacy filter silently disabled on import error (resolved) | Low | Critical |
-| 2 | [C-2] `started_at` not reset on session restart (resolved) | Low | High correctness |
-| 3 | [H-2] Sparklines display random fabricated data (resolved) | Medium | User trust |
-| 4 | [H-3] Intent feedback cooldown race condition (resolved) | Low | Data integrity |
-| 5 | [C-4] Audio training data is entirely synthetic (resolved) | Medium | Model quality |
-| 6 | [H-1] Duplicate SM-2 implementations (resolved) | Medium | Maintainability |
-| 7 | [M-3] Duplicate quiz UI logic (resolved) | Low | Maintainability |
-| 8 | [M-4] Date filter uses LIKE instead of range (resolved) | Low | Correctness |
-| 9 | [M-5] Duplicate sensitive keyword lists (resolved) | Low | Correctness |
-| 10 | [M-6] Lambda recalibration wrong success rate (resolved) | Low | Model accuracy |
-| 11 | [M-7] BubbleGraph doesn't use edge data (resolved) | High | UX accuracy |
-| 12 | [L-4] Toast dismiss state not persisted (resolved) | Low | UX polish |
+**RESOLVED — 3ca101b: webcam/OCR messages routed through logger.**
+
+**File:** `tracking/webcam_module.py:57, 95`, `tracking/ocr_module.py` (≥15 call sites)
+
+```python
+print(f"Error calculating EAR: {e}")   # webcam_module.py:57
+print(f"Error capturing frame: {e}")   # webcam_module.py:95
+```
+
+Privacy-critical messages (`[PRIVACY] Skipped sensitive window: ...`) and errors never reach the rotating log file when running as a background service. They are discarded silently.
+
+**Fix:** Replace all `print(...)` in both files with `logger.warning/debug(...)`.
 
 ---
 
-## 5. What Was Explicitly NOT Flagged
+### [M-8] `_is_subsumed_single_word` does a leading-wildcard `LIKE '%x%'` full-table scan
 
-The following patterns were investigated and found to be **intentional or acceptable**:
+**RESOLVED — c8c14a5: subsuming phrases preloaded once, no LIKE scan.**
 
-- `_LazySessionProxy` in `db/models.py` — correct lazy DB init pattern.
-- `FKT_TEST_DB` env-var-must-be-set-before-import — documented in AGENTS.md, respected by tests.
-- `concept_scheduler.py` `pass` in `__init__` — intentional; `SessionLocal` is the singleton.
-- `db_path` backward-compat params in `ActivityMonitor` / `IntentValidator` — harmless, documented.
-- `SECOND_REVIEW_INTERVAL_DAYS = 3` (not SM-2's canonical 6) — documented deliberate choice.
-- `NO_AUTH=true` default — documented design decision for local dev; acceptable tradeoff.
-- Audio `_audio_result_cache` module-level dict — intentional ring-buffer pattern for async cache.
+**File:** `learning/concept_promotion.py:89-100`
+
+```python
+others = db.query(TrackedConcept).filter(
+    TrackedConcept.concept.like(f"%{concept}%"),  # index unusable
+).all()
+```
+
+SQLite cannot use any index for `LIKE '%...'` (leading wildcard). This is a full-table scan per promoted concept. With thousands of tracked concepts this is the dominant cost of every `backfill_items()` run.
+
+**Fix:** Load all multi-word concept strings into a Python set before the promotion loop and perform membership checks in memory.
 
 ---
 
-*Investigation depth: all files in `tracker_app/tracking/`, `tracker_app/learning/`, `tracker_app/db/`,
-`tracker_app/web/`, `tracker_app/web/frontend/src/`. Pending deeper review: `ReviewPage.tsx`,
-`KnowledgeBasePage.tsx`, `AddConceptPage.tsx`, `webcam_module.py`, `keyword_extractor.py`,
-full test suite.*
+### [M-9] `_load_graph()` acquires the reentrant lock inside a caller that already holds it — undocumented implicit contract
+
+**RESOLVED — 94a4940: renamed _load_graph_locked, contract documented.**
+
+**File:** `tracking/knowledge_graph.py:73-108`
+
+```python
+def _ensure_graph_loaded():
+    with _graph_lock:            # outer acquire
+        if not _load_graph():   # _load_graph also acquires
+            ...
+
+def _load_graph() -> bool:
+    with _graph_lock:            # inner re-acquire (RLock — no deadlock)
+        knowledge_graph.clear()
+```
+
+The `RLock` prevents a deadlock, but `_load_graph()` silently requires either "always called with the lock held" or "always called without it". A future caller without the lock creates a data race. The contract is not documented.
+
+**Fix:** Remove `with _graph_lock:` from `_load_graph()` and rename it `_load_graph_locked()` to make the requirement explicit.
+
+---
+
+### [M-10] YAKE extractor parameters appear configurable per-call but are silently ignored after first init
+
+**RESOLVED — c940e8b: fixed singleton config documented.**
+
+**File:** `tracking/keyword_extractor.py:32-51`, `tracking/ocr_module.py:267`
+
+```python
+def _get_yake(language="en", max_ngram=2, top_n=20):
+    global _yake_extractor
+    if _yake_extractor is None:
+        _yake_extractor = yake.KeywordExtractor(... top=top_n ...)
+    return _yake_extractor   # always returns top=20 singleton
+```
+
+`ocr_module.py` calls `extract_keywords(text, top_n=10)`. YAKE extracts 20 internally and the final `[:top_n]` slice returns 10 — wasteful but not incorrect. The dangerous part: passing different `language` or `max_ngram` values silently returns the old singleton with the wrong settings.
+
+**Fix:** Remove per-call parameters from `_get_yake()` and document the singleton's fixed parameters.
+
+---
+
+## 4. LOW / Style / Dead Code
+
+---
+
+### [L-1] `db_module.py` log message names tables that do not exist
+
+**RESOLVED — ed12cdb: log lists dynamically built ORM tables.**
+
+**File:** `db/db_module.py:19`
+
+```python
+logger.info("SQLAlchemy tables constructed: sessions, multi_modal_logs, memory_decay, etc.")
+```
+
+`multi_modal_logs` and `memory_decay` are not ORM table names. Misleads anyone debugging schema.
+
+**Fix:** `f"SQLAlchemy tables constructed: {[t.name for t in Base.metadata.sorted_tables]}"`
+
+---
+
+### [L-2] `get_learning_stats()` loads every `LearningItem` row into memory for a `len()` call
+
+**RESOLVED — 424dba5: count via get_total_count, no full load.**
+
+**File:** `learning/learning_tracker.py:162`
+
+```python
+total_count = len(LearningRepository.get_all_items(db))  # loads all rows
+```
+
+**Fix:** `db.query(func.count(LearningItem.id)).scalar() or 0` — `get_total_count()` already exists in the repository and does exactly this.
+
+---
+
+### [L-3] `NO_AUTH=true` default leaves auth silently inert with no log
+
+**RESOLVED — 9f8d24c: startup warning logged when auth is inert.**
+
+**File:** `web/auth.py:15`, `web/app.py:48`
+
+`apply_auth_to_blueprint(api_bp)` is called, but `_NO_AUTH` defaults to `True` so it immediately returns. No warning is emitted. The call site looks like auth is active when it isn't.
+
+**Fix:** Emit a `logger.warning("API authentication is DISABLED (NO_AUTH=true)")` at startup when `_NO_AUTH` is True.
+
+---
+
+### [L-4] `webcam_pipeline` returns hard-coded `face_count: 1 if ear_values else 0`
+
+**RESOLVED — 70ac5cf: true face count reported.**
+
+**File:** `tracking/webcam_module.py:164`
+
+```python
+"face_count": 1 if ear_values else 0,  # boolean cast, not actual count
+```
+
+Consumers expecting the actual number of faces detected (e.g. multi-person detection extensions) get wrong data.
+
+**Fix:** Track `faces_detected = sum(len(r.multi_face_landmarks or []) for r in results_list)` and return the true count.
+
+---
+
+### [L-5] `concept_promotion._answer_for()` opens a separate DB session from its caller — 3 total sessions for one promotion
+
+**RESOLVED — 644a345: caller session reused, two sessions fewer.**
+
+**File:** `learning/concept_promotion.py:54-68`
+
+`_answer_for()` opens `SessionLocal`. `promote_concept_to_deck()` also opens `SessionLocal`. `LearningTracker().add_learning_item()` opens a third. Three round-trip sessions for a single promotion.
+
+**Fix:** Pass `db: Session` as a parameter to `_answer_for()` and `_difficulty_for()`.
+
+---
+
+### [L-6] `CURATED_EXCEPTIONS` is hardcoded — no user-editable mechanism
+
+**RESOLVED — 148bd4a: DATA_DIR/curated_exceptions.txt with fallback.**
+
+**File:** `learning/concept_promotion.py:31-34`
+
+```python
+CURATED_EXCEPTIONS = frozenset({'big-o notation', 'ebbinghaus forgetting curve'})
+```
+
+Users cannot extend this list without editing source code.
+
+**Fix:** Load from `DATA_DIR/curated_exceptions.txt` at startup, falling back to the hardcoded set.
+
+---
+
+## 5. Feature Improvements (Recommended Additions)
+
+These are not bugs but high-value improvements based on structural gaps found during the audit.
+
+---
+
+### [F-1] No rate limiting on any API endpoint
+
+**RESOLVED — 1eb5619: flask-limiter wired, 60/min default, TESTING exemption.**
+
+**File:** `web/api.py` (all routes)
+
+A browser extension bug or rogue tab can call `POST /api/v1/reviews` in a tight loop and flood the DB. No per-endpoint rate limit exists.
+
+**Recommendation:** Add `flask-limiter` with `default_limits = ["60 per minute"]` across all blueprint routes.
+
+---
+
+### [F-2] No input sanitisation on `browser_ingest` title field
+
+**RESOLVED — fabbba0: C0/C1 control chars stripped from title.**
+
+**File:** `web/api.py:618-619`
+
+```python
+title = str(data.get('title', ''))[:200]   # truncated but not sanitised
+```
+
+Stored in `ConceptEncounter.context_snippet`. A malicious or buggy extension can inject HTML or control characters that reach the UI.
+
+**Recommendation:** Strip control characters and validate the field is printable Unicode before storing.
+
+---
+
+### [F-3] `session_state.json` has no cross-process OS lock — unsafe with multiple Flask workers
+
+**File:** `tracking/session_state.py`
+
+The threading `_lock` is within-process only. Running Flask under Gunicorn with `--workers 2` allows two worker processes to write `session_state.json` simultaneously. `Path.replace()` is atomic for the rename, but both processes can be inside `json.dump(tmp, ...)` at the same time.
+
+**Recommendation:** Replace the JSON toggle with a single-row SQLite table. SQLite WAL mode handles concurrent writes correctly and removes the IPC file entirely.
+
+---
+
+### [F-4] `FeedbackTrainingSample` rows accumulate indefinitely
+
+**RESOLVED — 3f90840: used_in_training column + 90-day prune.**
+
+**File:** `web/api.py:88-96`, `db/models.py`
+
+Every intent correction is stored forever. Over years this table holds millions of rows. The training script uses all of them, making retraining progressively slower.
+
+**Recommendation:** Add a `used_in_training` boolean column. After each training run, mark used samples. Add a periodic cleanup that deletes `used_in_training=True` rows older than 90 days.
+
+---
+
+### [F-5] EAR thresholds are hardcoded — no per-user calibration
+
+**File:** `tracking/webcam_module.py:67-74`
+
+```python
+if avg_ear < 0.2:          # one-size-fits-all thresholds
+    return max(0.0, (avg_ear / 0.2) * 40.0)
+elif avg_ear > 0.35:
+    return 100.0
+```
+
+EAR varies significantly between users (glasses, eye shape, lighting conditions). Incorrect attention scores corrupt AWFC memory weights for all tracked concepts.
+
+**Recommendation:** Add a 30-second calibration step at session start. Measure the user's personal EAR baseline (eyes-open mean and eyes-partially-closed floor) and persist it in `session_state.json` for the session.
+
+---
+
+### [F-6] No API endpoint to force a knowledge graph resync
+
+**RESOLVED — 1aaa78b: POST /api/v1/graph/sync force resync.**
+
+**File:** `tracking/knowledge_graph.py`, `web/api.py`
+
+External DB edits (DB Browser for SQLite, direct SQL scripts) are not reflected in the in-memory graph for up to 60 seconds. Micro-quiz memory scores can be stale.
+
+**Recommendation:** Add `POST /api/v1/graph/sync` that calls `sync_db_to_graph(force=True)` and returns the updated node/edge count. Surface it in the dashboard Settings tab.
+
+---
+
+### [F-7] Zero tests for `track_loop()` and `_maybe_trigger_quiz()`
+
+**RESOLVED — 607125d: track_loop + quiz-trigger integration coverage.**
+
+**File:** `tracking/loop.py` (entirely untested)
+
+The tracking loop and quiz trigger are the most stateful, most bug-prone code paths. Bugs H-1 and M-6 above would have been caught by a basic integration test.
+
+**Recommendation:**
+- Test `track_loop()` with a `stop_event` that fires after 2 iterations, using mocked pipeline functions.
+- Test `_maybe_trigger_quiz()` directly, asserting `_idle_cycles` resets when session is inactive.
+- Test quiz cooldown: inject `_last_quiz_time = now - timedelta(minutes=19)` and assert no quiz fires.
+
+---
+
+## 6. Priority Matrix
+
+| Pri | ID | Issue | Effort | Impact |
+|---|---|---|---|---|
+| 1 | F-3 | `session_state.json` unsafe with multiple workers | Medium | Reliability |
+| 2 | F-5 | EAR thresholds hardcoded - no per-user calibration | Low | UX |
+
+> Every other item in this plan (C-1..C-2, H-1..H-6, M-1..M-10, L-1..L-6,
+> F-1, F-2, F-4, F-6, F-7) is RESOLVED and committed — see the RESOLVED
+> note on each section for the resolving commit.
+
+---
+
+*Investigation covers: `tracking/` (all 10 files), `learning/` (all 5 files), `db/` (all files), `web/api.py`, `web/app.py`, `web/auth.py`, `web/realtime.py`, `config.py`, `main.py`. Frontend `web/frontend/src/` reviewed for API contract only — component-level TSX audit is separate.*
