@@ -51,16 +51,15 @@ def is_kb_worthy(concept: str) -> bool:
     return is_plausible_concept(c)
 
 
-def _answer_for(concept: str) -> str:
+def _answer_for(db, concept: str) -> str:
     """Build an answer from the most recent meaningful encounter context."""
-    with SessionLocal() as db:
-        enc = (
-            db.query(ConceptEncounter)
-              .filter(ConceptEncounter.concept == concept)
-              .order_by(ConceptEncounter.timestamp.desc())
-              .first()
-        )
-        snippet = (enc.context_snippet or "").strip() if enc else ""
+    enc = (
+        db.query(ConceptEncounter)
+          .filter(ConceptEncounter.concept == concept)
+          .order_by(ConceptEncounter.timestamp.desc())
+          .first()
+    )
+    snippet = (enc.context_snippet or "").strip() if enc else ""
     if snippet.startswith('browser:') and len(snippet) > len('browser:'):
         return f"Captured from your study session on: {snippet[len('browser:'):].strip()}"
     if snippet and snippet != 'ocr' and len(snippet) > 4:
@@ -156,10 +155,11 @@ def promote_concept_to_deck(
             logger.debug(f"Already in deck: {concept!r}")
             return None
         tc = db.query(TrackedConcept).filter(TrackedConcept.concept == concept).first()
+        answer = _answer_for(db, concept)
 
     item_id = LearningTracker().add_learning_item(
         question=concept,
-        answer=_answer_for(concept),
+        answer=answer,
         difficulty=_difficulty_for(tc.relevance_score if tc else None),
         item_type='concept',
         tags=['extracted'],

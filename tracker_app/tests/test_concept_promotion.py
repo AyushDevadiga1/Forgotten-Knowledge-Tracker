@@ -128,3 +128,43 @@ def test_in_memory_subsumption_avoids_db(monkeypatch):
     assert cp._is_subsumed_single_word(
         "cellular respiration", subsuming_phrases=phrases
     ) is False
+
+
+
+def test_promote_reuses_single_db_session(db, monkeypatch):
+    """L-5: promotion must not open a second session for the encounter lookup.
+
+    _answer_for used to open its own SessionLocal, so a single promotion
+    touched the DB three times. It now reuses the caller's session.
+    """
+    from tracker_app.db.models import ConceptEncounter
+
+    class _CountingMaker:
+        def __init__(self, underlying):
+            self._underlying = underlying
+            self.count = 0
+
+        def __call__(self):
+            self.count += 1
+            return self._underlying()
+
+    promote_maker = _CountingMaker(db)
+    item_maker = _CountingMaker(db)
+    monkeypatch.setattr(cp, "SessionLocal", promote_maker)
+    monkeypatch.setattr(
+        "tracker_app.learning.learning_tracker.models.SessionLocal", item_maker
+    )
+
+    with db() as s:
+        s.add(TrackedConcept(concept="atp", frequency_count=5, relevance_score=0.6))
+        s.add(ConceptEncounter(concept="atp", context_snippet="browser:ATP notes"))
+        s.commit()
+
+    item_id = cp.promote_concept_to_deck("atp", subsuming_phrases=frozenset())
+    assert item_id
+    assert promote_maker.count == 1   # one session for idempotency + encounter lookup
+    assert item_maker.count == 1      # add_learning_item's own session
+
+    with db() as s:
+        item = s.query(LearningItem).filter(LearningItem.question == "atp").first()
+    assert "ATP notes" in item.answer
