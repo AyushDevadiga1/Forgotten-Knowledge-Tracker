@@ -48,6 +48,19 @@ app.config['WTF_CSRF_TIME_LIMIT'] = None  # No time limit for CSRF tokens
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
 
+# F-1: global rate limiting (flask-limiter). Defaults to ON; set
+# RATELIMIT_ENABLED=false to disable. Tests keep the limiter attached but
+# exempt while Flask is in TESTING mode, so the harness is never throttled.
+app.config['RATELIMIT_ENABLED'] = os.getenv('RATELIMIT_ENABLED', 'true').lower() == 'true'
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+limiter = Limiter(
+    get_remote_address,
+    default_limits=["60 per minute"],
+    default_limits_exempt_when=lambda: bool(app.config.get('TESTING', False)),
+)
+limiter.init_app(app)
+
 # Register API blueprint (exempt from CSRF for API endpoints)
 from tracker_app.web.api import api_bp
 from tracker_app.web.auth import apply_auth_to_blueprint
