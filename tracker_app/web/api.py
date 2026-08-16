@@ -1,6 +1,7 @@
 """Flask API: tracking, feedback/retraining, knowledge graph, micro-quiz, and ingest endpoints."""
 
 import json
+import re
 import threading
 import logging
 from datetime import datetime
@@ -50,6 +51,23 @@ def _parse_bool_flag(value):
     if isinstance(value, (int, float)) and value in (0, 1):
         return bool(value)
     return None
+
+
+_CONTROL_CHARS_RE = re.compile(r'[\x00-\x1f\x7f-\x9f]')
+
+
+def _sanitize_title(raw) -> str:
+    """Strip C0/C1 control characters and collapse whitespace (F-2).
+
+    Browser extensions have shipped titles containing escape sequences,
+    null bytes, and newlines. Those reach ConceptEncounter.context_snippet
+    and later render as raw control bytes in the UI. Printable Unicode is
+    preserved; control runs and stray whitespace are removed/collapsed.
+    """
+    if not raw:
+        return ""
+    cleaned = _CONTROL_CHARS_RE.sub('', str(raw))
+    return ' '.join(cleaned.split())
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -666,7 +684,7 @@ def browser_ingest():
         return jsonify({'success': False, 'error': 'text field required'}), 400
 
     text  = str(data.get('text', ''))[:10000]
-    title = str(data.get('title', ''))[:200]
+    title = _sanitize_title(data.get('title', ''))[:200]
 
     if len(text.strip()) < 20:
         return jsonify({'success': True, 'message': 'Text too short — skipped'})
