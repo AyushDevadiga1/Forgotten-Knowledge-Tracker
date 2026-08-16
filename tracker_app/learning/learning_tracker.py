@@ -159,7 +159,7 @@ class LearningTracker:
         with models.SessionLocal() as db:
             base_stats = LearningRepository.get_stats(db)
             
-            total_count = len(LearningRepository.get_all_items(db))
+            total_count = LearningRepository.get_total_count(db)
             avg_success = db.query(func.avg(LearningItem.success_rate)).scalar() or 0.0
             total_reviews = db.query(func.sum(LearningItem.total_reviews)).scalar() or 0
             
