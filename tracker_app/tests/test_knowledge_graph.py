@@ -209,3 +209,49 @@ def test_load_graph_locked_does_not_acquire_lock(
     with lock:  # the caller holds the lock
         assert kg._load_graph_locked() is True
     assert lock.acquires == 1  # only the caller's acquire, never a re-acquire
+
+
+def test_sync_db_to_graph_force_ensures_loaded(clean_graph, monkeypatch):
+    # F-6: force=True bootstraps the in-memory graph before reconciling.
+    ensured = []
+    monkeypatch.setattr(kg, "_ensure_graph_loaded", lambda: ensured.append(1))
+    monkeypatch.setattr(kg, "fetch_concepts_from_db", lambda: [])
+    monkeypatch.setattr(kg, "add_concepts", lambda concepts: None)
+    monkeypatch.setattr(kg, "_refresh_all_memory_scores", lambda concepts: None)
+    monkeypatch.setattr(kg, "_save_graph", lambda: None)
+    with kg._graph_lock:
+        kg.knowledge_graph.clear()
+    stats = kg.sync_db_to_graph(force=True)
+    assert ensured == [1]
+    assert stats == {"nodes": 0, "edges": 0, "synced": 0}
+
+
+def test_sync_db_to_graph_force_adds_missing_and_reports_stats(clean_graph, monkeypatch):
+    # F-6: only DB concepts missing from the graph are reported as "synced".
+    added = []
+    monkeypatch.setattr(kg, "_ensure_graph_loaded", lambda: None)
+    monkeypatch.setattr(kg, "fetch_concepts_from_db", lambda: ["alpha", "new concept"])
+    monkeypatch.setattr(kg, "add_concepts", lambda concepts: added.extend(concepts))
+    monkeypatch.setattr(kg, "_refresh_all_memory_scores", lambda concepts: None)
+    monkeypatch.setattr(kg, "_save_graph", lambda: None)
+    with kg._graph_lock:
+        kg.knowledge_graph.clear()
+        kg.knowledge_graph.add_node("alpha")
+    stats = kg.sync_db_to_graph(force=True)
+    assert added == ["new concept"]
+    assert stats == {"nodes": 1, "edges": 0, "synced": 1}
+
+
+def test_sync_db_to_graph_returns_zero_stats_on_error(clean_graph, monkeypatch):
+    # F-6: a failing reconcile is contained and reports zero stats instead of
+    # raising through to the endpoint.
+    monkeypatch.setattr(kg, "_ensure_graph_loaded", lambda: None)
+
+    def boom():
+        raise RuntimeError("db unavailable")
+
+    monkeypatch.setattr(kg, "fetch_concepts_from_db", boom)
+    monkeypatch.setattr(kg, "_refresh_all_memory_scores", lambda concepts: None)
+    monkeypatch.setattr(kg, "_save_graph", lambda: None)
+    stats = kg.sync_db_to_graph(force=True)
+    assert stats == {"nodes": 0, "edges": 0, "synced": 0}

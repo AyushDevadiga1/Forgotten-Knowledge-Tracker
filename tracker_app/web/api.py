@@ -567,6 +567,21 @@ def get_graph_stats():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@api_bp.route('/graph/sync', methods=['POST'])
+def sync_graph():
+    """Force a knowledge-graph resync from the database (F-6).
+
+    Loads the persisted graph if not already in memory, reconciles every
+    concept from the DB, and returns the updated graph stats. Intended for
+    after a bulk restore or when the graph is suspected to be stale.
+    """
+    try:
+        from tracker_app.tracking.knowledge_graph import sync_db_to_graph
+        return jsonify({'success': True, 'data': sync_db_to_graph(force=True)})
+    except Exception as e:
+        logger.error(f"sync_graph: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @api_bp.route('/graph/gaps', methods=['GET'])
 def get_knowledge_gaps():

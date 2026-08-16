@@ -393,25 +393,44 @@ def _refresh_all_memory_scores(concepts):
                 node['last_review'] = last_seen.strftime(DATETIME_FORMAT)
 
 
-def sync_db_to_graph():
+def sync_db_to_graph(force: bool = False) -> dict:
     """Synchronize database concepts to graph.
 
     Incremental: only concepts missing from the in-memory graph get new nodes
     (and embeddings), so a load-from-pkl + reconcile does not re-embed every
     concept. Existing nodes get their memory fields refreshed from live DB
     state. Persists the graph afterwards.
+
+    With force=True the in-memory graph is loaded from the pkl first if it is
+    not already loaded, then the reconcile runs immediately without waiting on
+    the DB_SYNC_INTERVAL_SECONDS throttle -- the behaviour behind the
+    /graph/sync endpoint (F-6). add_concepts() dedupes on the node key, so a
+    force re-run never duplicates nodes or inflates the returned counts.
+
+    Returns {'nodes', 'edges', 'synced'} so callers (the F-6 endpoint) can
+    answer with the updated graph stats. Existing callers that ignored the
+    previous None return are unaffected.
     """
     try:
+        if force:
+            _ensure_graph_loaded()
         db_concepts = fetch_concepts_from_db()
         new_concepts = [c for c in db_concepts if c not in knowledge_graph]
         if new_concepts:
             add_concepts(new_concepts)
         _refresh_all_memory_scores(db_concepts)
         _save_graph()
-        logger.info("Synced %d concepts from DB to graph (%d new)",
-                    len(db_concepts), len(new_concepts))
+        logger.info("Synced %d concepts from DB to graph (%d new%s)",
+                    len(db_concepts), len(new_concepts),
+                    ", forced" if force else "")
+        return {
+            "nodes": knowledge_graph.number_of_nodes(),
+            "edges": knowledge_graph.number_of_edges(),
+            "synced": len(new_concepts),
+        }
     except Exception as e:
         logger.warning("Error syncing DB to graph: %s", e)
+        return {"nodes": 0, "edges": 0, "synced": 0}
 
 def get_graph():
     """Get graph with thread-safe access"""
