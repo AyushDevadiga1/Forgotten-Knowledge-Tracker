@@ -168,3 +168,48 @@ def test_promote_reuses_single_db_session(db, monkeypatch):
     with db() as s:
         item = s.query(LearningItem).filter(LearningItem.question == "atp").first()
     assert "ATP notes" in item.answer
+
+
+
+def test_curated_exceptions_loads_from_file(monkeypatch, tmp_path):
+    """L-6: DATA_DIR/curated_exceptions.txt replaces the built-in set."""
+    f = tmp_path / "curated_exceptions.txt"
+    f.write_text("# my exceptions\nzipf's law\n\nEbbinghaus Forgetting Curve\n",
+                 encoding="utf-8")
+    monkeypatch.setattr(cp, "_CURATED_EXCEPTIONS_FILE", f)
+    loaded = cp._load_curated_exceptions()
+
+    assert "zipf's law" in loaded
+    assert "ebbinghaus forgetting curve" in loaded
+    assert "big-o notation" not in loaded          # file replaces the defaults
+
+    monkeypatch.setattr(cp, "CURATED_EXCEPTIONS", loaded)
+    assert cp.is_kb_worthy("Zipf's Law")           # case-insensitive match
+    assert not cp.is_kb_worthy("big-o notation")   # structural gate applies again
+
+
+def test_curated_exceptions_fallback_when_file_missing(monkeypatch, tmp_path):
+    monkeypatch.setattr(cp, "_CURATED_EXCEPTIONS_FILE", tmp_path / "missing.txt")
+    assert cp._load_curated_exceptions() == cp.CURATED_EXCEPTIONS_DEFAULT
+
+
+def test_curated_exceptions_fallback_when_file_has_no_entries(monkeypatch, tmp_path):
+    f = tmp_path / "curated_exceptions.txt"
+    f.write_text("\n  \n# only a comment\n", encoding="utf-8")
+    monkeypatch.setattr(cp, "_CURATED_EXCEPTIONS_FILE", f)
+    assert cp._load_curated_exceptions() == cp.CURATED_EXCEPTIONS_DEFAULT
+
+
+def test_curated_exceptions_fallback_on_read_error(monkeypatch, tmp_path):
+    class _Boom:
+        def exists(self):
+            return True
+
+    monkeypatch.setattr(cp, "_CURATED_EXCEPTIONS_FILE", _Boom())
+    import builtins
+
+    def boom(*args, **kwargs):
+        raise OSError("cannot read")
+
+    monkeypatch.setattr(builtins, "open", boom)
+    assert cp._load_curated_exceptions() == cp.CURATED_EXCEPTIONS_DEFAULT

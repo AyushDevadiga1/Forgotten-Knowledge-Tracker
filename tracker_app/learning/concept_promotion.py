@@ -15,6 +15,7 @@ from typing import Dict, List, Optional
 
 from tracker_app.db.models import SessionLocal, TrackedConcept, ConceptEncounter
 from tracker_app.learning.text_quality_validator import is_plausible_concept
+from tracker_app.config import DATA_DIR
 
 logger = logging.getLogger("ConceptPromotion")
 
@@ -28,10 +29,36 @@ UI_CHROME = frozenset({
 
 # Curated phrases the structural gate rejects (odd lettering, function-word
 # components) but which are genuinely study topics.
-CURATED_EXCEPTIONS = frozenset({
+CURATED_EXCEPTIONS_DEFAULT = frozenset({
     'big-o notation',
     'ebbinghaus forgetting curve',
 })
+
+_CURATED_EXCEPTIONS_FILE = DATA_DIR / "curated_exceptions.txt"
+
+
+def _load_curated_exceptions() -> frozenset:
+    """Load user-editable curated exceptions from DATA_DIR (L-6).
+
+    Each non-empty line of curated_exceptions.txt is one exception; a line
+    starting with '#' is a comment. Falls back to the built-in set when the
+    file is missing, cannot be read, or contains no entries.
+    """
+    try:
+        if not _CURATED_EXCEPTIONS_FILE.exists():
+            return CURATED_EXCEPTIONS_DEFAULT
+        with open(_CURATED_EXCEPTIONS_FILE, encoding="utf-8") as fh:
+            entries = {
+                line.strip().lower()
+                for line in fh
+                if line.strip() and not line.lstrip().startswith('#')
+            }
+        return frozenset(entries) if entries else CURATED_EXCEPTIONS_DEFAULT
+    except OSError:
+        return CURATED_EXCEPTIONS_DEFAULT
+
+
+CURATED_EXCEPTIONS = _load_curated_exceptions()
 
 # Auto-promote once a concept has been re-encountered this many times.
 PROMOTE_AFTER_ENCOUNTERS = 3
@@ -46,7 +73,7 @@ def is_kb_worthy(concept: str) -> bool:
     c = concept.strip()
     if c in UI_CHROME:
         return False
-    if c in CURATED_EXCEPTIONS:
+    if c.lower() in CURATED_EXCEPTIONS:
         return True
     return is_plausible_concept(c)
 
