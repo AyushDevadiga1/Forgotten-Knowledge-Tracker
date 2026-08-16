@@ -306,3 +306,27 @@ class FeedbackRepository:
     @staticmethod
     def get_total_count(db: Session) -> int:
         return db.query(FeedbackTrainingSample).count()
+
+    @staticmethod
+    def mark_samples_used(db: Session, sample_ids) -> None:
+        """Mark feedback samples as consumed by a retraining run (F-4)."""
+        if not sample_ids:
+            return
+        db.query(FeedbackTrainingSample).filter(
+            FeedbackTrainingSample.id.in_(sample_ids)
+        ).update(
+            {FeedbackTrainingSample.used_in_training: 1},
+            synchronize_session=False,
+        )
+        db.commit()
+
+    @staticmethod
+    def cleanup_used_samples(db: Session, older_than: datetime) -> int:
+        """Delete used training samples older than `older_than`. Returns the
+        number of rows deleted (F-4)."""
+        deleted = db.query(FeedbackTrainingSample).filter(
+            FeedbackTrainingSample.used_in_training == 1,
+            FeedbackTrainingSample.timestamp < older_than,
+        ).delete(synchronize_session=False)
+        db.commit()
+        return deleted

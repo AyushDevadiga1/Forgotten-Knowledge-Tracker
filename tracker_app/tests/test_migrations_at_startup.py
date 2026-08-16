@@ -10,11 +10,11 @@ first ORM write (api.py:426-434 prompted_at claim UPDATE, etc.).
 The fix: init_all_databases() calls run_migrations(db_path=get_db_path()) after
 init_db() — create_all stays create_all-only. These tests pin:
   - a stale-schema DB (intent_predictions built via raw sqlite3 DDL, pre-007/008)
-    converges after init_all_databases(): schema_migrations exists with all 11
+    converges after init_all_databases(): schema_migrations exists with all 13
     entries, the ORM can INSERT an IntentPrediction (including the migration-only
     columns), and the api.py prompted_at claim UPDATE succeeds;
   - an already-migrated DB is a no-op: a second init_all_databases() applies
-    nothing (run_migrations reports applied=0, skipped=11).
+    nothing (run_migrations reports applied=0, skipped=13).
 
 All DBs are throwaway tmp_path files; the real data/sessions.db is never touched.
 
@@ -48,9 +48,9 @@ CREATE TABLE intent_predictions (
 
 # Total migration count tracks the MIGRATIONS registry in
 # tracker_app/db/migrations.py — bump when a migration is appended
-# (currently 12: 001..012 including 011_datetime_storage_format and
-# 012_drop_duplicate_feedback_index).
-TOTAL_MIGRATIONS = 12
+# (currently 13: 001..013 including 011_datetime_storage_format,
+# 012_drop_duplicate_feedback_index, and 013_feedback_used_in_training).
+TOTAL_MIGRATIONS = 13
 
 
 def _create_stale_db(db_file):

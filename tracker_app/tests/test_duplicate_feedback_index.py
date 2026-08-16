@@ -32,8 +32,9 @@ from tracker_app.db.migrations import ensure_base_schema, run_migrations
 
 # Total migration count tracks the MIGRATIONS registry in
 # tracker_app/db/migrations.py — bump when a migration is appended
-# (currently 12: 001..012 including 012_drop_duplicate_feedback_index).
-TOTAL_MIGRATIONS = 12
+# (currently 13: 001..013 including 012_drop_duplicate_feedback_index and
+# 013_feedback_used_in_training).
+TOTAL_MIGRATIONS = 13
 
 # The single index the ORM auto-creates for FeedbackTrainingSample.timestamp
 # (declarative_base() default naming: "ix_<table>_<column>").

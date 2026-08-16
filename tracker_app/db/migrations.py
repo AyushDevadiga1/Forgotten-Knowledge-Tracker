@@ -155,6 +155,16 @@ MIGRATIONS = [
     ("012_drop_duplicate_feedback_index", "Drop duplicate timestamp index on feedback_training_samples", [
         "DROP INDEX IF EXISTS ix_feedback_samples_timestamp",
     ]),
+
+    # ---- 013: Feedback samples consumed by retraining --------------------------------
+    # FeedbackTrainingSample rows accumulate forever (F-4). used_in_training marks
+    # samples already consumed by a retraining run so a periodic cleanup can delete
+    # used rows older than the retention window without losing recent feedback. The
+    # ORM column default keeps fresh rows at 0; ADD COLUMN guard makes it a no-op on
+    # create_all-only databases.
+    ("013_feedback_used_in_training", "Add used_in_training flag to feedback_training_samples", [
+        "ALTER TABLE feedback_training_samples ADD COLUMN used_in_training INTEGER DEFAULT 0",
+    ]),
 ]
 
 

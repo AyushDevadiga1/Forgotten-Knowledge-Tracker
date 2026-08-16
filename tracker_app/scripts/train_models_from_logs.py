@@ -8,6 +8,7 @@ import pickle
 import random
 import logging
 import argparse
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -25,6 +26,9 @@ ROOT       = Path(__file__).parent.parent
 DATA_PATH  = ROOT / "training_data" / "intent_training_data.json"
 MODEL_PATH = ROOT / "models" / "intent_classifier.pkl"
 MODEL_PATH.parent.mkdir(exist_ok=True)
+
+# F-4: samples consumed by a retraining run are pruned after this many days.
+FEEDBACK_SAMPLE_RETENTION_DAYS = 90
 
 
 # ────────────────────────────────────────────────────────────
@@ -151,24 +155,35 @@ def train(data: dict) -> dict:
 
 
 def load_feedback_samples() -> tuple:
-    """Load user-corrected samples from the DB for augmented retraining."""
+    """Load user-corrected samples from the DB for augmented retraining.
+
+    Samples that contribute a 6-element feature vector are marked
+    used_in_training=1 as they are consumed, and used samples older than
+    FEEDBACK_SAMPLE_RETENTION_DAYS are pruned, so the table cannot grow
+    without bound (F-4).
+    """
     X_fb, y_fb = [], []
     skipped = 0
+    used_ids = []
     try:
         from tracker_app.db.models import SessionLocal
         from tracker_app.db.repository import FeedbackRepository
         with SessionLocal() as db:
             samples = FeedbackRepository.get_all_samples(db)
-        for s in samples:
-            try:
-                feats = json.loads(s.feature_vector)
-                if len(feats) == 6:
-                    X_fb.append([float(f) for f in feats])
-                    y_fb.append(s.actual_label)
-                else:
+            for s in samples:
+                try:
+                    feats = json.loads(s.feature_vector)
+                    if len(feats) == 6:
+                        X_fb.append([float(f) for f in feats])
+                        y_fb.append(s.actual_label)
+                        used_ids.append(s.id)
+                    else:
+                        skipped += 1
+                except Exception:
                     skipped += 1
-            except Exception:
-                skipped += 1
+            FeedbackRepository.mark_samples_used(db, used_ids)
+            cutoff = datetime.utcnow() - timedelta(days=FEEDBACK_SAMPLE_RETENTION_DAYS)
+            FeedbackRepository.cleanup_used_samples(db, cutoff)
         if skipped:
             logger.warning(f"Skipped {skipped} feedback samples with malformed feature vectors.")
         logger.info(f"Loaded {len(X_fb)} feedback samples for retraining.")

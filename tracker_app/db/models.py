@@ -357,3 +357,4 @@ class FeedbackTrainingSample(Base):
     actual_label    = Column(String, nullable=False)   # ground truth from user
     confidence      = Column(Float, default=0.0)
     window_title    = Column(String, default="")
+    used_in_training = Column(Integer, default=0, nullable=False)
