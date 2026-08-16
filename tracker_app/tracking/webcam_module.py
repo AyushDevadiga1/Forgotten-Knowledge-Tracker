@@ -140,6 +140,7 @@ def webcam_pipeline(num_frames=3):
     """
     ear_values = []
     frames_processed = 0
+    max_faces = 0
     
     # Indices for eyes in MediaPipe Face Mesh (approximate)
     # Left eye: 362, 385, 387, 263, 373, 380
@@ -168,6 +169,9 @@ def webcam_pipeline(num_frames=3):
             # Convert to RGB for MediaPipe
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = face_mesh.process(rgb_frame)
+            faces_in_frame = len(results.multi_face_landmarks or [])
+            if faces_in_frame > max_faces:
+                max_faces = faces_in_frame
             
             if results.multi_face_landmarks:
                 for face_landmarks in results.multi_face_landmarks:
@@ -194,7 +198,7 @@ def webcam_pipeline(num_frames=3):
 
     return {
         "attentiveness_score": float(attention_score),
-        "face_count": 1 if ear_values else 0,
+        "face_count": max_faces,
         "frames_processed": frames_processed,
         "status": "active" if ear_values else "no_face_detected"
     }
