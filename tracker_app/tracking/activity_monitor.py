@@ -275,7 +275,9 @@ class ActivityMonitor:
             'trend_analysis': trend_stats
         }
 
-        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        parent = os.path.dirname(output_file)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
         with open(output_file, 'w') as f:
             json.dump(export_data, f, indent=2)
 
