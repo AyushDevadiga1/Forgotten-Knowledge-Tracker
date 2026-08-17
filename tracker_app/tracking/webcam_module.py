@@ -58,21 +58,90 @@ def eye_aspect_ratio(landmarks, eye_indices):
         logger.warning(f"Error calculating EAR: {e}")
         return 0.0
 
-def compute_attention_score(ear_values):
-    """Compute attention score based on EAR history"""
+def calibrate_ear(duration_seconds=30):
+    """Capture EAR samples over duration_seconds and compute per-user baselines.
+
+    Returns a dict with personal_ear_low, personal_ear_high, mean_ear, std_ear,
+    fallback flag, and calibrated_at timestamp. Falls back to defaults if the
+    camera is unavailable or face detection fails for most samples.
+    """
+    from tracker_app.config import CALIBRATION_MIN_SAMPLES
+    import datetime
+
+    LEFT_EYE = [362, 385, 387, 263, 373, 380]
+    RIGHT_EYE = [33, 160, 158, 133, 153, 144]
+    face_mesh = _get_face_mesh()
+    if face_mesh is None:
+        return {"fallback": True, "reason": "mediapipe_unavailable"}
+
+    ear_samples = []
+    start = time.time()
+    while time.time() - start < duration_seconds:
+        frame = capture_frame()
+        if frame is None:
+            time.sleep(0.5)
+            continue
+        try:
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = face_mesh.process(rgb)
+            if results.multi_face_landmarks:
+                for face_landmarks in results.multi_face_landmarks:
+                    lm = face_landmarks.landmark
+                    left_ear = eye_aspect_ratio(lm, LEFT_EYE)
+                    right_ear = eye_aspect_ratio(lm, RIGHT_EYE)
+                    ear_samples.append((left_ear + right_ear) / 2.0)
+        except Exception as exc:
+            logger.warning(f'Calibration frame error: {exc}')
+        time.sleep(0.1)
+
+    if len(ear_samples) < CALIBRATION_MIN_SAMPLES:
+        logger.warning("Calibration: only %d samples (need %d); using defaults",
+                         len(ear_samples), CALIBRATION_MIN_SAMPLES)
+        return {"fallback": True, "reason": "insufficient_samples",
+                "samples": len(ear_samples)}
+
+    mean_ear = float(np.mean(ear_samples))
+    std_ear = float(np.std(ear_samples))
+    personal_low = mean_ear - 1.5 * std_ear
+    personal_high = mean_ear + 1.0 * std_ear
+
+    if personal_low < 0.05 or personal_high > 0.50:
+        logger.warning("Calibration: implausible range [%.3f, %.3f]; using defaults",
+                         personal_low, personal_high)
+        return {"fallback": True, "reason": "implausible_range",
+                "mean_ear": mean_ear, "std_ear": std_ear}
+
+    result = {
+        "personal_ear_low": round(personal_low, 4),
+        "personal_ear_high": round(personal_high, 4),
+        "mean_ear": round(mean_ear, 4),
+        "std_ear": round(std_ear, 4),
+        "fallback": False,
+        "calibrated_at": datetime.datetime.utcnow().isoformat(),
+    }
+    logger.info("Calibration complete: low=%.3f high=%.3f mean=%.3f std=%.3f",
+                personal_low, personal_high, mean_ear, std_ear)
+    return result
+
+
+def compute_attention_score(ear_values, ear_low=0.2, ear_high=0.35):
+    """Compute attention score based on EAR history.
+
+    When ear_low and ear_high are provided (from calibration), they
+    replace the hardcoded 0.2/0.35 defaults.
+    """
     if not ear_values:
         return 0.0
-    
+
     avg_ear = np.mean(ear_values)
-    
-    # Heuristic: Normal EAR is around 0.25-0.35. Drowsy/closed is < 0.2
-    # Attention score: 0 (asleep/closed) to 100 (fully alert)
-    if avg_ear < 0.2:
-        return max(0.0, (avg_ear / 0.2) * 40.0) # 0-40 range for low EAR
-    elif avg_ear > 0.35:
-        return 100.0 # Wide open eyes
+    ear_range = ear_high - ear_low
+
+    if avg_ear < ear_low:
+        return max(0.0, (avg_ear / max(ear_low, 0.01)) * 40.0)
+    elif avg_ear > ear_high:
+        return 100.0
     else:
-        return 40.0 + ((avg_ear - 0.2) / 0.15) * 60.0 # 40-100 linear mapping
+        return 40.0 + ((avg_ear - ear_low) / max(ear_range, 0.01)) * 60.0
 
 # ----------------------------
 # Persistent camera handle

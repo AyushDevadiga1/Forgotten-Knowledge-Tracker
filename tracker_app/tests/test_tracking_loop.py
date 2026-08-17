@@ -118,7 +118,7 @@ def loop_env(monkeypatch):
     monkeypatch.setattr(loop, "_get_effective_intervals",
                         lambda: {"ocr": 1, "audio": 1, "webcam": 1})
     monkeypatch.setattr(loop, "_get_attention_score",
-                        lambda w, r, c: 60.0)
+                        lambda w, r, c, ear=None: 60.0)
     monkeypatch.setattr(loop, "session_is_active", lambda: True)
     monkeypatch.setattr(loop, "time", _FakeTime())
 

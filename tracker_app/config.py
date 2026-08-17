@@ -122,6 +122,12 @@ OCR_TOP_KEYWORDS          = 15
 OCR_MIN_WORD_CONFIDENCE   = int(os.environ.get('OCR_MIN_WORD_CONFIDENCE', 30))
 
 # ----------------------------
+# EAR Calibration
+# ----------------------------
+CALIBRATION_DURATION_SECONDS = int(os.environ.get('CALIBRATION_DURATION_SECONDS', 30))
+CALIBRATION_MIN_SAMPLES = int(os.environ.get('CALIBRATION_MIN_SAMPLES', 20))
+
+# ----------------------------
 # Validation
 # ----------------------------
 def validate_config() -> list:

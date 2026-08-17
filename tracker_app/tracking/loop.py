@@ -121,11 +121,25 @@ def _get_attention_score(
     webcam_enabled: bool,
     webcam_result: Optional[dict],
     cle,
+    ear_calibration: Optional[dict] = None,
 ) -> float:
-    """Blend webcam EAR (70%) and CLE (30%). CLE-only when webcam disabled."""
+    """Blend webcam EAR (70%) and CLE (30%). CLE-only when webcam disabled.
+
+    When ear_calibration is provided, pass personal_ear_low/high to
+    compute_attention_score instead of hardcoded defaults.
+    """
+    from tracker_app.tracking.webcam_module import compute_attention_score
     cle_score = cle.get_cle_score()['cle_score'] * 100
     if webcam_enabled and webcam_result is not None:
-        webcam_score = webcam_result.get('attentiveness_score', 50.0)
+        raw_ear = webcam_result.get('_raw_ear_values', [])
+        if raw_ear and ear_calibration and not ear_calibration.get('fallback'):
+            webcam_score = compute_attention_score(
+                raw_ear,
+                ear_low=ear_calibration['personal_ear_low'],
+                ear_high=ear_calibration['personal_ear_high'],
+            )
+        else:
+            webcam_score = webcam_result.get('attentiveness_score', 50.0)
         return round(0.70 * webcam_score + 0.30 * cle_score, 1)
     return round(cle_score, 1)
 
@@ -329,6 +343,24 @@ def track_loop(
                 monitor.mouse_counter.get_and_reset()
                 audio_counter = ocr_counter = webcam_counter = save_counter = 0
 
+                # -- EAR calibration (once per session) --
+                if webcam_enabled:
+                    from tracker_app.tracking.webcam_module import calibrate_ear
+                    from tracker_app.config import CALIBRATION_DURATION_SECONDS
+                    from tracker_app.tracking import session_state as _ss
+                    from tracker_app.tracking.session_state import set_calibration
+                    existing = _ss.get_calibration()
+                    if existing is None or existing.get('fallback'):
+                        logger.info("Starting EAR calibration (%ds)...", CALIBRATION_DURATION_SECONDS)
+                        cal_result = calibrate_ear(CALIBRATION_DURATION_SECONDS)
+                        set_calibration(cal_result)
+                        logger.info("Calibration result: %s", cal_result)
+
+            ear_calibration = None
+            if webcam_enabled:
+                from tracker_app.tracking import session_state as _ss
+                ear_calibration = _ss.get_calibration()
+
             window_title, interaction_rate = get_active_window(monitor)
 
             # Privacy: a sensitive window title (bank, login, medical…) is
@@ -385,7 +417,7 @@ def track_loop(
                     logger.warning(f"{name} pipeline future error: {e}")
 
             # ── Unified attention score ───────────────────────────────────────
-            attention_score = _get_attention_score(webcam_enabled, webcam_result, cle)
+            attention_score = _get_attention_score(webcam_enabled, webcam_result, cle, ear_calibration)
             monitor.update_attention(attention_score)
 
             # ── Intent prediction ─────────────────────────────────────────────

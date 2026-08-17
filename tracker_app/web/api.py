@@ -801,6 +801,30 @@ def stop_study_session():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+
+# --- EAR Calibration ---
+
+@api_bp.route('/session/calibrate', methods=['POST'])
+def calibrate_session():
+    """Trigger EAR calibration for the current session."""
+    try:
+        from tracker_app.config import CALIBRATION_DURATION_SECONDS
+        from tracker_app.tracking.webcam_module import calibrate_ear
+        from tracker_app.tracking.session_state import set_calibration
+        duration = CALIBRATION_DURATION_SECONDS
+        try:
+            req = request.get_json(silent=True) or {}
+            if 'duration_seconds' in req:
+                duration = int(req['duration_seconds'])
+        except Exception:
+            pass
+        result = calibrate_ear(duration)
+        set_calibration(result)
+        return jsonify({'success': True, 'data': result})
+    except Exception as e:
+        logger.error("calibrate_session: %s", e)
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Health check
 # ══════════════════════════════════════════════════════════════════════════════

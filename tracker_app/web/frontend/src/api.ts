@@ -78,11 +78,21 @@ export interface IntentPrediction {
     window_title: string | null
 }
 
+export interface EarCalibration {
+    personal_ear_low: number
+    personal_ear_high: number
+    mean_ear: number
+    std_ear: number
+    fallback: boolean
+    calibrated_at: string
+}
+
 export interface SessionStatus {
     active: boolean
     started_at: string | null
     stopped_at: string | null
     elapsed_seconds: number | null
+    ear_calibration: EarCalibration | null
 }
 
 // ── API Functions ────────────────────────────────────────
@@ -150,6 +160,13 @@ export const api = {
         apiFetch<{ success: boolean; data: SessionStatus }>('/session/stop', {
             method: 'POST',
             body: JSON.stringify({}),
+        }),
+
+    /** POST /api/v1/session/calibrate */
+    calibrateSession: (durationSeconds = 30) =>
+        apiFetch<{ success: boolean; data: EarCalibration }>('/session/calibrate', {
+            method: 'POST',
+            body: JSON.stringify({ duration_seconds: durationSeconds }),
         }),
 
     /** GET /api/v1/graph/stats */

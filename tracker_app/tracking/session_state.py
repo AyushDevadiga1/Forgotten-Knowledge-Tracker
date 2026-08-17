@@ -27,7 +27,7 @@ _LOCK_PATH = DATA_DIR / "session_state.json.lock"
 _lock = threading.Lock()
 _file_lock = FileLock(_LOCK_PATH, timeout=5)
 
-_DEFAULT = {"active": False, "started_at": None, "stopped_at": None}
+_DEFAULT = {"active": False, "started_at": None, "stopped_at": None, "ear_calibration": None}
 
 
 def _load() -> dict:
@@ -110,8 +110,30 @@ def stop() -> dict:
             state = _load()
             state["active"] = False
             state["stopped_at"] = datetime.utcnow().isoformat()
+            state["ear_calibration"] = None
             _save(state)
             return state
+        finally:
+            _release_file_lock(acquired)
+
+
+
+def set_calibration(data: dict) -> None:
+    with _lock:
+        acquired = _acquire_file_lock()
+        try:
+            state = _load()
+            state["ear_calibration"] = data
+            _save(state)
+        finally:
+            _release_file_lock(acquired)
+
+
+def get_calibration() -> dict | None:
+    with _lock:
+        acquired = _acquire_file_lock()
+        try:
+            return _load().get("ear_calibration")
         finally:
             _release_file_lock(acquired)
 
@@ -136,4 +158,5 @@ def get_status() -> dict:
         "started_at": state.get("started_at"),
         "stopped_at": state.get("stopped_at"),
         "elapsed_seconds": elapsed,
+        "ear_calibration": state.get("ear_calibration"),
     }
