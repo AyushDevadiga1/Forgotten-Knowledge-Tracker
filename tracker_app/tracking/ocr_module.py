@@ -40,7 +40,6 @@ elif TESSERACT_PATH.lower() == "tesseract":
 # Initialize models with error handling
 kw_extractor = None
 nlp = None
-embedding_model = None  # Optional; set externally to enable semantic embeddings
 
 try:
     kw_extractor = get_keyword_extractor()
@@ -384,21 +383,6 @@ def extract_concepts_v2(text, top_n=5):
         return []
 
 
-def get_text_embedding_v2(text):
-    """Compute sentence embeddings for semantic search.
-    
-    `embedding_model` is None by default (module-level). To enable, assign a
-    sentence-transformers SentenceTransformer instance to this module's
-    `embedding_model` variable before calling this function.
-    """
-    if not text or not text.strip() or embedding_model is None:
-        return np.zeros(384)  # Default embedding size for all-MiniLM-L6-v2
-        
-    try:
-        return embedding_model.encode([text])[0]
-    except Exception as e:
-        logger.warning(f"get_text_embedding_v2 failed: {e}")
-        return np.zeros(384)
 
 def ocr_pipeline():
     """Complete OCR processing pipeline with error handling"""
@@ -406,21 +390,20 @@ def ocr_pipeline():
         # Capture screenshot
         img = capture_screenshot()
         if img is None:
-            return {"keywords": {}, "concepts_v2": [], "embedding_v2": [], "raw_text": ""}
+            return {"keywords": {}, "concepts_v2": [], "raw_text": ""}
 
         # Preprocess image
         processed_img = preprocess_image(img)
         if processed_img is None:
-            return {"keywords": {}, "concepts_v2": [], "embedding_v2": [], "raw_text": ""}
+            return {"keywords": {}, "concepts_v2": [], "raw_text": ""}
 
         # Extract text
         text = extract_text(processed_img)
         if not text.strip():
-            return {"keywords": {}, "concepts_v2": [], "embedding_v2": [], "raw_text": ""}
+            return {"keywords": {}, "concepts_v2": [], "raw_text": ""}
 
         # Extract concepts and embeddings
         concepts = extract_concepts_v2(text)
-        embedding = get_text_embedding_v2(text)
 
         # Extract keywords with scores (graph loaded once per pipeline, M-4)
         G = get_graph()
@@ -445,12 +428,11 @@ def ocr_pipeline():
             "raw_text": str(text)[:500],  # Limit text length
             "keywords": keywords_with_counts,
             "concepts_v2": concepts,
-            "embedding_v2": embedding.tolist()
         }
         
     except Exception as e:
         logger.warning(f"Error in OCR pipeline: {e}")
-        return {"keywords": {}, "concepts_v2": [], "embedding_v2": [], "raw_text": ""}
+        return {"keywords": {}, "concepts_v2": [], "raw_text": ""}
 
 if __name__ == "__main__":
     result = ocr_pipeline()

@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from tracker_app.learning.sm2_memory_model import SM2Item, SM2Scheduler, LeitnerSystem, format_next_review
+from tracker_app.learning.sm2_memory_model import SM2Item, SM2Scheduler, format_next_review
 from tracker_app.learning.learning_tracker import LearningTracker
 from tracker_app.db import models
 from tracker_app.db.models import Base

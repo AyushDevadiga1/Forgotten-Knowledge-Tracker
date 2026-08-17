@@ -193,57 +193,6 @@ class SM2Scheduler:
         }
 
 
-class LeitnerSystem:
-    """
-    Simple Leitner System alternative to SM-2
-    
-    Easier to understand, good for beginners
-    Proven effective for basic learning
-    """
-    
-    INTERVALS = {
-        1: 1,      # Box 1: Review in 1 day
-        2: 3,      # Box 2: Review in 3 days
-        3: 7,      # Box 3: Review in 1 week
-        4: 14,     # Box 4: Review in 2 weeks
-        5: 30,     # Box 5: Review in 1 month (mastered)
-    }
-    
-    @staticmethod
-    def advance_card(item: SM2Item, was_correct: bool) -> Dict[str, Any]:
-        """
-        Move card forward or backward in Leitner boxes.
-        
-        Args:
-            item: The learning item
-            was_correct: Whether user answered correctly
-        
-        Returns:
-            Next interval and review date
-        """
-        current_box = min(5, item.repetitions + 1)
-        
-        if was_correct:
-            # Move to next box
-            next_box = min(5, current_box + 1)
-        else:
-            # Move back to box 1
-            next_box = 1
-        
-        item.repetitions = next_box - 1
-        next_interval = LeitnerSystem.INTERVALS[next_box]
-        item.next_review_date = datetime.utcnow() + timedelta(days=next_interval)
-        item.total_reviews += 1
-        
-        if was_correct:
-            item.correct_count += 1
-        
-        return {
-            'box': next_box,
-            'next_interval_days': next_interval,
-            'next_review_date': item.next_review_date
-        }
-
 
 def format_next_review(next_date: datetime) -> str:
     """Format next review date as human-readable string"""

@@ -100,18 +100,6 @@ class TestRecordReview(TestLearningTrackerBase):
             row = db.query(LearningItem).filter(LearningItem.id == item_id).first()
             self.assertIsNotNone(row.last_review_date)
 
-    def test_review_leitner_persists_last_review_date(self):
-        """FKT-F-003: last_review_date must be non-null after a leitner review
-        and survive a fresh-session reload."""
-        item_id = self.tracker.add_learning_item("Q?", "A.")
-        self.tracker.record_review(item_id, quality_rating=5, algorithm='leitner')
-
-        item = self.tracker.get_item(item_id)
-        self.assertIsNotNone(item['last_review_date'])
-
-        with self.SessionLocal() as db:
-            row = db.query(LearningItem).filter(LearningItem.id == item_id).first()
-            self.assertIsNotNone(row.last_review_date)
 
 if __name__ == '__main__':
     unittest.main()

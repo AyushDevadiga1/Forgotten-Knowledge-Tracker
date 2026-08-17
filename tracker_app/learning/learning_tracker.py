@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Any
 from enum import Enum
 import uuid
 
-from tracker_app.learning.sm2_memory_model import SM2Item, SM2Scheduler, LeitnerSystem
+from tracker_app.learning.sm2_memory_model import SM2Item, SM2Scheduler
 from tracker_app.config import DATA_DIR
 from tracker_app.db import models
 from tracker_app.db.models import LearningItem, ReviewHistory
@@ -111,11 +111,7 @@ class LearningTracker:
             # Reconstruct SM2Item
             item = self._dict_to_sm2item(item_dict)
             
-            if algorithm == "sm2":
-                result = SM2Scheduler.calculate_next_interval(item, quality_rating)
-            else:
-                was_correct = quality_rating >= 3
-                result = LeitnerSystem.advance_card(item, was_correct)
+            result = SM2Scheduler.calculate_next_interval(item, quality_rating)
                 
             review_date = datetime.utcnow()
             was_correct = quality_rating >= 3

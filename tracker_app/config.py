@@ -105,8 +105,6 @@ MAX_REVIEW_INTERVAL_HOURS = 720
 # ----------------------------
 # Notifications
 # ----------------------------
-REMINDER_COOLDOWN_HOURS = 1
-NOTIFICATION_TIMEOUT    = 10
 
 # Min gap (minutes) between intent-feedback toast prompts. The tracker writes a
 # new intent_predictions row every ~5 s, so without this the toast would nag
@@ -122,18 +120,6 @@ OCR_TOP_KEYWORDS          = 15
 # typically score ~0 while readable study content scores 50-95, so this keeps
 # junk out of tracked_concepts at the source. Tunable via OCR_MIN_WORD_CONFIDENCE.
 OCR_MIN_WORD_CONFIDENCE   = int(os.environ.get('OCR_MIN_WORD_CONFIDENCE', 30))
-
-# ----------------------------
-# Audio
-# ----------------------------
-AUDIO_SAMPLE_RATE = 16000
-AUDIO_DURATION    = 5
-
-# ----------------------------
-# Webcam
-# ----------------------------
-WEBCAM_FRAME_COUNT  = 5
-WEBCAM_RESOLUTION   = (640, 480)
 
 # ----------------------------
 # Validation
