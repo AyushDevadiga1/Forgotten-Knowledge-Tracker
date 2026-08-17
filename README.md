@@ -394,7 +394,7 @@ FKT introduces several ideas not found in any existing knowledge management or s
 | 10 — Browser Ext | ✅ Done | `/ingest` endpoint + FKT Capture Chrome extension |
 | 11 — Frontend | ✅ Done | React dashboard: overview, graph, quiz, review, add concept |
 
-See [`MAKEOVER_PLAN.md`](MAKEOVER_PLAN.md) for the build-out status, and `architecture/` for the ADRs and design docs.
+See `architecture/` for the ADRs and design docs.
 
 ---
 
@@ -418,7 +418,7 @@ FKT was developed as a final-year B.E. project in Computer Science (AI/ML) at Bh
 4. Run the test suite: `python -m pytest tracker_app/tests/`
 5. Submit a pull request
 
-Please read [`MAKEOVER_PLAN.md`](MAKEOVER_PLAN.md) and `architecture/adr/` before contributing to understand what is built and planned and avoid duplicate work.
+Please read `architecture/adr/` before contributing to understand what is built and planned and avoid duplicate work.
 
 ---
 
