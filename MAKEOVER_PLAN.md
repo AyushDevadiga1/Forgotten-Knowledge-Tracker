@@ -538,15 +538,14 @@ Stored in `ConceptEncounter.context_snippet`. A malicious or buggy extension can
 
 ---
 
-### [F-3] `session_state.json` has no cross-process OS lock — unsafe with multiple Flask workers
+### [F-3] session_state.json has no cross-process OS lock — unsafe with multiple Flask workers
+
+**RESOLVED — 71f3812: filelock.FileLock sidecar pattern with graceful degradation.**
 
 **File:** `tracking/session_state.py`
 
-The threading `_lock` is within-process only. Running Flask under Gunicorn with `--workers 2` allows two worker processes to write `session_state.json` simultaneously. `Path.replace()` is atomic for the rename, but both processes can be inside `json.dump(tmp, ...)` at the same time.
-
-**Recommendation:** Replace the JSON toggle with a single-row SQLite table. SQLite WAL mode handles concurrent writes correctly and removes the IPC file entirely.
-
 ---
+
 
 ### [F-4] `FeedbackTrainingSample` rows accumulate indefinitely
 
@@ -562,20 +561,12 @@ Every intent correction is stored forever. Over years this table holds millions 
 
 ### [F-5] EAR thresholds are hardcoded — no per-user calibration
 
-**File:** `tracking/webcam_module.py:67-74`
+**RESOLVED — 8f2009a: 30s calibration phase, per-user EAR stored in session_state, fallback defaults.**
 
-```python
-if avg_ear < 0.2:          # one-size-fits-all thresholds
-    return max(0.0, (avg_ear / 0.2) * 40.0)
-elif avg_ear > 0.35:
-    return 100.0
-```
-
-EAR varies significantly between users (glasses, eye shape, lighting conditions). Incorrect attention scores corrupt AWFC memory weights for all tracked concepts.
-
-**Recommendation:** Add a 30-second calibration step at session start. Measure the user's personal EAR baseline (eyes-open mean and eyes-partially-closed floor) and persist it in `session_state.json` for the session.
+**File:** `tracking/webcam_module.py`
 
 ---
+
 
 ### [F-6] No API endpoint to force a knowledge graph resync
 
@@ -611,9 +602,8 @@ The tracking loop and quiz trigger are the most stateful, most bug-prone code pa
 | 1 | F-3 | `session_state.json` unsafe with multiple workers | Medium | Reliability |
 | 2 | F-5 | EAR thresholds hardcoded - no per-user calibration | Low | UX |
 
-> Every other item in this plan (C-1..C-2, H-1..H-6, M-1..M-10, L-1..L-6,
-> F-1, F-2, F-4, F-6, F-7) is RESOLVED and committed — see the RESOLVED
-> note on each section for the resolving commit.
+> **ALL ITEMS RESOLVED.** Every item in this plan (C-1..C-2, H-1..H-6, M-1..M-10, L-1..L-6,
+> F-1..F-7) is RESOLVED and committed — see the RESOLVED note on each section.
 
 ---
 
