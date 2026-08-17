@@ -255,3 +255,72 @@ def test_sync_db_to_graph_returns_zero_stats_on_error(clean_graph, monkeypatch):
     monkeypatch.setattr(kg, "_save_graph", lambda: None)
     stats = kg.sync_db_to_graph(force=True)
     assert stats == {"nodes": 0, "edges": 0, "synced": 0}
+
+
+
+def test_sync_db_to_graph_skips_save_when_clean(clean_graph, monkeypatch):
+    """sync_db_to_graph() must not pickle when nothing changed (dirty flag)."""
+    monkeypatch.setattr(kg, "_ensure_graph_loaded", lambda: None)
+    monkeypatch.setattr(kg, "fetch_concepts_from_db", lambda: ["alpha"])
+    monkeypatch.setattr(kg, "_refresh_all_memory_scores", lambda concepts: None)
+
+    # Pre-populate graph so "alpha" is not new and scores are unchanged.
+    kg.knowledge_graph.add_node("alpha", memory_score=0.5, count=1)
+
+    saves = []
+    monkeypatch.setattr(kg, "_save_graph", lambda: saves.append(1))
+    kg._graph_dirty = False          # start clean
+    kg.sync_db_to_graph(force=True)
+    assert saves == [], "_save_graph() called when graph was clean"
+
+
+def test_sync_db_to_graph_saves_on_new_concept(clean_graph, monkeypatch):
+    """sync_db_to_graph() must save after adding a new node."""
+    monkeypatch.setattr(kg, "_ensure_graph_loaded", lambda: None)
+    monkeypatch.setattr(kg, "fetch_concepts_from_db", lambda: ["brand-new"])
+    monkeypatch.setattr(kg, "_refresh_all_memory_scores", lambda concepts: None)
+
+    saves = []
+    monkeypatch.setattr(kg, "_save_graph", lambda: saves.append(1))
+    kg._graph_dirty = False
+    kg.sync_db_to_graph(force=True)
+    assert saves == [1], "_save_graph() was not called after new node"
+
+
+def test_sync_db_to_graph_saves_on_score_change(clean_graph, monkeypatch):
+    """sync_db_to_graph() must save when a memory score actually changes."""
+    monkeypatch.setattr(kg, "_ensure_graph_loaded", lambda: None)
+    monkeypatch.setattr(kg, "fetch_concepts_from_db", lambda: ["beta"])
+
+    kg.knowledge_graph.add_node("beta", memory_score=0.5, count=1)
+
+    def fake_refresh(concepts):
+        kg.knowledge_graph.nodes["beta"]["memory_score"] = 0.9
+        kg._graph_dirty = True
+
+    monkeypatch.setattr(kg, "_refresh_all_memory_scores", fake_refresh)
+
+    saves = []
+    monkeypatch.setattr(kg, "_save_graph", lambda: saves.append(1))
+    kg._graph_dirty = False
+    kg.sync_db_to_graph(force=True)
+    assert saves == [1], "_save_graph() was not called when score changed"
+
+
+def test_sync_db_to_graph_skips_save_when_score_unchanged(clean_graph, monkeypatch):
+    """sync_db_to_graph() must not save when scores are re-read but identical."""
+    monkeypatch.setattr(kg, "_ensure_graph_loaded", lambda: None)
+    monkeypatch.setattr(kg, "fetch_concepts_from_db", lambda: ["gamma"])
+
+    kg.knowledge_graph.add_node("gamma", memory_score=0.73, count=1)
+
+    def fake_refresh(concepts):
+        pass  # scores stay at 0.73
+
+    monkeypatch.setattr(kg, "_refresh_all_memory_scores", fake_refresh)
+
+    saves = []
+    monkeypatch.setattr(kg, "_save_graph", lambda: saves.append(1))
+    kg._graph_dirty = False
+    kg.sync_db_to_graph(force=True)
+    assert saves == [], "_save_graph() called when score was unchanged"

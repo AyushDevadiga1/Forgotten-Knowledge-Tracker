@@ -23,6 +23,7 @@ _graph_lock = threading.RLock()
 DB_SYNC_INTERVAL_SECONDS = 60.0
 _loaded = False
 _last_db_sync = 0.0
+_graph_dirty = False
 
 # Cap on in-memory graph size (H-6): _save_graph() evicts the lowest-
 # memory_score zero-edge nodes once the count exceeds this, keeping the
@@ -118,6 +119,7 @@ def _load_graph_locked() -> bool:
     mutates the shared in-memory graph and never acquires the lock itself --
     the caller's acquire is the single point of entry.
     """
+    global _graph_dirty
     path = Path(KNOWLEDGE_GRAPH_PATH)
     if not path.exists():
         return False
@@ -129,6 +131,7 @@ def _load_graph_locked() -> bool:
         knowledge_graph.clear()
         knowledge_graph.add_nodes_from(data.nodes(data=True))
         knowledge_graph.add_edges_from(data.edges(data=True))
+        _graph_dirty = False
         return True
     except Exception as e:
         logger.warning("Failed to load knowledge graph from %s: %s", path, e)
@@ -170,6 +173,7 @@ def _evict_oversized_nodes():
 
 def _save_graph():
     """Persist the in-memory graph to KNOWLEDGE_GRAPH_PATH (best-effort cache)."""
+    global _graph_dirty
     try:
         _evict_oversized_nodes()
         path = Path(KNOWLEDGE_GRAPH_PATH)
@@ -178,6 +182,7 @@ def _save_graph():
         with open(tmp, 'wb') as f:
             pickle.dump(knowledge_graph, f, protocol=pickle.HIGHEST_PROTOCOL)
         tmp.replace(path)
+        _graph_dirty = False
         logger.debug("Knowledge graph saved to %s", path)
     except Exception as e:
         logger.warning("Failed to save knowledge graph: %s", e)
@@ -232,6 +237,7 @@ def add_concepts(concepts):
     Add concepts to the graph and connect semantically similar nodes.
     Thread-safe. Uses lazy-loaded embeddings with spaCy fallback.
     """
+    global _graph_dirty
     if not concepts:
         return
 
@@ -266,6 +272,7 @@ def add_concepts(concepts):
                     last_review=datetime.utcnow().strftime(DATETIME_FORMAT),
                     intent_conf=1.0
                 )
+                _graph_dirty = True
             else:
                 knowledge_graph.nodes[concept]['count'] += 1
 
@@ -348,12 +355,15 @@ def remove_concept_from_graph(concept):
     micro-quiz never surface knowledge we agreed to forget. Best-effort and
     idempotent; the graph is a rebuildable cache from tracked_concepts.
     """
+    global _graph_dirty
     if concept not in knowledge_graph:
         return False
     with _graph_lock:
         if concept in knowledge_graph:
             knowledge_graph.remove_node(concept)
-    _save_graph()
+            _graph_dirty = True
+    if _graph_dirty:
+        _save_graph()
     return True
 
 
@@ -364,6 +374,7 @@ def _refresh_all_memory_scores(concepts):
     value assigned at node creation, so the dashboard's average memory and the
     micro-quiz's 'weakest concept' selection never reflect real progress.
     """
+    global _graph_dirty
     if not concepts:
         return
     try:
@@ -386,7 +397,10 @@ def _refresh_all_memory_scores(concepts):
     with _graph_lock:
         for concept, (score, interval, strength, last_seen) in updates.items():
             node = knowledge_graph.nodes[concept]
-            node['memory_score']    = round(score, 4)
+            new_score = round(score, 4)
+            if node.get('memory_score') != new_score:
+                _graph_dirty = True
+            node['memory_score']    = new_score
             node['interval']        = interval
             node['memory_strength'] = strength
             if isinstance(last_seen, datetime):
@@ -419,7 +433,8 @@ def sync_db_to_graph(force: bool = False) -> dict:
         if new_concepts:
             add_concepts(new_concepts)
         _refresh_all_memory_scores(db_concepts)
-        _save_graph()
+        if _graph_dirty:
+            _save_graph()
         logger.info("Synced %d concepts from DB to graph (%d new%s)",
                     len(db_concepts), len(new_concepts),
                     ", forced" if force else "")
