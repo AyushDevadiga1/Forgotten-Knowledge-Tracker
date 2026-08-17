@@ -15,7 +15,6 @@ from tracker_app.tracking.privacy_filter import (
     filter_sensitive_keywords,
 )
 import re
-from functools import lru_cache
 
 logger = logging.getLogger("OCRModule")
 
@@ -359,30 +358,6 @@ def extract_keywords(text, top_n=15, boost_repeats=True, graph=None):
         logger.warning(f"Error sorting keywords: {e}")
         return {}
 
-@lru_cache(maxsize=32)
-def extract_concepts_v2(text, top_n=5):
-    """Extract concepts from OCR text using lightweight keyword extraction"""
-    if not text or len(text.strip()) < 5:
-        return []
-    
-    # Privacy gate on the concept path too (defense-in-depth — the pipeline
-    # result currently only uses 'keywords', but this must never leak raw PII).
-    sanitized = sanitize_text_for_storage(text)
-    if not sanitized['safe_to_store']:
-        return []
-    clean = strip_redaction_markers(sanitized['text'])
-
-    try:
-        if kw_extractor:
-            keywords = kw_extractor.extract_keywords(clean, top_n=20)
-            return [kw for kw, score in filter_sensitive_keywords(
-                        dict(keywords)).items() if score > 0.1][:top_n]
-        return []
-    except Exception as e:
-        logger.warning(f"extract_concepts_v2 failed: {e}")
-        return []
-
-
 
 def ocr_pipeline():
     """Complete OCR processing pipeline with error handling"""
@@ -390,20 +365,17 @@ def ocr_pipeline():
         # Capture screenshot
         img = capture_screenshot()
         if img is None:
-            return {"keywords": {}, "concepts_v2": [], "raw_text": ""}
+            return {"keywords": {}, "raw_text": ""}
 
         # Preprocess image
         processed_img = preprocess_image(img)
         if processed_img is None:
-            return {"keywords": {}, "concepts_v2": [], "raw_text": ""}
+            return {"keywords": {}, "raw_text": ""}
 
         # Extract text
         text = extract_text(processed_img)
         if not text.strip():
-            return {"keywords": {}, "concepts_v2": [], "raw_text": ""}
-
-        # Extract concepts and embeddings
-        concepts = extract_concepts_v2(text)
+            return {"keywords": {}, "raw_text": ""}
 
         # Extract keywords with scores (graph loaded once per pipeline, M-4)
         G = get_graph()
@@ -427,15 +399,13 @@ def ocr_pipeline():
         return {
             "raw_text": str(text)[:500],  # Limit text length
             "keywords": keywords_with_counts,
-            "concepts_v2": concepts,
-        }
+                    }
         
     except Exception as e:
         logger.warning(f"Error in OCR pipeline: {e}")
-        return {"keywords": {}, "concepts_v2": [], "raw_text": ""}
+        return {"keywords": {}, "raw_text": ""}
 
 if __name__ == "__main__":
     result = ocr_pipeline()
-    print("Concepts v2:", result.get('concepts_v2', []))
     print("Keywords count:", len(result.get('keywords', {})))
     print("Text snippet:", result.get('raw_text', '')[:200] + "...")

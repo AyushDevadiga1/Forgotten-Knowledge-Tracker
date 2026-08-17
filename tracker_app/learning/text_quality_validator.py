@@ -126,6 +126,52 @@ _MAX_VOWEL_RATIO            = 0.85  # high enough to keep 'queue'; 'enoea' is in
 _VOWELS = frozenset('aeiou')
 _REPEATED_RUN = re.compile(r'(.)\1\1')  # three or more identical chars
 
+# ---------------------------------------------------------------------------
+# English dictionary gate (P0 fix for OCR gibberish pollution)
+# ---------------------------------------------------------------------------
+_ENGLISH_WORDS = frozenset()
+
+def _load_english_words():
+    global _ENGLISH_WORDS
+    if _ENGLISH_WORDS:
+        return _ENGLISH_WORDS
+    try:
+        from pathlib import Path as _P
+        wl_path = _P(__file__).resolve().parent.parent / "data" / "english_words.txt"
+        words = {line.strip().lower() for line in wl_path.open() if line.strip()}
+        _ENGLISH_WORDS = frozenset(words)
+    except Exception:
+        _ENGLISH_WORDS = frozenset()
+    return _ENGLISH_WORDS
+
+# English morphemes (4+ chars). Words NOT in the wordlist must contain at
+# least one of these to be accepted.  Longer patterns are far less likely
+# to appear by chance in gibberish than 3-char trigrams.
+_ENGLISH_TRIGRAMS = frozenset({
+    # Suffixes
+    "tion", "sion", "ment", "ness", "able", "ible", "ally", "ence",
+    "ance", "ical", "ular", "uous", "ious", "eous", "ward", "wise",
+    "ling", "ated", "ting", "ring", "ding", "ning", "king", "sing",
+    "ving", "zing", "cing", "ated", "ized", "ised", "ship", "hood",
+    "like", "ward", "wise", "less", "ful", "ous", "ive", "ing",
+    "ity", "ure", "ory", "ary", "ant", "ent", "ist", "ism",
+    # Common roots/prefixes (4+ chars)
+    "bio", "neuro", "psych", "chem", "phys", "math", "eco",
+    "syn", "ana", "meta", "epi", "hypo", "gene", "morph",
+    "ology", "graph", "scope", "meter", "path", "genic",
+    "arch", "plast", "cyte", "zyme", "trop", "lyse",
+    # 3-char suffixes removed: too short, appear by chance in gibberish
+    # Common word stems (4+ chars)
+    "cell", "atom", "mass", "wave", "heat", "work", "type",
+    "form", "part", "role", "unit", "step", "case", "group",
+    "class", "order", "level", "phase", "point", "place",
+    "state", "system", "model", "study", "brain", "nerve",
+    "muscle", "blood", "bone", "heart", "plant", "human",
+    "force", "energy", "power", "light", "data", "test",
+    "social", "global", "local", "mental", "digital",
+    "visual", "audio", "optic", "solar", "marine",
+})
+
 
 def _has_repeated_run_noise(word: str) -> bool:
     """True if >50% of a word's chars sit in doubled runs ('aannup' -> 4/6).
@@ -240,6 +286,23 @@ def _is_plausible_word(word: str) -> bool:
         return False
     if _has_repeated_run_noise(word):
         return False
+    # -- Dictionary gate (P0: blocks OCR gibberish like 'aastha', 'pebeoge') --
+    # Words >= 4 letters must be in the English wordlist OR contain common
+    # English trigrams.  Real study terms (photosynthesis, mitochondria) always contain
+    # common morphemes even if not in the compact wordlist.
+    if len(low) >= 5:
+        # Reject words where one letter dominates (>45%) -- catches 'aastha',
+        # 'pebeoge' and similar OCR garbage with repeated letters.
+        # Threshold is 45% (not 40%) to avoid false positives on short real
+        # words like 'cell' (l=50%) and 'llama' (l=40%).
+        from collections import Counter as _C
+        _counts = _C(low)
+        if _counts.most_common(1)[0][1] / len(low) > 0.45:
+            return False
+        english_words = _load_english_words()
+        if low not in english_words:
+            if not any(tri in low for tri in _ENGLISH_TRIGRAMS):
+                return False
     return True
 
 

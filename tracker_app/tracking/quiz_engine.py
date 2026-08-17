@@ -8,6 +8,7 @@ import random
 import logging
 from datetime import datetime, timedelta
 from typing import Optional
+from tracker_app.learning.text_quality_validator import is_plausible_concept
 
 logger = logging.getLogger("QuizEngine")
 
@@ -114,7 +115,7 @@ def generate_micro_quiz(graph) -> Optional[dict]:
         }
         or None if graph is too small.
     """
-    nodes = [(n, d) for n, d in graph.nodes(data=True) if isinstance(n, str) and len(n) > 2]
+    nodes = [(n, d) for n, d in graph.nodes(data=True) if isinstance(n, str) and len(n) > 2 and is_plausible_concept(n)]
     if len(nodes) < MIN_GRAPH_SIZE:
         logger.debug(f"Graph too small for quiz ({len(nodes)} < {MIN_GRAPH_SIZE})")
         return None
@@ -128,7 +129,7 @@ def generate_micro_quiz(graph) -> Optional[dict]:
     # Build distractor list from neighbours
     neighbours = [
         n for n in graph.neighbors(concept_name)
-        if isinstance(n, str) and n != concept_name
+        if isinstance(n, str) and n != concept_name and is_plausible_concept(n)
     ]
     neighbours.sort(
         key=lambda n: graph[concept_name][n].get('weight', 0),
