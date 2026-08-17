@@ -20,7 +20,7 @@ def _get_tracker():
 
 def init_socketio(app):
     global socketio
-    socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+    socketio = SocketIO(app, cors_allowed_origins=["http://localhost:5000", "http://127.0.0.1:5000"], async_mode="threading")
 
     @socketio.on("connect")
     def handle_connect():

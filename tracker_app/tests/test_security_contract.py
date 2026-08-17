@@ -94,3 +94,17 @@ def test_retrain_lock_allows_single_concurrent_run(monkeypatch):
     api_mod.FeedbackService.maybe_trigger_retrain()
 
     assert len(starts) == 1
+
+
+def test_socketio_cors_is_not_wildcard():
+    """Socket.IO cors_allowed_origins must be restricted to localhost.
+
+    A wildcard allows any website to connect to localhost:5000 and receive
+    micro_quiz broadcasts and stats_update events, leaking study data.
+    """
+    source = Path(__file__).resolve().parents[1] / "web" / "realtime.py"
+    text = source.read_text(encoding="utf-8")
+    assert 'cors_allowed_origins="*"' not in text, (
+        "Socket.IO must not use wildcard CORS origin"
+    )
+    assert 'cors_allowed_origins' in text
