@@ -137,7 +137,7 @@ def _get_effective_intervals() -> dict:
     Scale OCR and audio intervals based on current CPU load.
     High CPU → back off sampling to avoid competing with user's work.
     """
-    cpu = psutil.cpu_percent(interval=0.2)
+    cpu = psutil.cpu_percent(interval=None)
     if cpu > 70:
         mult = 2.5
     elif cpu > 50:
