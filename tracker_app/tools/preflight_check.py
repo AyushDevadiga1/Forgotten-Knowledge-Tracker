@@ -6,75 +6,76 @@ from tracker_app.db.db_module import init_all_databases
 from tracker_app.config import DB_PATH
 import sqlite3
 
-init_all_databases()
-print("Databases initialised.")
 
-audio_labels      = ["speech", "music", "silence", "unknown"]
-ocr_counts        = [0, 1, 5, 50]
-attention_scores  = [0, 25, 50, 75, 100]
-interaction_rates = [0, 1, 5, 10, 100]
+def main():
+    init_all_databases()
+    print("Databases initialised.")
 
-EXPECTED_FEATURE_SHAPE = (1, 6)   # 6-feature vector
+    audio_labels      = ["speech", "music", "silence", "unknown"]
+    ocr_counts        = [0, 1, 5, 50]
+    attention_scores  = [0, 25, 50, 75, 100]
+    interaction_rates = [0, 1, 5, 10, 100]
 
-def run_stress_test():
-    failures = []
-    test_num = 0
+    EXPECTED_FEATURE_SHAPE = (1, 6)   # 6-feature vector
 
-    for ocr_count in ocr_counts:
-        for audio in audio_labels:
-            for att in attention_scores:
-                for interact in interaction_rates:
-                    test_num += 1
-                    ocr_keywords = {f"kw{i}": {"score": 0.5} for i in range(ocr_count)}
+    def run_stress_test():
+        failures = []
+        test_num = 0
 
-                    # 1. Feature extraction
-                    features = intent_module.extract_features(
-                        ocr_keywords, audio, att, interact
-                    )
-                    if features.shape != EXPECTED_FEATURE_SHAPE:
-                        failures.append(
-                            f"Feature shape {features.shape} != {EXPECTED_FEATURE_SHAPE} "
-                            f"(ocr={ocr_count}, audio={audio}, att={att}, ir={interact})"
+        for ocr_count in ocr_counts:
+            for audio in audio_labels:
+                for att in attention_scores:
+                    for interact in interaction_rates:
+                        test_num += 1
+                        ocr_keywords = {f"kw{i}": {"score": 0.5} for i in range(ocr_count)}
+
+                        # 1. Feature extraction
+                        features = intent_module.extract_features(
+                            ocr_keywords, audio, att, interact
                         )
+                        if features.shape != EXPECTED_FEATURE_SHAPE:
+                            failures.append(
+                                f"Feature shape {features.shape} != {EXPECTED_FEATURE_SHAPE} "
+                                f"(ocr={ocr_count}, audio={audio}, att={att}, ir={interact})"
+                            )
 
-                    # 2. Intent prediction
-                    result = intent_module.predict_intent(
-                        ocr_keywords, audio, att, interact
-                    )
-                    if "intent_label" not in result or "confidence" not in result:
-                        failures.append(f"Missing keys in result: {result}")
+                        # 2. Intent prediction
+                        result = intent_module.predict_intent(
+                            ocr_keywords, audio, att, interact
+                        )
+                        if "intent_label" not in result or "confidence" not in result:
+                            failures.append(f"Missing keys in result: {result}")
 
-                    # 3. DB write
-                    try:
-                        conn = sqlite3.connect(DB_PATH)
-                        c    = conn.cursor()
-                        c.execute("""
-                            INSERT INTO multi_modal_logs
-                            (timestamp, window_title, ocr_keywords, audio_label,
-                             attention_score, interaction_rate, intent_label, intent_confidence)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (
-                            # DateTime columns use the ORM space-separated
-                            # storage format — the old 'T' literal sorted
-                            # AFTER space-separated values and was invisible
-                            # to same-day due queries (FKT-F-004).
-                            "2025-10-02 10:00:00", "TestWindow",
-                            str(list(ocr_keywords.keys())),
-                            audio, att, interact,
-                            result["intent_label"], result["confidence"]
-                        ))
-                        conn.commit()
-                        conn.close()
-                    except Exception as e:
-                        failures.append(f"DB write failed: {e}")
+                        # 3. DB write
+                        try:
+                            conn = sqlite3.connect(DB_PATH)
+                            c    = conn.cursor()
+                            c.execute("""
+                                INSERT INTO multi_modal_logs
+                                (timestamp, window_title, ocr_keywords, audio_label,
+                                 attention_score, interaction_rate, intent_label, intent_confidence)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (
+                                "2025-10-02 10:00:00", "TestWindow",
+                                str(list(ocr_keywords.keys())),
+                                audio, att, interact,
+                                result["intent_label"], result["confidence"]
+                            ))
+                            conn.commit()
+                            conn.close()
+                        except Exception as e:
+                            failures.append(f"DB write failed: {e}")
 
-    print(f"Stress test: {test_num} combinations tested.")
-    if failures:
-        print(f"Failures: {len(failures)}")
-        for f in failures[:10]:
-            print(f"  ✗ {f}")
-    else:
-        print("All tests passed!")
+        print(f"Stress test: {test_num} combinations tested.")
+        if failures:
+            print(f"Failures: {len(failures)}")
+            for f in failures[:10]:
+                print(f"  ✗ {f}")
+        else:
+            print("All tests passed!")
+
+    run_stress_test()
+
 
 if __name__ == "__main__":
-    run_stress_test()
+    main()
