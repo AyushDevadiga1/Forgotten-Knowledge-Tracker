@@ -1,4 +1,4 @@
-"""Shared Study Session state — the single source of truth for the Start/Stop toggle.
+﻿"""Shared Study Session state — the single source of truth for the Start/Stop toggle.
 
 The dashboard (web process) writes this state; the tracking loop (tracker
 process) reads it once per cycle. A small JSON file in DATA_DIR is used so the
@@ -14,11 +14,15 @@ the module falls back to unlocked access with a warning.
 import json
 import logging
 import threading
+import datetime as _stdlib_dt
 from datetime import datetime
 from pathlib import Path
 
 from filelock import FileLock, Timeout as LockTimeout
 from tracker_app.config import DATA_DIR
+def _utcnow():
+    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
+    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
 
 _log = logging.getLogger(__name__)
 
@@ -92,7 +96,7 @@ def start() -> dict:
         acquired = _acquire_file_lock()
         try:
             state = _load()
-            now = datetime.utcnow().isoformat()
+            now = _utcnow().isoformat()
             state["active"] = True
             state["started_at"] = now
             state["stopped_at"] = None
@@ -109,7 +113,7 @@ def stop() -> dict:
         try:
             state = _load()
             state["active"] = False
-            state["stopped_at"] = datetime.utcnow().isoformat()
+            state["stopped_at"] = _utcnow().isoformat()
             state["ear_calibration"] = None
             _save(state)
             return state
@@ -150,7 +154,7 @@ def get_status() -> dict:
     if state.get("active") and state.get("started_at"):
         try:
             started = datetime.fromisoformat(state["started_at"])
-            elapsed = int((datetime.utcnow() - started).total_seconds())
+            elapsed = int((_utcnow() - started).total_seconds())
         except Exception:
             elapsed = None
     return {

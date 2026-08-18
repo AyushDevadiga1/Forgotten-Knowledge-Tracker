@@ -1,12 +1,11 @@
 import json
-import os
+import datetime as _stdlib_dt
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from enum import Enum
 import uuid
 
 from tracker_app.learning.sm2_memory_model import SM2Item, SM2Scheduler
-from tracker_app.config import DATA_DIR
 from tracker_app.db import models
 from tracker_app.db.models import LearningItem, ReviewHistory
 from tracker_app.db.repository import LearningRepository
@@ -64,7 +63,7 @@ class LearningTracker:
             raise ValueError("difficulty must be easy, medium, or hard")
             
         item_id = str(uuid.uuid4())
-        now = datetime.utcnow()
+        now = _utcnow()
 
         with models.SessionLocal() as db:
             new_item = LearningItem(
@@ -113,7 +112,7 @@ class LearningTracker:
             
             result = SM2Scheduler.calculate_next_interval(item, quality_rating)
                 
-            review_date = datetime.utcnow()
+            review_date = _utcnow()
             was_correct = quality_rating >= 3
 
             # Create review history record
@@ -140,7 +139,7 @@ class LearningTracker:
             item_record.success_rate = success_rate
             item_record.status = status
             item_record.last_review_date = review_date
-            item_record.updated_at = datetime.utcnow()
+            item_record.updated_at = _utcnow()
 
             LearningRepository.record_review(db, history, item_record)
             
@@ -180,7 +179,7 @@ class LearningTracker:
             for row in db.query(func.date(ReviewHistory.timestamp)).distinct().all()
             if row[0]
         }
-        day = datetime.utcnow().date()
+        day = _utcnow().date()
         if str(day) not in review_days:
             day -= timedelta(days=1)  # today not reviewed yet — streak may still be alive
         streak = 0
@@ -208,7 +207,7 @@ class LearningTracker:
             item = LearningRepository.get_item(db, item_id)
             if item:
                 item.status = "archived"
-                item.updated_at = datetime.utcnow()
+                item.updated_at = _utcnow()
                 db.commit()
 
     def delete_item(self, item_id: str) -> bool:
@@ -229,7 +228,7 @@ class LearningTracker:
             item = LearningRepository.get_item(db, item_id)
             if item:
                 item.status = "active"
-                item.updated_at = datetime.utcnow()
+                item.updated_at = _utcnow()
                 db.commit()
                 
     def export_items(self, format: str = "json") -> str:
@@ -321,3 +320,6 @@ if __name__ == "__main__":
         print(f"Review recorded. Next review in {result['result']['next_interval_days']} days")
     stats = tracker.get_learning_stats()
     print(f"\nStats: {stats}")
+def _utcnow():
+    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
+    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)

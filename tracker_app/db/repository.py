@@ -3,6 +3,7 @@ Data Access Object (DAO) / Repository Layer
 Abstracts SQLAlchemy models and query logic away from the business layer.
 """
 from typing import List, Optional, Tuple, Dict, Any
+import datetime as _stdlib_dt
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -16,6 +17,9 @@ from tracker_app.db.models import (
     FeedbackTrainingSample,
     TrackedConcept
 )
+def _utcnow():
+    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
+    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
 
 class LearningRepository:
     """Repository for CRUD operations on learning items and their reviews."""
@@ -28,7 +32,7 @@ class LearningRepository:
     def get_items_due(db: Session, limit: int = 20) -> List[LearningItem]:
         return db.query(LearningItem)\
                  .filter(LearningItem.status == 'active')\
-                 .filter(LearningItem.next_review_date <= datetime.utcnow())\
+                 .filter(LearningItem.next_review_date <= _utcnow())\
                  .order_by(LearningItem.next_review_date.asc())\
                  .limit(limit)\
                  .all()
@@ -56,7 +60,7 @@ class LearningRepository:
         
     @staticmethod
     def get_stats(db: Session) -> Dict[str, Any]:
-        now = datetime.utcnow()
+        now = _utcnow()
         total_active = db.query(LearningItem).filter(LearningItem.status == 'active').count()
         total_due = db.query(LearningItem)\
                       .filter(LearningItem.status == 'active')\
@@ -73,8 +77,8 @@ class LearningRepository:
         
     @staticmethod
     def get_learning_today(db: Session) -> Dict[str, Any]:
-        today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-        today_end = datetime.utcnow()
+        today_start = _utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = _utcnow()
         reviews_today = db.query(ReviewHistory).filter(
             ReviewHistory.timestamp >= today_start,
             ReviewHistory.timestamp <= today_end
@@ -102,7 +106,7 @@ class LearningRepository:
         """
         from datetime import timedelta
 
-        today = datetime.utcnow().date()
+        today = _utcnow().date()
         dates = [today - timedelta(days=i) for i in range(days - 1, -1, -1)]
         by_day = {d: {"date": d.isoformat(), "reviews": 0, "correct": 0,
                       "added": 0, "mastered": 0, "due": 0} for d in dates}
@@ -222,7 +226,7 @@ class TrackingRepository:
             acc.correct_predictions += 1
             
         acc.accuracy = acc.correct_predictions / acc.total_predictions
-        acc.last_updated = datetime.utcnow()
+        acc.last_updated = _utcnow()
         db.commit()
 
     @staticmethod
@@ -245,7 +249,7 @@ class TrackingRepository:
     def get_daily_summary(db: Session, date: Optional[datetime] = None) -> Dict[str, Any]:
         from datetime import timedelta
         if date is None:
-            date = datetime.utcnow()
+            date = _utcnow()
         date_str = date.strftime("%Y-%m-%d")
         day_start = date.replace(hour=0, minute=0, second=0, microsecond=0)
         next_day = day_start + timedelta(days=1)
@@ -273,7 +277,7 @@ class TrackingRepository:
         # "YYYY-MM-DD HH:MM:SS" while isoformat() uses "T", so a string compare
         # lexicographically mis-excludes every session on the boundary day that
         # started after the cutoff time-of-day (space < 'T').
-        start_date = datetime.utcnow() - timedelta(days=days)
+        start_date = _utcnow() - timedelta(days=days)
         
         row = db.query(
             func.count(TrackingSession.id),

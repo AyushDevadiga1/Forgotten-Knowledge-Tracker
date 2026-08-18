@@ -9,9 +9,15 @@ import random
 import logging
 import argparse
 from datetime import datetime, timedelta
+import datetime as _stdlib_dt
 from pathlib import Path
 
 import numpy as np
+
+
+def _utcnow():
+    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
+    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
@@ -182,7 +188,7 @@ def load_feedback_samples() -> tuple:
                 except Exception:
                     skipped += 1
             FeedbackRepository.mark_samples_used(db, used_ids)
-            cutoff = datetime.utcnow() - timedelta(days=FEEDBACK_SAMPLE_RETENTION_DAYS)
+            cutoff = _utcnow() - timedelta(days=FEEDBACK_SAMPLE_RETENTION_DAYS)
             FeedbackRepository.cleanup_used_samples(db, cutoff)
         if skipped:
             logger.warning(f"Skipped {skipped} feedback samples with malformed feature vectors.")

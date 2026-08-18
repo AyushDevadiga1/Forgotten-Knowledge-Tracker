@@ -6,9 +6,14 @@ import sqlite3
 import threading
 import time
 import logging
+import datetime as _stdlib_dt
 from datetime import datetime, timedelta
 from pathlib import Path
 from tracker_app.config import DB_PATH, KNOWLEDGE_GRAPH_PATH, DEFAULT_LAMBDA
+
+def _utcnow():
+    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
+    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
 
 logger = logging.getLogger("KnowledgeGraph")
 
@@ -209,7 +214,7 @@ def _memory_score_from_row(row):
     decay clock reset at the last encounter/review.
     """
     from tracker_app.learning.memory_model import compute_memory_score_awfc
-    last_review = row.last_seen or row.first_seen or datetime.utcnow()
+    last_review = row.last_seen or row.first_seen or _utcnow()
     return compute_memory_score_awfc(
         last_review,
         base_lambda=row.lambda_personalised or DEFAULT_LAMBDA,
@@ -268,8 +273,8 @@ def add_concepts(concepts):
                     embedding=embeddings[idx].tolist() if embeddings is not None else [],
                     count=1,
                     memory_score=live_scores.get(concept, 0.3),
-                    next_review_time=datetime.utcnow().strftime(DATETIME_FORMAT),
-                    last_review=datetime.utcnow().strftime(DATETIME_FORMAT),
+                    next_review_time=_utcnow().strftime(DATETIME_FORMAT),
+                    last_review=_utcnow().strftime(DATETIME_FORMAT),
                     intent_conf=1.0
                 )
                 _graph_dirty = True
@@ -475,7 +480,7 @@ def get_session_concepts(limit: int = 50) -> list:
             except (ValueError, TypeError):
                 start = None
         if start is None:
-            start = datetime.utcnow() - timedelta(minutes=15)
+            start = _utcnow() - timedelta(minutes=15)
 
         with SessionLocal() as db:
             rows = (

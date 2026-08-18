@@ -1,6 +1,7 @@
 """SQLAlchemy ORM models for all FKT tables (lazy engine/session factories)."""
 
 import os
+import datetime as _stdlib_dt
 from datetime import datetime
 
 from sqlalchemy import (
@@ -11,6 +12,10 @@ from sqlalchemy.orm import declarative_base, sessionmaker, relationship, Session
 import logging
 
 from tracker_app.config import get_db_path
+
+def _utcnow():
+    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
+    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
 
 Base = declarative_base()
 
@@ -161,8 +166,8 @@ class LearningItem(Base):
     success_rate  = Column(Float,   default=0.0)
     status        = Column(String,  default="active",  index=True)  # ← index
 
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
     # Relationship
     reviews = relationship("ReviewHistory", back_populates="item",
@@ -176,7 +181,7 @@ class ReviewHistory(Base):
     item_id        = Column(String,
                             ForeignKey("learning_items.id", ondelete="CASCADE"),
                             nullable=False, index=True)
-    timestamp      = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    timestamp      = Column(DateTime, default=_utcnow, nullable=False, index=True)
     quality_rating = Column(Integer)
     old_interval   = Column(Integer)
     new_interval   = Column(Integer)
@@ -194,7 +199,7 @@ class IntentPrediction(Base):
     __tablename__ = "intent_predictions"
 
     id               = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp        = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    timestamp        = Column(DateTime, default=_utcnow, nullable=False, index=True)
     predicted_intent = Column(String)
     confidence       = Column(Float)
     context_keywords = Column(String)   # JSON: [f1, f2, f3, f4, f5, f6] feature vector
@@ -212,7 +217,7 @@ class IntentAccuracy(Base):
     total_predictions    = Column(Integer, default=0)
     correct_predictions  = Column(Integer, default=0)
     accuracy             = Column(Float,   default=0.0)
-    last_updated         = Column(DateTime, default=datetime.utcnow)
+    last_updated         = Column(DateTime, default=_utcnow)
 
 
 class TrackingSession(Base):
@@ -246,8 +251,8 @@ class TrackedConcept(Base):
     __tablename__ = "tracked_concepts"
 
     concept         = Column(String, primary_key=True)
-    first_seen      = Column(DateTime, default=datetime.utcnow, nullable=False)
-    last_seen       = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    first_seen      = Column(DateTime, default=_utcnow, nullable=False)
+    last_seen       = Column(DateTime, default=_utcnow, nullable=False, index=True)
     frequency_count = Column(Integer, default=1)
     relevance_score = Column(Float,   default=0.5)
     context_tags    = Column(String,  default="")
@@ -277,7 +282,7 @@ class ConceptEncounter(Base):
     concept         = Column(String,
                              ForeignKey("tracked_concepts.concept", ondelete="CASCADE"),
                              nullable=False, index=True)
-    timestamp       = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    timestamp       = Column(DateTime, default=_utcnow, nullable=False, index=True)
     source          = Column(String)   # 'ocr' | 'browser_extension' | 'manual'
     confidence      = Column(Float, default=1.0)
     context_snippet = Column(String)
@@ -327,7 +332,7 @@ class MemoryDecay(Base):
     last_seen_ts    = Column(DateTime, nullable=False, index=True)
     predicted_recall = Column(Float,  default=0.0)
     observed_usage  = Column(Integer, default=1)
-    updated_at      = Column(DateTime, default=datetime.utcnow)
+    updated_at      = Column(DateTime, default=_utcnow)
 
 
 class Metric(Base):
@@ -337,7 +342,7 @@ class Metric(Base):
     concept          = Column(String)
     next_review_time = Column(DateTime)
     memory_score     = Column(Float, default=0.0)
-    last_updated     = Column(DateTime, default=datetime.utcnow)
+    last_updated     = Column(DateTime, default=_utcnow)
 
 
 # ─── Self-improving model: feedback training samples ──────────────────────────
@@ -351,7 +356,7 @@ class FeedbackTrainingSample(Base):
     __tablename__ = "feedback_training_samples"
 
     id              = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp       = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    timestamp       = Column(DateTime, default=_utcnow, nullable=False, index=True)
     feature_vector  = Column(String, nullable=False)   # JSON: [f1, f2, f3, f4, f5, f6]
     predicted_label = Column(String, nullable=False)
     actual_label    = Column(String, nullable=False)   # ground truth from user

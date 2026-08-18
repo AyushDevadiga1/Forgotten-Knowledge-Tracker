@@ -1,9 +1,15 @@
 """Webcam pipeline: MediaPipe FaceMesh-based attention tracking (lazy-loaded)."""
 import atexit
+import datetime as _stdlib_dt
 import cv2
 import numpy as np
 import time
 import logging
+
+
+def _utcnow():
+    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
+    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
 
 logger = logging.getLogger("WebcamModule")
 
@@ -117,7 +123,7 @@ def calibrate_ear(duration_seconds=30):
         "mean_ear": round(mean_ear, 4),
         "std_ear": round(std_ear, 4),
         "fallback": False,
-        "calibrated_at": datetime.datetime.utcnow().isoformat(),
+        "calibrated_at": _utcnow().isoformat(),
     }
     logger.info("Calibration complete: low=%.3f high=%.3f mean=%.3f std=%.3f",
                 personal_low, personal_high, mean_ear, std_ear)

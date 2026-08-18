@@ -4,6 +4,7 @@ import json
 import re
 import threading
 import logging
+import datetime as _stdlib_dt
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 
@@ -14,11 +15,11 @@ logger = logging.getLogger("API")
 
 api_bp = Blueprint('api', __name__, url_prefix='/api/v1')
 
-# C-2: only one background retraining subprocess may run at a time — two
+# C-2: only one background retraining subprocess may run at a time â€” two
 # concurrent writes to models/intent_classifier.pkl corrupt the pickle.
 _retrain_lock = threading.Lock()
 
-# ── Singleton tracker (fixes double-instantiation) ────────────────────────────
+# â”€â”€ Singleton tracker (fixes double-instantiation) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _tracker: LearningTracker | None = None
 
 def get_tracker() -> LearningTracker:
@@ -70,9 +71,9 @@ def _sanitize_title(raw) -> str:
     return ' '.join(cleaned.split())
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # FeedbackService  (business logic extracted from route handler)
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class FeedbackService:
     """Handles intent feedback recording and auto-retraining."""
@@ -83,7 +84,7 @@ class FeedbackService:
         """Persist user feedback, update accuracy stats, save training sample."""
         from tracker_app.db.models import SessionLocal, FeedbackTrainingSample
         from tracker_app.db.repository import TrackingRepository, FeedbackRepository
-        now = datetime.utcnow()
+        now = _utcnow()
         with SessionLocal() as db:
             pred = TrackingRepository.get_intent_prediction(db, prediction_id)
 
@@ -119,7 +120,7 @@ class FeedbackService:
                     else:
                         logger.warning(
                             f"record_feedback: skipping FeedbackTrainingSample for prediction "
-                            f"{prediction_id} — context_keywords is not a JSON 6-element "
+                            f"{prediction_id} â€” context_keywords is not a JSON 6-element "
                             f"feature vector; user feedback still recorded"
                         )
 
@@ -166,7 +167,7 @@ class FeedbackService:
                 cwd=str(root), capture_output=True, text=True, timeout=180
             )
             if result.returncode == 0:
-                log.info("Background retraining complete — model updated.")
+                log.info("Background retraining complete â€” model updated.")
             else:
                 log.warning(f"Retraining failed: {result.stderr[:300]}")
         except Exception as e:
@@ -175,16 +176,16 @@ class FeedbackService:
             _retrain_lock.release()
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Learning Items
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @api_bp.route('/items', methods=['GET'])
 def get_items():
     try:
         limit = int(request.args.get('limit', 50))
         if not (1 <= limit <= MAX_LIMIT):
-            return jsonify({'success': False, 'error': f'limit must be 1–{MAX_LIMIT}'}), 400
+            return jsonify({'success': False, 'error': f'limit must be 1â€“{MAX_LIMIT}'}), 400
     except (ValueError, TypeError):
         return jsonify({'success': False, 'error': 'limit must be an integer'}), 400
 
@@ -251,7 +252,7 @@ def create_item():
 @api_bp.route('/items/backfill', methods=['POST'])
 def backfill_items():
     """One-shot migration: promote validated extracted concepts from
-    tracked_concepts into the SM-2 learning deck. Idempotent — concepts with
+    tracked_concepts into the SM-2 learning deck. Idempotent â€” concepts with
     an existing deck item (exact question match) are skipped."""
     try:
         from tracker_app.learning.concept_promotion import backfill_items as run_backfill
@@ -261,7 +262,7 @@ def backfill_items():
         except (ValueError, TypeError):
             return jsonify({'success': False, 'error': 'min_frequency must be an integer'}), 400
         if not (1 <= min_frequency <= 1000):
-            return jsonify({'success': False, 'error': 'min_frequency must be 1–1000'}), 400
+            return jsonify({'success': False, 'error': 'min_frequency must be 1â€“1000'}), 400
         result = run_backfill(min_frequency=min_frequency)
         return jsonify({'success': True, 'data': result})
     except Exception as e:
@@ -350,7 +351,7 @@ def delete_intent_predictions():
 @api_bp.route('/tracking/history', methods=['DELETE'])
 def delete_tracking_history():
     """Clear the passive capture trail: sessions, multimodal logs, memory
-    decay, metrics, daily summaries, and intent history — while KEEPING the
+    decay, metrics, daily summaries, and intent history â€” while KEEPING the
     explicit learning deck (learning_items) intact."""
     try:
         from tracker_app.db.models import (
@@ -390,7 +391,7 @@ def record_review():
     if item_id is None:
         return jsonify({'success': False, 'error': 'item_id is required'}), 400
     if not isinstance(item_id, str):
-        item_id = str(item_id)   # JSON numbers are valid ids — never crash on .strip()
+        item_id = str(item_id)   # JSON numbers are valid ids â€” never crash on .strip()
     item_id = item_id.strip()
     if not item_id:
         return jsonify({'success': False, 'error': 'item_id is required'}), 400
@@ -401,7 +402,7 @@ def record_review():
         return jsonify({'success': False, 'error': 'quality must be an integer'}), 400
 
     if not (0 <= quality <= 5):
-        return jsonify({'success': False, 'error': 'quality must be 0–5'}), 400
+        return jsonify({'success': False, 'error': 'quality must be 0â€“5'}), 400
 
     try:
         get_tracker().record_review(item_id=item_id, quality_rating=quality)
@@ -425,13 +426,13 @@ def get_stats():
 def get_stats_trend():
     """Real per-day time-series (reviews, accuracy, additions, mastery, due).
 
-    Backs the Overview page sparklines — these replace the previously random,
+    Backs the Overview page sparklines â€” these replace the previously random,
     fabricated trend data with values derived from stored timestamps.
     """
     try:
         days = int(request.args.get('days', 7))
         if not (1 <= days <= 90):
-            return jsonify({'success': False, 'error': 'days must be 1–90'}), 400
+            return jsonify({'success': False, 'error': 'days must be 1â€“90'}), 400
     except (ValueError, TypeError):
         return jsonify({'success': False, 'error': 'days must be an integer'}), 400
     try:
@@ -445,9 +446,9 @@ def get_stats_trend():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Intent & feedback retraining
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @api_bp.route('/intent/recent', methods=['GET'])
 def get_recent_intent():
@@ -476,10 +477,10 @@ def get_recent_intent():
                 IntentPrediction.prompted_at.isnot(None)
             ).order_by(IntentPrediction.prompted_at.desc()).first()
             if last_prompt and last_prompt[0] is not None:
-                if datetime.utcnow() - last_prompt[0] < timedelta(minutes=TOAST_COOLDOWN_MINUTES):
+                if _utcnow() - last_prompt[0] < timedelta(minutes=TOAST_COOLDOWN_MINUTES):
                     return jsonify({'success': True, 'data': None})
 
-            now = datetime.utcnow()
+            now = _utcnow()
             # Atomic claim: the conditional UPDATE flips prompted_at from NULL,
             # and only one concurrent request can do that. A second request that
             # read the same eligible row (the TOCTOU window) gets rowcount 0 and
@@ -555,9 +556,9 @@ def send_intent_feedback():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Knowledge Graph
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @api_bp.route('/graph/stats', methods=['GET'])
 def get_graph_stats():
@@ -624,7 +625,7 @@ def get_concept_drift(concept):
 
 @api_bp.route('/graph/concept/<concept>', methods=['GET'])
 def get_concept_detail(concept):
-    """Live memory score + encounter history for a concept — backs the
+    """Live memory score + encounter history for a concept â€” backs the
     frontend's click-to-drill-in on a graph node."""
     try:
         from tracker_app.learning.concept_scheduler import ConceptScheduler
@@ -640,9 +641,9 @@ def get_concept_detail(concept):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Micro-Quiz
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @api_bp.route('/quiz/current', methods=['GET'])
 def get_current_quiz():
@@ -679,9 +680,9 @@ def submit_quiz_answer():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Browser Extension Ingestion
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @api_bp.route('/ingest', methods=['POST'])
 def browser_ingest():
@@ -702,7 +703,7 @@ def browser_ingest():
     title = _sanitize_title(data.get('title', ''))[:200]
 
     if len(text.strip()) < 20:
-        return jsonify({'success': True, 'message': 'Text too short — skipped'})
+        return jsonify({'success': True, 'message': 'Text too short â€” skipped'})
 
     try:
         from tracker_app.tracking.privacy_filter import (
@@ -713,11 +714,11 @@ def browser_ingest():
         from tracker_app.learning.concept_scheduler import ConceptScheduler
         from tracker_app.learning.text_quality_validator import validate_and_clean_extraction
 
-        # Sensitive window title → drop it (never stored as context).
+        # Sensitive window title â†’ drop it (never stored as context).
         if is_sensitive_window(title):
             title = ""
 
-        # Privacy gate FIRST — the extension path previously bypassed the
+        # Privacy gate FIRST â€” the extension path previously bypassed the
         # redactor entirely, so emails/passwords/SSNs reached add_concept.
         sanitized = sanitize_text_for_storage(text)
         if not sanitized['safe_to_store']:
@@ -763,9 +764,9 @@ def browser_ingest():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Study Sessions (Phase 9 — session-gated concept capture)
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# Study Sessions (Phase 9 â€” session-gated concept capture)
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @api_bp.route('/session/status', methods=['GET'])
 def get_session_status():
@@ -780,7 +781,7 @@ def get_session_status():
 
 @api_bp.route('/session/start', methods=['POST'])
 def start_study_session():
-    """Toggle a study session on — the tracker loop only captures concepts
+    """Toggle a study session on â€” the tracker loop only captures concepts
     while a session is active."""
     try:
         from tracker_app.tracking.session_state import start
@@ -792,7 +793,7 @@ def start_study_session():
 
 @api_bp.route('/session/stop', methods=['POST'])
 def stop_study_session():
-    """Toggle a study session off — capture pauses and analytics are saved."""
+    """Toggle a study session off â€” capture pauses and analytics are saved."""
     try:
         from tracker_app.tracking.session_state import stop
         return jsonify({'success': True, 'data': stop()})
@@ -825,9 +826,9 @@ def calibrate_session():
         logger.error("calibrate_session: %s", e)
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Health check
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 @api_bp.route('/health', methods=['GET'])
 def health_check():
@@ -839,8 +840,8 @@ def health_check():
             feedback_count = FeedbackRepository.get_total_count(db)
         return jsonify({
             'status': 'healthy',
-            'timestamp': datetime.utcnow().isoformat(),
-            'version': '2.0.0',
+            'timestamp': _utcnow().isoformat(),
+            'version': '2.0.0',  # keep in sync with tracker_app.__version__
             'components': {
                 'database':       'reachable',
                 'item_count':     item_count,
@@ -853,3 +854,6 @@ def health_check():
             'status': 'unhealthy',
             'error': str(e),
         }), 503
+def _utcnow():
+    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
+    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)

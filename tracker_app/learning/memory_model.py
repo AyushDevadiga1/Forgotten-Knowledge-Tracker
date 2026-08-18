@@ -7,10 +7,15 @@ A concept learned at 80% attention decays ~24% slower than one at 15% attention.
 
 import math
 import logging
+import datetime as _stdlib_dt
 from datetime import datetime, timedelta
 from typing import Optional
 
 from tracker_app.config import DEFAULT_LAMBDA, MEMORY_THRESHOLD
+
+def _utcnow():
+    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
+    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
 
 logger = logging.getLogger("MemoryModel")
 
@@ -24,7 +29,7 @@ LAMBDA_CEIL      = 0.50    # maximum decay rate
 def safe_parse_datetime(dt_value, default=None) -> datetime:
     """Parse datetime from string, datetime, or None."""
     if default is None:
-        default = datetime.utcnow()
+        default = _utcnow()
     if isinstance(dt_value, datetime):
         return dt_value
     if not isinstance(dt_value, str) or not dt_value.strip():
@@ -90,7 +95,7 @@ def compute_memory_score_awfc(
         Float in [0.05, 1.0]
     """
     lambda_p = compute_awfc_lambda(base_lambda, attention_at_encoding)
-    t_hours  = max(0.0, (datetime.utcnow() - last_review).total_seconds() / 3600.0)
+    t_hours  = max(0.0, (_utcnow() - last_review).total_seconds() / 3600.0)
     R        = math.exp(-lambda_p * t_hours) * modality_boost
     return max(0.05, min(1.0, R))
 
@@ -121,7 +126,7 @@ def schedule_next_review(
         interval_hours  = max(hours_min, base_interval * strength_factor)
         interval_hours  = min(interval_hours, 24 * 30)  # cap at 30 days
 
-    return datetime.utcnow() + timedelta(hours=interval_hours)
+    return _utcnow() + timedelta(hours=interval_hours)
 
 
 # ─── Personalise λ from review history ───────────────────────────────────────
@@ -146,13 +151,13 @@ def recalibrate_lambda(
         return current_lambda
 
     if last_seen is None:
-        last_seen = datetime.utcnow() - timedelta(days=7)
+        last_seen = _utcnow() - timedelta(days=7)
 
     # Decay window = time since the LAST review/encounter (last_seen), not
     # the concept's total age. first_seen makes predicted retention ~0 for
     # any long-lived concept (exp(-0.1 * 2000) ~= 0), so the adjustment
     # stops responding to actual recall and drives lambda to a bound (H-3).
-    t_hours = (datetime.utcnow() - last_seen).total_seconds() / 3600.0
+    t_hours = (_utcnow() - last_seen).total_seconds() / 3600.0
     predicted_rate = math.exp(-current_lambda * t_hours) if t_hours > 0 else 1.0
 
     # Nudge λ toward the right decay rate
@@ -164,7 +169,7 @@ def recalibrate_lambda(
 if __name__ == "__main__":
     # Quick smoke test
     from datetime import timedelta
-    learned_5h_ago = datetime.utcnow() - timedelta(hours=5)
+    learned_5h_ago = _utcnow() - timedelta(hours=5)
 
     for att in [20, 50, 80]:
         score = compute_memory_score_awfc(learned_5h_ago,

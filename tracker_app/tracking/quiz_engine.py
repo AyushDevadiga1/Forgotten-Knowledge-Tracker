@@ -7,8 +7,14 @@ When idle for consecutive cycles, FKT quizzes the user via the dashboard
 import random
 import logging
 from datetime import datetime, timedelta
+import datetime as _stdlib_dt
 from typing import Optional
 from tracker_app.learning.text_quality_validator import is_plausible_concept
+
+
+def _utcnow():
+    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
+    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
 
 logger = logging.getLogger("QuizEngine")
 
@@ -46,7 +52,7 @@ def record_quiz_broadcast():
     broadcast_micro_quiz() has succeeded.
     """
     global _last_quiz_time
-    _last_quiz_time = datetime.utcnow()
+    _last_quiz_time = _utcnow()
 
 
 # ─── Trigger logic ────────────────────────────────────────────────────────────
@@ -81,7 +87,7 @@ def should_show_quiz(
         return False
 
     if _last_quiz_time is not None:
-        elapsed = (datetime.utcnow() - _last_quiz_time).total_seconds() / 60
+        elapsed = (_utcnow() - _last_quiz_time).total_seconds() / 60
         if elapsed < QUIZ_COOLDOWN_MINUTES:
             return False
 

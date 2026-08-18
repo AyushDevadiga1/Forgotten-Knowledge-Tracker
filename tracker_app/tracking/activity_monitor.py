@@ -2,6 +2,7 @@ import time
 import os
 import json
 from collections import deque
+import datetime as _stdlib_dt
 from datetime import datetime, timedelta
 from threading import Lock
 from typing import Dict, Any, Optional
@@ -11,6 +12,10 @@ from tracker_app.config import DATA_DIR
 from tracker_app.learning.concept_scheduler import ConceptScheduler
 from tracker_app.db.repository import TrackingRepository
 from tracker_app.db.models import SessionLocal, IntentPrediction, TrackingSession
+
+def _utcnow():
+    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
+    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
 
 logger = logging.getLogger("ActivityMonitor")
 
@@ -56,7 +61,7 @@ class IntentValidator:
         try:
             with SessionLocal() as db:
                 pred = IntentPrediction(
-                    timestamp=datetime.utcnow(),
+                    timestamp=_utcnow(),
                     predicted_intent=predicted_intent,
                     confidence=confidence,
                     context_keywords=json.dumps(features) if features else "[]",
@@ -69,7 +74,7 @@ class IntentValidator:
         self.prediction_buffer.append({
             'intent': predicted_intent,
             'confidence': confidence,
-            'timestamp': datetime.utcnow()
+            'timestamp': _utcnow()
         })
     
     def get_accuracy_stats(self) -> Dict[str, Any]:
@@ -118,7 +123,7 @@ class TrackingAnalytics:
                 return TrackingRepository.get_daily_summary(db, date)
         except Exception as e:
             logger.error(f"Failed to get daily summary: {e}")
-            date_str = date.strftime("%Y-%m-%d") if date else datetime.utcnow().strftime("%Y-%m-%d")
+            date_str = date.strftime("%Y-%m-%d") if date else _utcnow().strftime("%Y-%m-%d")
             return {'date': date_str, 'total_minutes': 0, 'concepts': 0, 'avg_attention': 0}
     
     def get_trend_analysis(self, days: int = 7) -> Dict[str, Any]:
@@ -154,7 +159,7 @@ class ActivityMonitor:
     def start_session(self):
         """Start a tracking session"""
         with self._lock:
-            self.session_start = datetime.utcnow()
+            self.session_start = _utcnow()
             self.session_concepts = []
             self._attention_sum = 0.0
             self._attention_count = 0
@@ -167,7 +172,7 @@ class ActivityMonitor:
             if not self.is_running:
                 return
             
-            session_end = datetime.utcnow()
+            session_end = _utcnow()
             
             # Calculate session stats
             concepts_count = len(set(self.session_concepts))
@@ -247,7 +252,7 @@ class ActivityMonitor:
             if not self.is_running or not self.session_start:
                 return {}
             
-            elapsed = (datetime.utcnow() - self.session_start).total_seconds() / 60
+            elapsed = (_utcnow() - self.session_start).total_seconds() / 60
             
             return {
                 'session_duration_minutes': elapsed,
@@ -267,7 +272,7 @@ class ActivityMonitor:
         trend_stats = self.analytics.get_trend_analysis(30)
 
         export_data = {
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': _utcnow().isoformat(),
             'session_stats': self.get_session_stats(),
             'due_concepts': due_concepts,
             'intent_accuracy': intent_stats,

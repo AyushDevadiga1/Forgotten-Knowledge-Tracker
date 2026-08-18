@@ -4,8 +4,14 @@ import sqlite3
 import logging
 import os
 from datetime import datetime
+import datetime as _stdlib_dt
 from pathlib import Path
 from tracker_app.config import DB_PATH
+
+
+def _utcnow():
+    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
+    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
 
 logger = logging.getLogger("Migrations")
 
@@ -185,7 +191,7 @@ def _already_applied(cursor, migration_id: str) -> bool:
 def _mark_applied(cursor, migration_id: str, description: str):
     cursor.execute(
         "INSERT OR IGNORE INTO schema_migrations (id, applied_at, description) VALUES (?, ?, ?)",
-        (migration_id, datetime.utcnow().isoformat(), description)
+        (migration_id, _utcnow().isoformat(), description)
     )
 
 
