@@ -101,15 +101,15 @@ def test_migration_011_normalizes_t_rows_and_due_query_includes_them(monkeypatch
     try:
         conn.executescript(
             """
-            INSERT INTO tracked_concepts (concept, first_seen, last_seen, next_review)
+            INSERT INTO tracked_concepts (concept, first_seen, last_seen, next_review, status)
             VALUES ('rowA_space', '2026-08-13 06:00:00.000000', '2026-08-13 07:00:00.000000',
-                    '2026-08-13 08:00:00.000000');
-            INSERT INTO tracked_concepts (concept, first_seen, last_seen, next_review)
+                    '2026-08-13 08:00:00.000000', 'discovered');
+            INSERT INTO tracked_concepts (concept, first_seen, last_seen, next_review, status)
             VALUES ('rowB_T', '2026-08-13 06:00:00.000000', '2026-08-13 07:00:00.000000',
-                    '2026-08-13T09:00:00');
-            INSERT INTO tracked_concepts (concept, first_seen, last_seen, next_review)
+                    '2026-08-13T09:00:00', 'discovered');
+            INSERT INTO tracked_concepts (concept, first_seen, last_seen, next_review, status)
             VALUES ('rowC_nextday', '2026-08-13 06:00:00.000000', '2026-08-13 07:00:00.000000',
-                    '2026-08-14 08:00:00.000000');
+                    '2026-08-14 08:00:00.000000', 'discovered');
             """
         )
         conn.commit()
@@ -118,6 +118,7 @@ def test_migration_011_normalizes_t_rows_and_due_query_includes_them(monkeypatch
 
     _use_db(monkeypatch, db_file)
     monkeypatch.setattr("tracker_app.learning.concept_scheduler.datetime", _FixedUtcnow)
+    monkeypatch.setattr("tracker_app.learning.concept_scheduler._utcnow", lambda: BOUND)
     try:
         scheduler = ConceptScheduler()
 
