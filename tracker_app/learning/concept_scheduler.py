@@ -1,6 +1,7 @@
-﻿"""SM-2 concept scheduling with AWFC-personalised decay (lambda per concept)."""
+"""SM-2 concept scheduling with AWFC-personalised decay (lambda per concept)."""
 
 import logging
+import datetime as _stdlib_dt
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
 
@@ -51,7 +52,7 @@ class ConceptScheduler:
             logger.debug("Skipping implausible concept: %r", concept)
             return None
 
-        now = datetime.utcnow()
+        now = _utcnow()
 
         with SessionLocal() as db:
             existing = (db.query(TrackedConcept)
@@ -151,6 +152,10 @@ class ConceptScheduler:
         concept_id = concept string (PK), not an integer.
         quality: 0–5 (0=fail, 5=perfect recall).
         """
+        if not (0 <= quality <= 5):
+            logger.warning(f"schedule_next_review: quality must be 0-5, got {quality}")
+            return
+
         from tracker_app.learning.sm2_memory_model import (
             MIN_EASE_FACTOR, MAX_EASE_FACTOR, QUALITY_THRESHOLD,
             SECOND_REVIEW_INTERVAL_DAYS,
@@ -171,33 +176,30 @@ class ConceptScheduler:
             # Ease factor adjusts on every review (success AND failure) using
             # the canonical SM-2 formula — the tested implementation applies it
             # unconditionally, so we do too instead of the old flat -0.2.
-            delta      = 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)
-            new_ease   = max(MIN_EASE_FACTOR, min(ease + delta, MAX_EASE_FACTOR))
-
-            if quality < QUALITY_THRESHOLD:
-                # Failed — reset to first repetition, re-review tomorrow.
-                repetitions = 1
-                new_interval = 1
-            else:
-                repetitions += 1
-                if repetitions == 1:
-                    new_interval = 1
-                elif repetitions == 2:
-                    new_interval = SECOND_REVIEW_INTERVAL_DAYS
-                else:
-                    new_interval = max(1, round(interval * new_ease))
+            from tracker_app.learning.sm2_memory_model import (
+                calculate_sm2_interval,
+            )
+            sm2_result = calculate_sm2_interval(
+                interval=interval,
+                ease_factor=ease,
+                repetitions=repetitions,
+                quality=quality,
+            )
+            new_interval = sm2_result['interval']
+            new_ease = sm2_result['ease_factor']
+            repetitions = sm2_result['repetitions']
 
             tracked.interval        = new_interval
             tracked.memory_strength = new_ease
             tracked.repetitions     = repetitions
-            tracked.next_review     = datetime.utcnow() + timedelta(days=new_interval)
+            tracked.next_review     = _utcnow() + timedelta(days=new_interval)
             # Recalibration needs the decay window since the PREVIOUS
             # reinforcement, so snapshot last_seen before this review resets it.
             prev_last_seen = tracked.last_seen
             # A review is a reinforcement event: reset the retention clock so
             # the AWFC memory score (and the graph's live copy) reflect the
             # fresh recall rather than the last OCR encounter.
-            tracked.last_seen       = datetime.utcnow()
+            tracked.last_seen       = _utcnow()
 
             # Cumulative review history (M-6): every schedule_next_review call
             # is one quiz review, so review_count/correct_count give a true
@@ -238,12 +240,13 @@ class ConceptScheduler:
 
     def get_due_concepts(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Return concepts whose next_review is now or overdue."""
-        now = datetime.utcnow()
+        now = _utcnow()
 
         with models.SessionLocal() as db:
             concepts = (
                 db.query(TrackedConcept)
                   .filter(TrackedConcept.next_review <= now)
+                  .filter(TrackedConcept.status != 'archived')
                   .order_by(
                       TrackedConcept.relevance_score.desc(),
                       TrackedConcept.next_review.asc(),
@@ -271,7 +274,7 @@ class ConceptScheduler:
         self, concept: str, days: int = 30
     ) -> List[Dict[str, Any]]:
         """Encounter history for a concept over the last N days."""
-        start = datetime.utcnow() - timedelta(days=days)
+        start = _utcnow() - timedelta(days=days)
 
         with models.SessionLocal() as db:
             tc = (db.query(TrackedConcept)
@@ -322,3 +325,6 @@ if __name__ == "__main__":
     print(f"Added: {cid}")
     due = s.get_due_concepts()
     print(f"Due: {len(due)}")
+def _utcnow():
+    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
+    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)

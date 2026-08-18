@@ -3,9 +3,13 @@
 Research-backed scheduling defaults; complements the AWFC retention model.
 """
 
+import datetime as _stdlib_dt
 from datetime import datetime, timedelta
 from typing import Dict, Any
 import math
+def _utcnow():
+    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
+    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
 
 # SM-2 Algorithm Configuration
 # These are research-validated defaults from SuperMemo
@@ -49,13 +53,13 @@ class SM2Item:
         self.question = question
         self.answer = answer
         self.difficulty = difficulty
-        self.created_at = created_at or datetime.utcnow()
+        self.created_at = created_at or _utcnow()
         
         # SM-2 State Variables
         self.interval = 0              # Days until next review
         self.ease_factor = DEFAULT_EASE_FACTOR
         self.repetitions = 0           # Number of times reviewed
-        self.next_review_date = datetime.utcnow()  # When to review next
+        self.next_review_date = _utcnow()  # When to review next
         self.last_review_date = None   # Last review timestamp
         
         # Statistics
@@ -98,38 +102,22 @@ class SM2Scheduler:
         if not (0 <= quality <= 5):
             raise ValueError("Quality must be between 0 and 5")
         
-        # Step 1: Update repetitions count
-        if quality >= QUALITY_THRESHOLD:
-            item.repetitions += 1
-        else:
-            # Failed response - reset to first repetition
-            item.repetitions = 1
+        # Use the shared SM-2 calculation (single source of truth)
+        sm2_result = calculate_sm2_interval(
+            interval=item.interval,
+            ease_factor=item.ease_factor,
+            repetitions=item.repetitions,
+            quality=quality,
+        )
         
-        # Step 2: Calculate new ease factor
-        # EF' = EF + (0.1 - (5-q) * (0.08 + (5-q)*0.02))
-        # This formula adjusts difficulty based on performance
-        new_ease = item.ease_factor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
-        item.ease_factor = max(MIN_EASE_FACTOR, min(new_ease, MAX_EASE_FACTOR))
+        item.ease_factor = sm2_result['ease_factor']
+        item.repetitions = sm2_result['repetitions']
+        item.interval = sm2_result['interval']
         
-        # Step 3: Calculate new interval
-        if quality < QUALITY_THRESHOLD:
-            # Failed - review tomorrow
-            next_interval = 1
-        elif item.repetitions == 1:
-            # First successful review - review in 1 day
-            next_interval = 1
-        elif item.repetitions == 2:
-            # Second successful review - review in N days
-            next_interval = SECOND_REVIEW_INTERVAL_DAYS
-        else:
-            # Subsequent reviews - use ease factor
-            # interval = previous_interval * ease_factor
-            next_interval = round(item.interval * item.ease_factor)
-        
-        # Step 4: Update item state
-        item.last_review_date = datetime.utcnow()
-        item.interval = next_interval
-        item.next_review_date = datetime.utcnow() + timedelta(days=next_interval)
+        # Step 4: Update item state (single utcnow() call)
+        now = _utcnow()
+        item.last_review_date = now
+        item.next_review_date = now + timedelta(days=item.interval)
         item.total_reviews += 1
         
         if quality >= QUALITY_THRESHOLD:
@@ -137,14 +125,14 @@ class SM2Scheduler:
         
         # Log review
         item.review_history.append({
-            'date': datetime.utcnow(),
+            'date': now,
             'quality': quality,
-            'interval': next_interval,
+            'interval': item.interval,
             'ease_factor': item.ease_factor
         })
         
         return {
-            'next_interval_days': next_interval,
+            'next_interval_days': item.interval,
             'next_review_date': item.next_review_date,
             'ease_factor': item.ease_factor,
             'repetitions': item.repetitions,
@@ -154,7 +142,7 @@ class SM2Scheduler:
     @staticmethod
     def get_items_due(items: list) -> list:
         """Get items that are due for review now"""
-        now = datetime.utcnow()
+        now = _utcnow()
         return [item for item in items if item.next_review_date <= now]
     
     @staticmethod
@@ -194,9 +182,57 @@ class SM2Scheduler:
 
 
 
+
+def calculate_sm2_interval(
+    interval: int,
+    ease_factor: float,
+    repetitions: int,
+    quality: int,
+) -> dict:
+    """Pure SM-2 interval calculation shared by SM2Item and TrackedConcept.
+
+    Works with raw values instead of ORM models, so both
+    SM2Scheduler.calculate_next_interval() and ConceptScheduler.schedule_next_review()
+    use the exact same logic.
+
+    Args:
+        interval: current interval in days
+        ease_factor: current ease factor
+        repetitions: current repetition count
+        quality: review quality 0-5
+
+    Returns:
+        dict with keys: interval, ease_factor, repetitions
+    """
+    if not (0 <= quality <= 5):
+        raise ValueError("Quality must be between 0 and 5")
+
+    # Ease factor adjustment (canonical SM-2 formula)
+    delta = 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)
+    new_ease = max(MIN_EASE_FACTOR, min(ease_factor + delta, MAX_EASE_FACTOR))
+
+    if quality < QUALITY_THRESHOLD:
+        new_reps = 1
+        new_interval = 1
+    else:
+        new_reps = repetitions + 1
+        if new_reps == 1:
+            new_interval = 1
+        elif new_reps == 2:
+            new_interval = SECOND_REVIEW_INTERVAL_DAYS
+        else:
+            new_interval = max(1, round(interval * new_ease))
+
+    return {
+        'interval': new_interval,
+        'ease_factor': new_ease,
+        'repetitions': new_reps,
+    }
+
+
 def format_next_review(next_date: datetime) -> str:
     """Format next review date as human-readable string"""
-    now = datetime.utcnow()
+    now = _utcnow()
     delta = next_date - now
     
     if delta.total_seconds() <= 0:
