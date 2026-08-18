@@ -1,4 +1,4 @@
-"""
+﻿"""
 Simple API Key Authentication Middleware for FKT
 
 Usage:
@@ -7,7 +7,7 @@ Usage:
 """
 
 import os
-import functools
+import hmac
 import logging
 from flask import request, jsonify
 
@@ -18,14 +18,21 @@ _NO_AUTH = os.getenv("NO_AUTH", "false").lower() == "true"
 logger = logging.getLogger("Auth")
 
 
+def _check_api_key(provided_key: str) -> bool:
+    """Timing-safe API key comparison."""
+    if not _API_KEY:
+        return True
+    return hmac.compare_digest(provided_key, _API_KEY)
+
+
 def require_api_key(f):
     """
     Decorator that enforces API key authentication.
     Skip if NO_AUTH=true or API_KEY is unset (local dev friendly).
     """
+    import functools
     @functools.wraps(f)
     def decorated(*args, **kwargs):
-        # In dev mode or if no key configured, skip auth
         if _NO_AUTH or not _API_KEY:
             return f(*args, **kwargs)
 
@@ -36,7 +43,7 @@ def require_api_key(f):
                 "error": "Missing API key. Provide X-API-Key header."
             }), 401
 
-        if provided_key != _API_KEY:
+        if not _check_api_key(provided_key):
             return jsonify({
                 "success": False,
                 "error": "Invalid API key."
@@ -64,5 +71,5 @@ def apply_auth_to_blueprint(bp):
         provided_key = request.headers.get("X-API-Key", "")
         if not provided_key:
             return jsonify({"success": False, "error": "Missing X-API-Key header."}), 401
-        if provided_key != _API_KEY:
+        if not _check_api_key(provided_key):
             return jsonify({"success": False, "error": "Forbidden: invalid API key."}), 403

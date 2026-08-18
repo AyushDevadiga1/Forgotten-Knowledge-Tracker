@@ -1,5 +1,7 @@
 """Socket.IO realtime layer: connects dashboard clients and broadcasts micro-quiz events."""
 
+import hmac
+import os
 from flask_socketio import SocketIO, emit
 from flask import request
 import logging
@@ -8,22 +10,34 @@ logger   = logging.getLogger("Realtime")
 socketio = None
 
 # ── Singletons ────────────────────────────────────────────────────────────────
-_tracker = None
-
 def _get_tracker():
-    global _tracker
-    if _tracker is None:
-        from tracker_app.learning.learning_tracker import LearningTracker
-        _tracker = LearningTracker()
-    return _tracker
+    from tracker_app.web.api import get_tracker
+    return get_tracker()
+
+
+def _ws_auth_ok():
+    """Check API key on WebSocket connections (same logic as HTTP)."""
+    api_key = os.getenv("API_KEY", "")
+    no_auth = os.getenv("NO_AUTH", "false").lower() == "true"
+    if no_auth or not api_key:
+        return True
+    provided = request.args.get("api_key", "") or request.headers.get("X-API-Key", "")
+    return bool(provided) and hmac.compare_digest(provided, api_key)
 
 
 def init_socketio(app):
     global socketio
-    socketio = SocketIO(app, cors_allowed_origins=["http://localhost:5000", "http://127.0.0.1:5000"], async_mode="threading")
+    # Match the Flask CORS origins — both dev (5173) and prod (5000)
+    socketio = SocketIO(app, cors_allowed_origins=[
+        "http://localhost:5000", "http://127.0.0.1:5000",
+        "http://localhost:5173", "http://127.0.0.1:5173",
+    ], async_mode="threading")
 
     @socketio.on("connect")
     def handle_connect():
+        if not _ws_auth_ok():
+            logger.warning("WebSocket connection rejected: invalid or missing API key")
+            return False  # reject the connection
         logger.debug(f"Client connected: {request.sid}")
         emit("status", {"message": "Connected to FKT 2.0"})
 
