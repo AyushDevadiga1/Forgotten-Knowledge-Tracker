@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { m, useReducedMotion } from 'motion/react'
 import { Play, Square, Loader2 } from 'lucide-react'
 import { useSession } from '@/context/SessionContext'
-import { api, EarCalibration } from '@/api'
+import { api } from '@/api'
 import { cn } from '@/lib/utils'
 import { spring } from '@/lib/animation'
 import { formatElapsed } from '@/lib/format'
@@ -77,7 +77,7 @@ export default function SessionToggleButton({ size = 'default', className }: Ses
                     <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
                         <div
                             className="h-full bg-primary rounded-full transition-all duration-100"
-                            style={{ width: ${calProgress}% }}
+                            style={{ width: `${calProgress}%` }}
                         />
                     </div>
                 </div>
