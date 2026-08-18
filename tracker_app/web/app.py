@@ -1,4 +1,4 @@
-"""
+﻿"""
 Simple Web Dashboard for Learning Tracker
 
 Lightweight dashboard using Flask for viewing progress and managing items
@@ -81,7 +81,7 @@ CORS(app, resources={r"/api/*": {"origins": [
 from tracker_app.web.realtime import init_socketio
 socketio = init_socketio(app)
 
-tracker = LearningTracker()
+# LearningTracker singleton is managed in api.py get_tracker()
 
 # Routes
 @app.route('/', defaults={'path': ''})
@@ -106,7 +106,8 @@ def run_dashboard(debug=None, port=5000):
     print(f"   Real-time updates: Socket.IO enabled\n")
     
     # Use socketio.run instead of app.run for WebSocket support
-    socketio.run(app, debug=debug, port=port, host='127.0.0.1', allow_unsafe_werkzeug=True)
+    host = '0.0.0.0' if os.getenv('DOCKER_CONTAINER') else '127.0.0.1'
+    socketio.run(app, debug=debug, port=port, host=host, allow_unsafe_werkzeug=True)
 
 
 if __name__ == "__main__":
