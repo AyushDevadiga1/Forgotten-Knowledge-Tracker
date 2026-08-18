@@ -186,7 +186,8 @@ def test_plausible_concept_three_letter_word_gate():
     for word in ("lab", "war", "net", "sea", "act", "sun"):
         assert is_plausible_concept(word) is True, word
     assert is_plausible_concept("atp") is True       # whitelisted acronym
-    assert is_plausible_concept("big") is False      # not in the 3-letter set
+    assert is_plausible_concept("big") is True       # common English word
+    assert is_plausible_concept("xyz") is False      # not in the 3-letter set
 
 def test_plausible_concept_keeps_new_biochem_acronyms():
     assert is_plausible_concept("atp") is True

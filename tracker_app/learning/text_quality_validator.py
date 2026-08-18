@@ -48,6 +48,23 @@ _THREE_LETTER_WORDS = frozenset({
     'fin', 'fit', 'fix', 'fly', 'fog', 'fox', 'fry', 'fun', 'fur', 'gap',
     'gas', 'gel', 'gem', 'gin', 'god', 'gum', 'gun', 'gut', 'gym', 'hat',
     'hay', 'hen', 'hip', 'hit', 'hoe', 'hog', 'hop', 'hot', 'hub', 'hue',
+    'big', 'bus', 'buy', 'dig', 'dug', 'fig', 'fin', 'fit', 'fix', 'fly',
+    'gap', 'gas', 'gem', 'gin', 'gun', 'gut', 'gym', 'hug', 'hum', 'hut',
+    'ill', 'imp', 'ink', 'inn', 'ion', 'jam', 'jar', 'jaw', 'jet', 'jog',
+    'jug', 'keg', 'kid', 'kin', 'kit', 'lab', 'lag', 'lap', 'law', 'lay',
+    'lid', 'lie', 'lip', 'lit', 'log', 'lot', 'low', 'mad', 'map', 'mat',
+    'men', 'met', 'mid', 'mix', 'mob', 'mud', 'nap', 'nod', 'nut', 'oak',
+    'oar', 'oat', 'odd', 'oil', 'old', 'opt', 'orb', 'ore', 'pad', 'pan',
+    'par', 'pat', 'paw', 'pay', 'pea', 'pen', 'pet', 'pie', 'pig', 'pin',
+    'pit', 'pod', 'pop', 'pot', 'pro', 'pub', 'rag', 'ram', 'ran', 'rap',
+    'rat', 'raw', 'ray', 'rib', 'rim', 'rip', 'rob', 'rod', 'rot', 'row',
+    'rub', 'rug', 'rum', 'run', 'rut', 'sad', 'sap', 'sat', 'saw', 'say',
+    'sea', 'see', 'sin', 'sip', 'sir', 'sit', 'six', 'ski', 'sky', 'sly',
+    'sob', 'son', 'sow', 'spa', 'spy', 'sun', 'tab', 'tag', 'tan', 'tap',
+    'tax', 'tea', 'ten', 'tie', 'tin', 'tip', 'toe', 'ton', 'top', 'tot',
+    'tow', 'toy', 'try', 'tub', 'tug', 'two', 'use', 'van', 'vat', 'vet',
+    'vie', 'vow', 'wad', 'wag', 'war', 'wax', 'way', 'web', 'wed', 'wet',
+    'wig', 'win', 'wit', 'woe', 'wry', 'yak', 'yam', 'zip',
     'hut', 'ice', 'icy', 'ill', 'imp', 'ink', 'inn', 'ion', 'jam', 'jar',
     'jaw', 'jay', 'jet', 'job', 'jog', 'joy', 'jug', 'keg', 'key', 'kid',
     'kin', 'kit', 'lab', 'lad', 'lag', 'lap', 'law', 'lay', 'led', 'leg',
@@ -69,7 +86,7 @@ _THREE_LETTER_WORDS = frozenset({
 # Function words allowed INSIDE a multi-word phrase ("c3 and c4 plants",
 # "systems of equations") but never as a concept on their own.
 _PHRASE_CONNECTORS = frozenset({
-    'and', 'or', 'the', 'of', 'for', 'to', 'in', 'on', 'at', 'with', 'by',
+    'and', 'or', 'the', 'of', 'for', 'to', 'in', 'on', 'at', 'with', 'by', 'o',
     'vs', 'versus', 'a', 'an', 'as', 'from', 'into', 'during', 'after',
     'before', 'between', 'under', 'over', 'per',
 })
@@ -114,6 +131,43 @@ _STOPWORD_CONCEPTS = frozenset({
     'from', 'by', 'with', 'about', 'as', 'if', 'that', 'this', 'it', 'what',
     'when', 'where', 'why', 'how', 'which', 'who', 'you', 'your', 'they',
     'them', 'we', 'our', 'me', 'my', 'i',
+})
+
+# UI chrome / browser elements that appear on screen but are never study
+# concepts.  These are filtered from OCR and browser-extension ingest.
+_UI_ELEMENT_BLOCKLIST = frozenset({
+    # Browser chrome
+    'explorer', 'firefox', 'chrome', 'browser', 'bookmarks', 'bookmarks',
+    'history', 'downloads', 'extensions', 'settings', 'incognito',
+    'newtab', 'newwindow', 'tab', 'tabs', 'sidebar',
+    # OS / window chrome
+    'terminal', 'command', 'prompt', 'powershell', 'cmd', 'console',
+    'windows', 'taskbar', 'system', 'desktop', 'folder', 'folders',
+    'recycle', 'shortcut', 'properties',
+    # App UI elements
+    'menu', 'file', 'edit', 'view', 'insert', 'format', 'tools', 'help',
+    'window', 'options', 'preferences', 'toolbar', 'statusbar',
+    'close', 'minimize', 'maximize', 'restore', 'resize',
+    # Generic screen text that looks like a concept but is just UI
+    'context', 'ports', 'ports', 'youtube', 'fashion', 'fashion',
+    'total', 'round', 'problems', 'device', 'devices',
+    'activate', 'commands', 'legacy', 'device', 'currency',
+    'language', 'search', 'results', 'loading', 'error', 'warning',
+    'success', 'failed', 'cancel', 'submit', 'reset', 'apply',
+    'save', 'discard', 'undo', 'redo', 'copy', 'paste', 'cut',
+    'select', 'deselect', 'refresh', 'reload', 'update', 'upgrade',
+    'install', 'uninstall', 'enable', 'disable', 'start', 'stop',
+    'pause', 'resume', 'play', 'record', 'mute', 'unmute',
+    'volume', 'brightness', 'contrast', 'saturation',
+    # Code editor chrome (visible on screen but not concepts)
+    'line', 'column', 'indent', 'outdent', 'wrap', 'split',
+    'compile', 'build', 'deploy', 'debug', 'run', 'execute',
+    'import', 'export', 'upload', 'download', 'sync',
+    'commit', 'push', 'pull', 'merge', 'branch', 'stash',
+    'branch', 'checkout', 'rebase', 'cherry',
+    'git', 'github', 'gitlab', 'bitbucket', 'npm', 'pip',
+    'node', 'python', 'java', 'ruby', 'golang', 'rust',
+    'vscode', 'vim', 'emacs', 'nano', 'sublime',
 })
 
 # Per-token structural limits. Real study terms sit well inside these bounds;
@@ -170,6 +224,12 @@ _ENGLISH_TRIGRAMS = frozenset({
     "force", "energy", "power", "light", "data", "test",
     "social", "global", "local", "mental", "digital",
     "visual", "audio", "optic", "solar", "marine",
+    # Common study-term morphemes (4+ chars)
+    "mach", "hine", "prop", "agat", "back", "drop", "soft", "loss",
+    "func", "norm", "batch", "learn", "embed", "optim", "activ",
+    "layer", "depth", "width", "kernel", "epoch", "model", "train",
+    "label", "input", "param", "hyper", "tune", "tuning", "gradient",
+    "converge", "diverge", "sigmoid", "relu", "leaky", "adam",
 })
 
 
@@ -208,6 +268,8 @@ def is_plausible_concept(text) -> bool:
         return False
     if stripped.lower() in _STOPWORD_CONCEPTS:
         return False
+    if stripped.lower() in _UI_ELEMENT_BLOCKLIST:
+        return False
 
     tokens = re.findall(r"[A-Za-z0-9]+", stripped)
     if not tokens:
@@ -241,8 +303,15 @@ def _is_plausible_token(token: str, multiword: bool) -> bool:
         # Pure number: only meaningful as part of a phrase ('world war 2').
         return multiword and len(digits) <= 4
     if len(token) > 8:
-        return False  # 'g42dfgh7' — glued OCR
-    return True  # short mixed tokens like 'c3', 'python3', 'g2'
+        return False  # 'g42dfgh7' -- glued OCR
+    # Mixed alpha+digit tokens: the letter portion must itself be a plausible
+    # word (e.g. 'python3' passes because 'python' is real; 'xyz123' fails
+    # because 'xyz' is not).  Short tokens like 'c3'/'g2' are allowed only
+    # if the letter part is <= 2 chars (version-style labels).
+    letter_part = ''.join(letters)
+    if len(letter_part) <= 2:
+        return True  # 'c3', 'g2', 'v2' -- version labels, harmless
+    return _is_plausible_word(letter_part)
 
 
 def _is_plausible_word(word: str) -> bool:
@@ -287,22 +356,52 @@ def _is_plausible_word(word: str) -> bool:
     if _has_repeated_run_noise(word):
         return False
     # -- Dictionary gate (P0: blocks OCR gibberish like 'aastha', 'pebeoge') --
-    # Words >= 4 letters must be in the English wordlist OR contain common
-    # English trigrams.  Real study terms (photosynthesis, mitochondria) always contain
-    # common morphemes even if not in the compact wordlist.
+    # Words >= 5 letters must be in the English wordlist OR pass structural
+    # heuristics that distinguish real study terms from glued-together gibberish.
     if len(low) >= 5:
         # Reject words where one letter dominates (>45%) -- catches 'aastha',
         # 'pebeoge' and similar OCR garbage with repeated letters.
-        # Threshold is 45% (not 40%) to avoid false positives on short real
-        # words like 'cell' (l=50%) and 'llama' (l=40%).
         from collections import Counter as _C
         _counts = _C(low)
         if _counts.most_common(1)[0][1] / len(low) > 0.45:
             return False
         english_words = _load_english_words()
         if low not in english_words:
-            if not any(tri in low for tri in _ENGLISH_TRIGRAMS):
-                return False
+            # Not in dictionary.  Two-tier check:
+            # 1. Common compound-word stems in study material.
+            # 2. Trigram structural coverage for everything else.
+            _COMPOUND_STEMS = frozenset({
+                'back', 'over', 'drop', 'soft', 'cross', 'multi', 'auto',
+                'un', 'non', 'pre', 'post', 'sub', 'super',
+                'inter', 'intra', 'trans', 'mono', 'poly',
+                'neo', 'pseudo', 'quasi', 'semi', 'anti', 'pro',
+                'micro', 'macro', 'nano', 'mega', 'giga', 'tele',
+                'neuro', 'psych', 'chem', 'phys', 'bio', 'eco', 'geo',
+                'math', 'info', 'cyber', 'crypto', 'quantum',
+            })
+            has_stem = any(low.startswith(s) for s in _COMPOUND_STEMS)
+            if not has_stem:
+                # No recognized stem: require trigram coverage >= 30%.
+                covered = set()
+                for tri in _ENGLISH_TRIGRAMS:
+                    start = 0
+                    while True:
+                        idx = low.find(tri, start)
+                        if idx == -1:
+                            break
+                        for k in range(idx, idx + len(tri)):
+                            covered.add(k)
+                        start = idx + 1
+                coverage = len(covered) / len(low)
+                if coverage < 0.30:
+                    return False
+    # -- Short word gate (4 chars): reject non-dictionary 4-letter words
+    # unless they are known English words.  Catches 'bnet', 'boge',
+    # 'drve', 'etat', 'nsre', etc.
+    if len(low) == 4 and low.isalpha():
+        english_words = _load_english_words()
+        if low not in english_words:
+            return False
     return True
 
 

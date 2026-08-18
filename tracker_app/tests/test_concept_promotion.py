@@ -185,7 +185,7 @@ def test_curated_exceptions_loads_from_file(monkeypatch, tmp_path):
 
     monkeypatch.setattr(cp, "CURATED_EXCEPTIONS", loaded)
     assert cp.is_kb_worthy("Zipf's Law")           # case-insensitive match
-    assert not cp.is_kb_worthy("big-o notation")   # structural gate applies again
+    assert not cp.is_kb_worthy("xyz123 abc")       # structural gate applies again
 
 
 def test_curated_exceptions_fallback_when_file_missing(monkeypatch, tmp_path):
