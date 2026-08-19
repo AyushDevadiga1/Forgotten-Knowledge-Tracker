@@ -1,4 +1,4 @@
-﻿"""Shared Study Session state — the single source of truth for the Start/Stop toggle.
+"""Shared Study Session state — the single source of truth for the Start/Stop toggle.
 
 The dashboard (web process) writes this state; the tracking loop (tracker
 process) reads it once per cycle. A small JSON file in DATA_DIR is used so the
@@ -14,15 +14,12 @@ the module falls back to unlocked access with a warning.
 import json
 import logging
 import threading
-import datetime as _stdlib_dt
 from datetime import datetime
 from pathlib import Path
 
 from filelock import FileLock, Timeout as LockTimeout
 from tracker_app.config import DATA_DIR
-def _utcnow():
-    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
-    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
+from tracker_app.utils import utcnow as _utcnow
 
 _log = logging.getLogger(__name__)
 

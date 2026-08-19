@@ -25,7 +25,7 @@ SENSITIVE_PATTERNS_RAW = {
 }
 
 # Keywords that only exist because a redaction marker (or a sensitive value)
-# reached the extractor â€” never legitimate study concepts on their own.
+# reached the extractor — never legitimate study concepts on their own.
 # (Defense-in-depth: the markers are stripped before extraction, so this list
 # only catches stragglers.)
 SENSITIVE_KEYWORD_NOISE = frozenset({
@@ -128,7 +128,7 @@ def sanitize_text_for_storage(text: str) -> dict:
 
     Sensitive values are redacted in place. If the text is dense with
     sensitive data (more than MAX_REDACTION_DENSITY hits), the whole capture
-    is rejected (safe_to_store=False) â€” redacting one value out of a page of
+    is rejected (safe_to_store=False) — redacting one value out of a page of
     PII still leaves the rest as usable concepts, which defeats the point.
 
     Returns dict with sanitized text and metadata.
@@ -144,7 +144,7 @@ def sanitize_text_for_storage(text: str) -> dict:
 
     detections = detect_sensitive_data(text)
 
-    # High-density sensitive content â†’ reject the whole capture.
+    # High-density sensitive content → reject the whole capture.
     if len(detections) > MAX_REDACTION_DENSITY:
         return {
             'text': '',
@@ -181,7 +181,7 @@ def strip_redaction_markers(text: str) -> str:
     """Remove [REDACTED:TYPE] markers so they never become keywords.
 
     The markers are informative for humans but must not reach keyword
-    extraction â€” 'email', 'phone', 'password' etc. are not study concepts.
+    extraction — 'email', 'phone', 'password' etc. are not study concepts.
     """
     if not text:
         return text

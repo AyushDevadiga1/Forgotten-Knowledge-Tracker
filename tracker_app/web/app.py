@@ -1,4 +1,4 @@
-﻿"""
+"""
 Simple Web Dashboard for Learning Tracker
 
 Lightweight dashboard using Flask for viewing progress and managing items

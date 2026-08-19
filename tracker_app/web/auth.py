@@ -1,4 +1,4 @@
-﻿"""
+"""
 Simple API Key Authentication Middleware for FKT
 
 Usage:

@@ -1,4 +1,4 @@
-﻿# Stage 1: Build the React frontend
+# Stage 1: Build the React frontend
 FROM node:20-slim AS frontend-builder
 WORKDIR /app/frontend
 # Copy package files
