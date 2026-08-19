@@ -1,8 +1,9 @@
-"""SQLAlchemy ORM models for all FKT tables (lazy engine/session factories)."""
+﻿"""SQLAlchemy ORM models for all FKT tables (lazy engine/session factories)."""
 
 import os
-import datetime as _stdlib_dt
 from datetime import datetime
+
+from tracker_app.utils import utcnow as _utcnow
 
 from sqlalchemy import (
     Column, Integer, String, Float, DateTime, Text,
@@ -13,15 +14,12 @@ import logging
 
 from tracker_app.config import get_db_path
 
-def _utcnow():
-    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
-    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
 
 Base = declarative_base()
 
-# ─── Lazy engine factory ───────────────────────────────────────────────────
+# â”€â”€â”€ Lazy engine factory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Creating the engine at module import time means FKT_TEST_DB env overrides
-# only work if they are set BEFORE the first import of this module — fragile
+# only work if they are set BEFORE the first import of this module â€” fragile
 # in test setups that configure the env programmatically.
 #
 # The lazy pattern below defers creation until first use, so tests can safely
@@ -67,7 +65,7 @@ def get_session_local():
     return _SessionLocal
 
 
-# ─── Backward-compatible module-level aliases ─────────────────────────────────
+# â”€â”€â”€ Backward-compatible module-level aliases â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Existing code that does `from tracker_app.db.models import SessionLocal`
 # continues to work: accessing the attribute calls through to the lazy getter.
 
@@ -122,7 +120,7 @@ def get_db():
         db.close()
 
 
-# ─── Active Model Logging ──────────────────────────────────────────────────────
+# â”€â”€â”€ Active Model Logging â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Listens for all SQLAlchemy flush events and logs exactly what records
 # were inserted, updated, or deleted. This satisfies the requirement to
 # "log each of the changes and all and it is saved as logs".
@@ -139,9 +137,9 @@ def receive_after_flush(session, flush_context):
         db_logger.info(f"DELETED  [{obj.__class__.__name__}]: {obj.__dict__}")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Learning Tracker Models
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class LearningItem(Base):
     __tablename__ = "learning_items"
@@ -157,14 +155,14 @@ class LearningItem(Base):
     interval         = Column(Integer, default=0)
     ease_factor      = Column(Float,   default=2.5)
     repetitions      = Column(Integer, default=0)
-    next_review_date = Column(DateTime, index=True)   # ← DateTime + index
-    last_review_date = Column(DateTime, nullable=True)  # ← maps migration 005 column
+    next_review_date = Column(DateTime, index=True)   # â† DateTime + index
+    last_review_date = Column(DateTime, nullable=True)  # â† maps migration 005 column
 
     # Stats
     total_reviews = Column(Integer, default=0)
     correct_count = Column(Integer, default=0)
     success_rate  = Column(Float,   default=0.0)
-    status        = Column(String,  default="active",  index=True)  # ← index
+    status        = Column(String,  default="active",  index=True)  # â† index
 
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
@@ -191,9 +189,9 @@ class ReviewHistory(Base):
     item = relationship("LearningItem", back_populates="reviews")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Intent & Activity Models
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class IntentPrediction(Base):
     __tablename__ = "intent_predictions"
@@ -243,9 +241,9 @@ class DailySummary(Base):
     primary_intents        = Column(String)
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Concept Tracking Models
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class TrackedConcept(Base):
     __tablename__ = "tracked_concepts"
@@ -261,13 +259,13 @@ class TrackedConcept(Base):
     # SM-2 scheduling fields
     interval         = Column(Integer, default=1)
     memory_strength  = Column(Float,   default=2.5)
-    next_review      = Column(DateTime, index=True)   # ← DateTime + index (critical query path)
+    next_review      = Column(DateTime, index=True)   # â† DateTime + index (critical query path)
     repetitions      = Column(Integer, default=0)     # consecutive successful reviews
     review_count     = Column(Integer, default=0)     # total quiz reviews (recalibration denominator)
     correct_count    = Column(Integer, default=0)     # total correct quiz reviews
 
-    # AWFC fields — attention at time of first learning
-    attention_at_encoding = Column(Float, default=50.0)   # 0–100 scale
+    # AWFC fields â€” attention at time of first learning
+    attention_at_encoding = Column(Float, default=50.0)   # 0â€“100 scale
     lambda_personalised   = Column(Float, default=0.1)    # personalised decay rate
 
     # Relationship
@@ -290,9 +288,9 @@ class ConceptEncounter(Base):
     tracked_concept = relationship("TrackedConcept", back_populates="encounters")
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # System Session Models
-# ══════════════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 class SystemSession(Base):
     __tablename__ = "sessions"
@@ -345,7 +343,7 @@ class Metric(Base):
     last_updated     = Column(DateTime, default=_utcnow)
 
 
-# ─── Self-improving model: feedback training samples ──────────────────────────
+# â”€â”€â”€ Self-improving model: feedback training samples â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class FeedbackTrainingSample(Base):
     """
@@ -363,3 +361,4 @@ class FeedbackTrainingSample(Base):
     confidence      = Column(Float, default=0.0)
     window_title    = Column(String, default="")
     used_in_training = Column(Integer, default=0, nullable=False)
+

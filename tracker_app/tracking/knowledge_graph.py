@@ -1,19 +1,16 @@
-"""Knowledge graph of tracked concepts with pkl persistence and drift/gap analytics."""
+﻿"""Knowledge graph of tracked concepts with pkl persistence and drift/gap analytics."""
 import networkx as nx
 import numpy as np
 import pickle
-import sqlite3
 import threading
 import time
 import logging
-import datetime as _stdlib_dt
 from datetime import datetime, timedelta
 from pathlib import Path
 from tracker_app.config import DB_PATH, KNOWLEDGE_GRAPH_PATH, DEFAULT_LAMBDA
 
-def _utcnow():
-    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
-    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
+
+from tracker_app.utils import utcnow as _utcnow
 
 logger = logging.getLogger("KnowledgeGraph")
 
@@ -102,7 +99,7 @@ def _ensure_graph_loaded():
     with _graph_lock:
         if not _loaded:
             if knowledge_graph.number_of_nodes() != 0:
-                # Graph already populated (e.g. by another module) — no pkl/DB
+                # Graph already populated (e.g. by another module) â€” no pkl/DB
                 # bootstrap needed, but subsequent calls still re-reconcile.
                 _loaded = True
             else:
@@ -195,20 +192,21 @@ def _save_graph():
 def fetch_concepts_from_db():
     """Fetch concepts from tracked_concepts table (NOT window titles)."""
     try:
-        conn = sqlite3.connect(DB_PATH)
-        c = conn.cursor()
-        # FKT 2.0 fix: read actual tracked concepts, not OS window titles
-        c.execute("SELECT DISTINCT concept FROM tracked_concepts WHERE concept IS NOT NULL")
-        rows = c.fetchall()
-        conn.close()
-        concepts = [row[0].strip() for row in rows if row[0] and row[0].strip()]
-        return concepts
+        from tracker_app.db.models import SessionLocal, TrackedConcept
+        with SessionLocal() as db:
+            rows = (
+                db.query(TrackedConcept.concept)
+                  .filter(TrackedConcept.concept.isnot(None))
+                  .distinct()
+                  .all()
+            )
+            concepts = [r.concept.strip() for (r,) in rows if r and r.strip()]
+            return concepts
     except Exception as e:
         logger.error(f"Error fetching concepts from DB: {e}")
         return []
-
 def _memory_score_from_row(row):
-    """Live AWFC retention for a TrackedConcept row (0.05–1.0).
+    """Live AWFC retention for a TrackedConcept row (0.05â€“1.0).
 
     Uses the concept's personalised lambda and attention-at-encoding, with the
     decay clock reset at the last encounter/review.
@@ -250,7 +248,7 @@ def add_concepts(concepts):
     if not valid_concepts:
         return
 
-    # Try to get embeddings — optional, graceful fallback
+    # Try to get embeddings â€” optional, graceful fallback
     embeddings = None
     embed_model = _get_embed_model()
     if embed_model is not None:
@@ -314,7 +312,7 @@ def sync_concept_to_graph(concept):
     Called when a concept is re-encountered or reviewed so the in-memory graph
     stays in step with SM-2/AWFC state. A concept the DB gained after the graph
     was last built (mid-session capture, browser ingest) is added on first
-    contact too — the micro-quiz's 'weakest concept' selection and graph stats
+    contact too â€” the micro-quiz's 'weakest concept' selection and graph stats
     must never serve a graph frozen at first load.
     """
     if concept not in knowledge_graph:
@@ -458,7 +456,7 @@ def get_graph():
     return knowledge_graph
 
 
-# ─── Concept Drift Detector ───────────────────────────────────────────────────
+# â”€â”€â”€ Concept Drift Detector â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def get_session_concepts(limit: int = 50) -> list:
     """Concepts encountered during the active study session.
@@ -562,7 +560,7 @@ def compute_concept_drift(
         }
 
 
-# ─── Knowledge Gap Map ────────────────────────────────────────────────────────
+# â”€â”€â”€ Knowledge Gap Map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def find_knowledge_gaps(top_k: int = 5) -> list:
     """
@@ -638,7 +636,7 @@ def find_knowledge_gaps(top_k: int = 5) -> list:
         return sorted(gaps.values(), key=lambda x: -x['score'])[:top_k]
 
 
-# ─── Graph statistics (for dashboard API) ─────────────────────────────────────
+# â”€â”€â”€ Graph statistics (for dashboard API) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def get_graph_stats() -> dict:
     """Return summary statistics about the knowledge graph."""
@@ -676,7 +674,7 @@ def get_graph_stats() -> dict:
             reverse=True,
         )
 
-        # Per-node live memory scores for the visible top set — the frontend
+        # Per-node live memory scores for the visible top set â€” the frontend
         # force-layout sizes/colours nodes from these (weak = small/dim).
         nodes = [
             {

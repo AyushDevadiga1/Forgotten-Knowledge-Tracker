@@ -1,9 +1,10 @@
-import json
-import datetime as _stdlib_dt
+﻿import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from enum import Enum
 import uuid
+
+from tracker_app.utils import utcnow as _utcnow
 
 from tracker_app.learning.sm2_memory_model import SM2Item, SM2Scheduler
 from tracker_app.db import models
@@ -181,7 +182,7 @@ class LearningTracker:
         }
         day = _utcnow().date()
         if str(day) not in review_days:
-            day -= timedelta(days=1)  # today not reviewed yet — streak may still be alive
+            day -= timedelta(days=1)  # today not reviewed yet â€” streak may still be alive
         streak = 0
         while str(day) in review_days:
             streak += 1
@@ -320,6 +321,4 @@ if __name__ == "__main__":
         print(f"Review recorded. Next review in {result['result']['next_interval_days']} days")
     stats = tracker.get_learning_stats()
     print(f"\nStats: {stats}")
-def _utcnow():
-    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
-    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
+

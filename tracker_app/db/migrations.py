@@ -1,17 +1,15 @@
-"""SQLite migration runner — no Alembic. Applies idempotent MIGRATIONS in order."""
+﻿"""SQLite migration runner â€” no Alembic. Applies idempotent MIGRATIONS in order."""
 
 import sqlite3
 import logging
 import os
 from datetime import datetime
-import datetime as _stdlib_dt
 from pathlib import Path
 from tracker_app.config import DB_PATH
 
 
-def _utcnow():
-    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
-    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
+
+from tracker_app.utils import utcnow as _utcnow
 
 logger = logging.getLogger("Migrations")
 
@@ -34,14 +32,14 @@ def ensure_base_schema(db_path: str) -> None:
     finally:
         engine.dispose()
 
-# ─── Migration registry ───────────────────────────────────────────────────────
+# â”€â”€â”€ Migration registry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Each entry is (migration_id, description, list_of_sql_statements).
-# SQL must be idempotent — use IF NOT EXISTS / IF EXISTS guards everywhere.
+# SQL must be idempotent â€” use IF NOT EXISTS / IF EXISTS guards everywhere.
 # ADD COLUMN in SQLite cannot be undone, so we only ever add, never drop.
 
 MIGRATIONS = [
 
-    # ── 001: Create schema_migrations tracking table itself ──────────────────
+    # â”€â”€ 001: Create schema_migrations tracking table itself â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ("001_schema_migrations", "Create schema_migrations table", [
         """
         CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -52,13 +50,13 @@ MIGRATIONS = [
         """
     ]),
 
-    # ── 002: Add AWFC columns to tracked_concepts ────────────────────────────
+    # â”€â”€ 002: Add AWFC columns to tracked_concepts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ("002_awfc_columns", "Add attention_at_encoding and lambda_personalised to tracked_concepts", [
         "ALTER TABLE tracked_concepts ADD COLUMN attention_at_encoding REAL DEFAULT 50.0",
         "ALTER TABLE tracked_concepts ADD COLUMN lambda_personalised   REAL DEFAULT 0.1",
     ]),
 
-    # ── 003: Add FeedbackTrainingSample table ────────────────────────────────
+    # â”€â”€ 003: Add FeedbackTrainingSample table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ("003_feedback_table", "Create feedback_training_samples table", [
         """
         CREATE TABLE IF NOT EXISTS feedback_training_samples (
@@ -73,7 +71,7 @@ MIGRATIONS = [
         """
     ]),
 
-    # ── 004: Add indexes on most-queried columns ─────────────────────────────
+    # â”€â”€ 004: Add indexes on most-queried columns â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ("004_indexes", "Add performance indexes", [
         "CREATE INDEX IF NOT EXISTS ix_learning_items_next_review_date ON learning_items (next_review_date)",
         "CREATE INDEX IF NOT EXISTS ix_learning_items_status           ON learning_items (status)",
@@ -85,31 +83,31 @@ MIGRATIONS = [
         "CREATE INDEX IF NOT EXISTS ix_feedback_samples_timestamp      ON feedback_training_samples (timestamp)",
     ]),
 
-    # ── 005: Add last_review_date column to LearningItem (was missing) ───────
+    # â”€â”€ 005: Add last_review_date column to LearningItem (was missing) â”€â”€â”€â”€â”€â”€â”€
     ("005_learning_item_last_review", "Add last_review_date to learning_items", [
         "ALTER TABLE learning_items ADD COLUMN last_review_date TEXT",
     ]),
 
-    # ── 006: Enable WAL mode and FK pragma persistently ──────────────────────
+    # â”€â”€ 006: Enable WAL mode and FK pragma persistently â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ("006_sqlite_pragmas", "Set WAL mode and enable foreign keys", [
         "PRAGMA journal_mode=WAL",
         "PRAGMA foreign_keys=ON",
         "PRAGMA synchronous=NORMAL",
     ]),
 
-    # ── 007: Feedback-toast rate limiting ────────────────────────────────────
+    # â”€â”€ 007: Feedback-toast rate limiting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     ("007_intent_prompted_at", "Add prompted_at to intent_predictions", [
         "ALTER TABLE intent_predictions ADD COLUMN prompted_at TEXT",
     ]),
 
-    # ── 008: Intent feedback retraining data ─────────────────────────────────
+    # â”€â”€ 008: Intent feedback retraining data â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # context_keywords becomes the JSON 6-feature vector; the window title moves
     # to its own column so it is context, not a substitute for the features.
     ("008_intent_window_title", "Add window_title to intent_predictions", [
         "ALTER TABLE intent_predictions ADD COLUMN window_title TEXT",
     ]),
 
-    # ── 009: SM-2 repetition counter ─────────────────────────────────────────
+    # â”€â”€ 009: SM-2 repetition counter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # TrackedConcept previously re-implemented SM-2 by hand off `interval <= 1`,
     # which collapsed the canonical 1-day / 3-day ramp into a straight 3-day
     # jump. A real repetition counter fixes that (Phase 11.6).
@@ -117,7 +115,7 @@ MIGRATIONS = [
         "ALTER TABLE tracked_concepts ADD COLUMN repetitions INTEGER DEFAULT 0",
     ]),
 
-    # ── 010: Cumulative review counters for lambda recalibration ─────────────
+    # â”€â”€ 010: Cumulative review counters for lambda recalibration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # recalibrate_lambda() expects a cumulative success rate over n_reviews, but
     # schedule_next_review was passing a single review's quality/5 while also
     # claiming n_reviews = frequency_count (OCR re-encounters, not reviews). The
@@ -127,7 +125,7 @@ MIGRATIONS = [
         "ALTER TABLE tracked_concepts ADD COLUMN correct_count INTEGER DEFAULT 0",
     ]),
 
-    # ── 011: Normalize raw-writer 'T'-separated datetimes ────────────────────
+    # â”€â”€ 011: Normalize raw-writer 'T'-separated datetimes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # populate.py / preflight_check.py used to store datetime.isoformat()
     # values ('2026-08-13T09:00:00') into DateTime columns while the ORM
     # writes and compares space-separated text ('2026-08-13 09:00:00.000000').
@@ -136,7 +134,7 @@ MIGRATIONS = [
     # until the date flipped (FKT-F-004). These UPDATEs rewrite only text
     # matching the 'T' pattern at position 10, so space-formatted ORM rows and
     # date-only values are never touched, and once normalized no row matches
-    # the LIKE guard — the migration is idempotent and safe to re-run.
+    # the LIKE guard â€” the migration is idempotent and safe to re-run.
     ("011_datetime_storage_format", "Normalize 'T'-separated datetimes to ORM space format", [
         "UPDATE tracked_concepts SET next_review = substr(next_review,1,10) || ' ' || substr(next_review,12) WHERE next_review LIKE '____-__-__T%'",
         "UPDATE tracked_concepts SET first_seen = substr(first_seen,1,10) || ' ' || substr(first_seen,12) WHERE first_seen LIKE '____-__-__T%'",
@@ -148,12 +146,12 @@ MIGRATIONS = [
         "UPDATE memory_decay SET updated_at = substr(updated_at,1,10) || ' ' || substr(updated_at,12) WHERE updated_at LIKE '____-__-__T%'",
     ]),
 
-    # ── 012: Drop duplicate timestamp index on feedback_training_samples ──────
+    # â”€â”€ 012: Drop duplicate timestamp index on feedback_training_samples â”€â”€â”€â”€â”€â”€
     # Migration 004 created ix_feedback_samples_timestamp, but the ORM model's
     # index=True on FeedbackTrainingSample.timestamp auto-creates
     # ix_feedback_training_samples_timestamp for the same column. Because
     # ensure_base_schema (create_all) runs before migration 004 and the index
-    # names differ, IF NOT EXISTS cannot dedupe them — migrated databases end
+    # names differ, IF NOT EXISTS cannot dedupe them â€” migrated databases end
     # up with two indexes on the same column (write amplification on every
     # insert; FKT-F-006). Dropping the legacy migration-004 index converges
     # every path to the single ORM-managed index; IF EXISTS keeps it a no-op
@@ -174,7 +172,7 @@ MIGRATIONS = [
 ]
 
 
-# ─── Runner ───────────────────────────────────────────────────────────────────
+# â”€â”€â”€ Runner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _already_applied(cursor, migration_id: str) -> bool:
     try:
@@ -240,7 +238,7 @@ def run_migrations(db_path: str = None) -> dict:
             if not sql:
                 continue
 
-            # Guard ALTER TABLE ADD COLUMN — SQLite errors if column already exists
+            # Guard ALTER TABLE ADD COLUMN â€” SQLite errors if column already exists
             if "ADD COLUMN" in sql.upper():
                 parts = sql.split()
                 try:
@@ -249,7 +247,7 @@ def run_migrations(db_path: str = None) -> dict:
                     tbl_idx  = parts.index("TABLE")  + 1
                     tbl_name = parts[tbl_idx]
                     if _column_exists(cursor, tbl_name, col_name):
-                        logger.debug(f"    Column {tbl_name}.{col_name} already exists — skipping")
+                        logger.debug(f"    Column {tbl_name}.{col_name} already exists â€” skipping")
                         continue
                 except (ValueError, IndexError):
                     pass
@@ -329,3 +327,4 @@ if __name__ == "__main__":
             sys.exit(1)
         else:
             print("All migrations successful.")
+

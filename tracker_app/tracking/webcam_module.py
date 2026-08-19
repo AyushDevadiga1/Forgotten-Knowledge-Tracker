@@ -1,15 +1,13 @@
-"""Webcam pipeline: MediaPipe FaceMesh-based attention tracking (lazy-loaded)."""
+﻿"""Webcam pipeline: MediaPipe FaceMesh-based attention tracking (lazy-loaded)."""
 import atexit
-import datetime as _stdlib_dt
 import cv2
 import numpy as np
 import time
 import logging
 
 
-def _utcnow():
-    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
-    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
+
+from tracker_app.utils import utcnow as _utcnow
 
 logger = logging.getLogger("WebcamModule")
 
@@ -225,7 +223,7 @@ def webcam_pipeline(num_frames=3):
 
     face_mesh = _get_face_mesh()
     if face_mesh is None:
-        # MediaPipe unavailable — return neutral score
+        # MediaPipe unavailable â€” return neutral score
         return {
             "attentiveness_score": 50.0,
             "face_count": 0,
@@ -284,3 +282,4 @@ if __name__ == "__main__":
     print(f"Status: {result['status']}")
     print(f"Attention Score: {result['attentiveness_score']:.1f}")
     print(f"Frames: {result['frames_processed']}")
+

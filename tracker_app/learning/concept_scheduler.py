@@ -1,9 +1,10 @@
-"""SM-2 concept scheduling with AWFC-personalised decay (lambda per concept)."""
+﻿"""SM-2 concept scheduling with AWFC-personalised decay (lambda per concept)."""
 
 import logging
-import datetime as _stdlib_dt
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
+
+from tracker_app.utils import utcnow as _utcnow
 
 from tracker_app.config import DATA_DIR, DEFAULT_LAMBDA
 from tracker_app.db import models
@@ -18,7 +19,7 @@ class ConceptScheduler:
     def __init__(self, db_path: str = None):
         pass  # SessionLocal is the shared singleton
 
-    # ΓöÇΓöÇ Add / update a concept ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # Î“Ã¶Ã‡Î“Ã¶Ã‡ Add / update a concept Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡
 
     def add_concept(
         self,
@@ -30,7 +31,7 @@ class ConceptScheduler:
     ) -> str:
         """
         Insert or update a tracked concept.
-        Stores attention_at_encoding for AWFC ╬╗ personalisation.
+        Stores attention_at_encoding for AWFC â•¬â•— personalisation.
         Returns the concept string (primary key), or None if the concept
         is rejected by the plausibility filter (OCR noise, word fragments).
         """
@@ -68,7 +69,7 @@ class ConceptScheduler:
                 # Once schedule_next_review() has recalibrated lambda from real
                 # recall performance (repetitions > 0), a passive re-encounter
                 # must not overwrite that with a fresh attention-only estimate
-                # off the global DEFAULT_LAMBDA — that silently discards the
+                # off the global DEFAULT_LAMBDA â€” that silently discards the
                 # personalisation every time the concept is re-seen on screen,
                 # which happens far more often than it gets quizzed. Before any
                 # reviews exist there's nothing to protect, so recompute freely;
@@ -134,7 +135,7 @@ class ConceptScheduler:
             db.commit()
 
         # Keep the in-memory knowledge graph in step with the live SM-2/AWFC
-        # row (Phase 11.2) — a re-encounter resets the retention clock.
+        # row (Phase 11.2) â€” a re-encounter resets the retention clock.
         try:
             from tracker_app.tracking.knowledge_graph import sync_concept_to_graph
             sync_concept_to_graph(concept)
@@ -143,14 +144,14 @@ class ConceptScheduler:
 
         return concept
 
-    # ΓöÇΓöÇ SM-2 review scheduling ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # Î“Ã¶Ã‡Î“Ã¶Ã‡ SM-2 review scheduling Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡
 
     def schedule_next_review(self, concept_id: str, quality: int = 3):
         """
         Schedule next review using standard SM-2 shared with sm2_memory_model,
-        plus AWFC-personalised λ.
+        plus AWFC-personalised Î».
         concept_id = concept string (PK), not an integer.
-        quality: 0–5 (0=fail, 5=perfect recall).
+        quality: 0â€“5 (0=fail, 5=perfect recall).
         """
         if not (0 <= quality <= 5):
             logger.warning(f"schedule_next_review: quality must be 0-5, got {quality}")
@@ -174,7 +175,7 @@ class ConceptScheduler:
             repetitions = getattr(tracked, "repetitions", 0) or 0
 
             # Ease factor adjusts on every review (success AND failure) using
-            # the canonical SM-2 formula — the tested implementation applies it
+            # the canonical SM-2 formula â€” the tested implementation applies it
             # unconditionally, so we do too instead of the old flat -0.2.
             from tracker_app.learning.sm2_memory_model import (
                 calculate_sm2_interval,
@@ -209,7 +210,7 @@ class ConceptScheduler:
             if quality >= QUALITY_THRESHOLD:
                 tracked.correct_count = (tracked.correct_count or 0) + 1
 
-            # Recalibrate ╬╗ from actual vs predicted recall after enough reviews.
+            # Recalibrate â•¬â•— from actual vs predicted recall after enough reviews.
             review_count = tracked.review_count or 0
             if review_count >= 5:
                 try:
@@ -223,11 +224,11 @@ class ConceptScheduler:
                         last_seen=prev_last_seen,
                     )
                 except Exception as e:
-                    logger.debug(f"╬╗ recalibration skipped: {e}")
+                    logger.debug(f"â•¬â•— recalibration skipped: {e}")
 
             db.commit()
             logger.debug(f"Scheduled '{concept_id}' in {new_interval}d "
-                         f"(quality={quality}, ╬╗={tracked.lambda_personalised:.4f})")
+                         f"(quality={quality}, â•¬â•—={tracked.lambda_personalised:.4f})")
 
             # Reflect the fresh review in the knowledge graph (Phase 11.2).
             try:
@@ -236,7 +237,7 @@ class ConceptScheduler:
             except Exception as e:
                 logger.debug(f"Graph sync skipped for {concept_id}: {e}")
 
-    # ΓöÇΓöÇ Get due concepts ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # Î“Ã¶Ã‡Î“Ã¶Ã‡ Get due concepts Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡
 
     def get_due_concepts(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Return concepts whose next_review is now or overdue."""
@@ -268,7 +269,7 @@ class ConceptScheduler:
                 for c in concepts
             ]
 
-    # ΓöÇΓöÇ Concept history ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    # Î“Ã¶Ã‡Î“Ã¶Ã‡ Concept history Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡
 
     def get_concept_history(
         self, concept: str, days: int = 30
@@ -325,6 +326,4 @@ if __name__ == "__main__":
     print(f"Added: {cid}")
     due = s.get_due_concepts()
     print(f"Due: {len(due)}")
-def _utcnow():
-    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
-    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
+

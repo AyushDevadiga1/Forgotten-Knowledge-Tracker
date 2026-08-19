@@ -1,17 +1,15 @@
-"""Seed the database with real academic concept names across multiple domains."""
+﻿"""Seed the database with real academic concept names across multiple domains."""
 
 import random
 from datetime import datetime, timedelta
 from tracker_app.db.db_module import init_all_databases
 from tracker_app.config import DB_PATH
-import datetime as _stdlib_dt
 import sqlite3
 
 
-def _utcnow():
-    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
-    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
 
+
+from tracker_app.utils import utcnow as _utcnow
 
 def main():
     init_all_databases()

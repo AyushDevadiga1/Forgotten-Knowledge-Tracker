@@ -1,12 +1,13 @@
-"""
+﻿"""
 Data Access Object (DAO) / Repository Layer
 Abstracts SQLAlchemy models and query logic away from the business layer.
 """
 from typing import List, Optional, Tuple, Dict, Any
-import datetime as _stdlib_dt
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+
+from tracker_app.utils import utcnow as _utcnow
 
 from tracker_app.db.models import (
     LearningItem, 
@@ -17,9 +18,6 @@ from tracker_app.db.models import (
     FeedbackTrainingSample,
     TrackedConcept
 )
-def _utcnow():
-    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
-    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
 
 class LearningRepository:
     """Repository for CRUD operations on learning items and their reviews."""
@@ -97,9 +95,9 @@ class LearningRepository:
 
     @staticmethod
     def get_review_trend(db: Session, days: int = 7) -> List[Dict[str, Any]]:
-        """Real per-day time-series over the last N days (oldest → newest).
+        """Real per-day time-series over the last N days (oldest â†’ newest).
 
-        Every figure is derived from stored timestamps — reviews/correctness
+        Every figure is derived from stored timestamps â€” reviews/correctness
         from `review_history`, items added from `learning_items.created_at`,
         mastery from the first review where the stored mastery rule holds, and
         due items from `next_review_date`. Nothing is simulated.
@@ -334,3 +332,4 @@ class FeedbackRepository:
         ).delete(synchronize_session=False)
         db.commit()
         return deleted
+

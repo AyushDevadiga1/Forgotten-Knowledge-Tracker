@@ -1,30 +1,28 @@
-"""Attention-Weighted Forgetting Curve (AWFC) retention model.
+﻿"""Attention-Weighted Forgetting Curve (AWFC) retention model.
 
-Standard Ebbinghaus: R(t) = exp(-λ * t)
-FKT AWFC:            R(t) = exp(-λ_p * t), λ_p = λ_base * (1 - attention_norm * α)
+Standard Ebbinghaus: R(t) = exp(-Î» * t)
+FKT AWFC:            R(t) = exp(-Î»_p * t), Î»_p = Î»_base * (1 - attention_norm * Î±)
 A concept learned at 80% attention decays ~24% slower than one at 15% attention.
 """
 
 import math
 import logging
-import datetime as _stdlib_dt
 from datetime import datetime, timedelta
 from typing import Optional
 
+from tracker_app.utils import utcnow as _utcnow
+
 from tracker_app.config import DEFAULT_LAMBDA, MEMORY_THRESHOLD
 
-def _utcnow():
-    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
-    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
 
 logger = logging.getLogger("MemoryModel")
 
-AWFC_ALPHA       = 0.30    # dampening factor — max slowdown from attention
+AWFC_ALPHA       = 0.30    # dampening factor â€” max slowdown from attention
 LAMBDA_FLOOR     = 0.01    # minimum decay rate (concept never fully immortal)
 LAMBDA_CEIL      = 0.50    # maximum decay rate
 
 
-# ─── Datetime helpers ─────────────────────────────────────────────────────────
+# â”€â”€â”€ Datetime helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def safe_parse_datetime(dt_value, default=None) -> datetime:
     """Parse datetime from string, datetime, or None."""
@@ -48,7 +46,7 @@ def safe_parse_datetime(dt_value, default=None) -> datetime:
     return default
 
 
-# ─── AWFC core ────────────────────────────────────────────────────────────────
+# â”€â”€â”€ AWFC core â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def compute_awfc_lambda(
     base_lambda: float,
@@ -56,14 +54,14 @@ def compute_awfc_lambda(
     alpha: float = AWFC_ALPHA,
 ) -> float:
     """
-    Compute personalised decay constant λ_p.
+    Compute personalised decay constant Î»_p.
 
-    Higher attention at time of learning → slower forgetting (lower λ_p).
+    Higher attention at time of learning â†’ slower forgetting (lower Î»_p).
 
     Args:
         base_lambda:           Default decay rate (from config, typically 0.1)
-        attention_at_encoding: Attention score 0–100 when concept was first captured
-        alpha:                 Dampening factor — 0.3 means 80% attention → 24% slower decay
+        attention_at_encoding: Attention score 0â€“100 when concept was first captured
+        alpha:                 Dampening factor â€” 0.3 means 80% attention â†’ 24% slower decay
 
     Returns:
         Personalised lambda in [LAMBDA_FLOOR, LAMBDA_CEIL]
@@ -82,13 +80,13 @@ def compute_memory_score_awfc(
     """
     Compute retention probability using AWFC.
 
-    R(t) = exp(-λ_p * t) * modality_boost
-    Clamped to [0.05, 1.0] — never reports 0% (uncertainty floor).
+    R(t) = exp(-Î»_p * t) * modality_boost
+    Clamped to [0.05, 1.0] â€” never reports 0% (uncertainty floor).
 
     Args:
         last_review:            When the concept was last seen or reviewed
         base_lambda:            Base decay constant
-        attention_at_encoding:  Attention at time of learning (0–100)
+        attention_at_encoding:  Attention at time of learning (0â€“100)
         modality_boost:         Extra retention from multi-modal engagement
 
     Returns:
@@ -100,7 +98,7 @@ def compute_memory_score_awfc(
     return max(0.05, min(1.0, R))
 
 
-# ─── Review scheduling ────────────────────────────────────────────────────────
+# â”€â”€â”€ Review scheduling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def schedule_next_review(
     last_review_time,
@@ -112,8 +110,8 @@ def schedule_next_review(
     """
     Compute optimal next review time based on AWFC memory score.
 
-    Weak memory → review soon.
-    Strong memory → longer interval, scaled by personalised λ.
+    Weak memory â†’ review soon.
+    Strong memory â†’ longer interval, scaled by personalised Î».
     """
     last_review = safe_parse_datetime(last_review_time)
     lambda_p    = compute_awfc_lambda(lambda_val, attention_at_encoding)
@@ -129,7 +127,7 @@ def schedule_next_review(
     return _utcnow() + timedelta(hours=interval_hours)
 
 
-# ─── Personalise λ from review history ───────────────────────────────────────
+# â”€â”€â”€ Personalise Î» from review history â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def recalibrate_lambda(
     concept: str,
@@ -139,11 +137,11 @@ def recalibrate_lambda(
     last_seen: Optional[datetime] = None,
 ) -> float:
     """
-    Adjust personalised λ based on actual vs. predicted recall.
+    Adjust personalised Î» based on actual vs. predicted recall.
 
     Only fires after 5+ reviews to avoid noise.
-    If user recalls better than predicted → reduce λ (slower decay).
-    If user recalls worse → increase λ (faster decay, more reviews).
+    If user recalls better than predicted â†’ reduce Î» (slower decay).
+    If user recalls worse â†’ increase Î» (faster decay, more reviews).
 
     Returns updated lambda value.
     """
@@ -160,7 +158,7 @@ def recalibrate_lambda(
     t_hours = (_utcnow() - last_seen).total_seconds() / 3600.0
     predicted_rate = math.exp(-current_lambda * t_hours) if t_hours > 0 else 1.0
 
-    # Nudge λ toward the right decay rate
+    # Nudge Î» toward the right decay rate
     adjustment  = 0.05 * (predicted_rate - actual_success_rate)
     new_lambda  = current_lambda + adjustment
     return max(LAMBDA_FLOOR, min(new_lambda, LAMBDA_CEIL))
@@ -176,8 +174,9 @@ if __name__ == "__main__":
                                           base_lambda=0.1,
                                           attention_at_encoding=att)
         lp    = compute_awfc_lambda(0.1, att)
-        print(f"Attention={att:>3}  λ_p={lp:.4f}  retention={score:.4f}")
+        print(f"Attention={att:>3}  Î»_p={lp:.4f}  retention={score:.4f}")
 
     next_rev = schedule_next_review(learned_5h_ago, memory_score=0.55,
                                     lambda_val=0.1, attention_at_encoding=75)
     print(f"\nNext review at: {next_rev.strftime('%Y-%m-%d %H:%M')} UTC")
+

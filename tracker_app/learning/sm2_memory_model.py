@@ -1,15 +1,13 @@
-"""SM-2 spaced repetition algorithm (Piotr Wozniak's SuperMemo 2).
+﻿"""SM-2 spaced repetition algorithm (Piotr Wozniak's SuperMemo 2).
 
 Research-backed scheduling defaults; complements the AWFC retention model.
 """
 
-import datetime as _stdlib_dt
 from datetime import datetime, timedelta
 from typing import Dict, Any
 import math
-def _utcnow():
-    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
-    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
+
+from tracker_app.utils import utcnow as _utcnow
 
 # SM-2 Algorithm Configuration
 # These are research-validated defaults from SuperMemo
@@ -276,3 +274,4 @@ if __name__ == "__main__":
         print(f"  Success rate: {result['success_rate']:.1%}")
         print(f"  Predicted recall in 7 days: {retention['7_days']:.1%}")
         print()
+

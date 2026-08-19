@@ -1,4 +1,4 @@
-"""Micro-quiz interrupt: generates a contextual quiz from the weakest graph concept.
+﻿"""Micro-quiz interrupt: generates a contextual quiz from the weakest graph concept.
 
 When idle for consecutive cycles, FKT quizzes the user via the dashboard
 (Socket.IO) and feeds results straight into SM-2 scheduling.
@@ -7,14 +7,12 @@ When idle for consecutive cycles, FKT quizzes the user via the dashboard
 import random
 import logging
 from datetime import datetime, timedelta
-import datetime as _stdlib_dt
 from typing import Optional
 from tracker_app.learning.text_quality_validator import is_plausible_concept
 
 
-def _utcnow():
-    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
-    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
+
+from tracker_app.utils import utcnow as _utcnow
 
 logger = logging.getLogger("QuizEngine")
 
@@ -24,7 +22,7 @@ MIN_GRAPH_SIZE        = 4    # need at least this many concepts to quiz
 # With webcam enabled, only interrupt when attention is at least this high:
 # the user has paused but is still at the desk, so they can actually see and
 # answer the modal. Firing on *low* attention would hit someone who zoned out
-# or stepped away — the exact moment they will not see the question (10.3).
+# or stepped away â€” the exact moment they will not see the question (10.3).
 ATTENTION_PRESENT_MIN = 35
 
 _last_quiz_time: Optional[datetime] = None
@@ -55,7 +53,7 @@ def record_quiz_broadcast():
     _last_quiz_time = _utcnow()
 
 
-# ─── Trigger logic ────────────────────────────────────────────────────────────
+# â”€â”€â”€ Trigger logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def should_show_quiz(
     idle_cycles: int,
@@ -69,9 +67,9 @@ def should_show_quiz(
     Conditions:
       - A study session is active (nobody is at the keyboard otherwise)
       - User has been idle for IDLE_CYCLES_REQUIRED+ consecutive cycles
-        (a real pause, ~60 s — not between keystrokes)
+        (a real pause, ~60 s â€” not between keystrokes)
       - At least QUIZ_COOLDOWN_MINUTES since the last quiz
-      - If webcam enabled: attention is at least ATTENTION_PRESENT_MIN —
+      - If webcam enabled: attention is at least ATTENTION_PRESENT_MIN â€”
         the user paused but is still present. A quiz timed to a brief pause
         while attention stays moderate-to-high reaches someone able to answer
         it, instead of the old condition (attention < 35) which interrupted
@@ -92,12 +90,12 @@ def should_show_quiz(
             return False
 
     if webcam_enabled and attention_score < ATTENTION_PRESENT_MIN:
-        return False   # user stepped away / zoned out — won't see the modal
+        return False   # user stepped away / zoned out â€” won't see the modal
 
     return True
 
 
-# ─── Quiz generation ─────────────────────────────────────────────────────────
+# â”€â”€â”€ Quiz generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def generate_micro_quiz(graph) -> Optional[dict]:
     """
@@ -175,7 +173,7 @@ def generate_micro_quiz(graph) -> Optional[dict]:
     }
 
 
-# ─── Result recording ─────────────────────────────────────────────────────────
+# â”€â”€â”€ Result recording â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def record_quiz_result(concept: str, was_correct: bool):
     """
@@ -189,7 +187,8 @@ def record_quiz_result(concept: str, was_correct: bool):
         scheduler.schedule_next_review(concept, quality=quality)
         logger.info(
             f"Quiz: '{concept}' {'correct' if was_correct else 'wrong'} "
-            f"→ quality {quality} fed to SM-2"
+            f"â†’ quality {quality} fed to SM-2"
         )
     except Exception as e:
         logger.error(f"Failed to record quiz result for '{concept}': {e}")
+

@@ -1,21 +1,19 @@
-import time
+﻿import time
 import os
 import json
 from collections import deque
-import datetime as _stdlib_dt
 from datetime import datetime, timedelta
 from threading import Lock
 from typing import Dict, Any, Optional
 import logging
+
+from tracker_app.utils import utcnow as _utcnow
 
 from tracker_app.config import DATA_DIR
 from tracker_app.learning.concept_scheduler import ConceptScheduler
 from tracker_app.db.repository import TrackingRepository
 from tracker_app.db.models import SessionLocal, IntentPrediction, TrackingSession
 
-def _utcnow():
-    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
-    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
 
 logger = logging.getLogger("ActivityMonitor")
 
@@ -54,7 +52,7 @@ class IntentValidator:
         """Log an intent prediction to the shared ORM database.
 
         context is the active window title (kept for display context).
-        features is the exact 6-element feature vector the classifier saw —
+        features is the exact 6-element feature vector the classifier saw â€”
         JSON-encoded into context_keywords so feedback-driven retraining
         (ADR-003) gets real inputs, not a window-title string.
         """
@@ -205,7 +203,7 @@ class ActivityMonitor:
         attention_score: float = 50.0,
     ):
         """Process and schedule encountered concepts.
-        Passes attention_score to concept_scheduler for AWFC λ personalisation.
+        Passes attention_score to concept_scheduler for AWFC Î» personalisation.
         """
         for concept, info in ocr_keywords.items():
             if not concept or len(concept) < 2:
@@ -234,7 +232,7 @@ class ActivityMonitor:
         intent = intent_result.get('intent_label', 'unknown')
         confidence = intent_result.get('confidence', 0.5)
 
-        # Log for validation — persists the real feature vector, not the title
+        # Log for validation â€” persists the real feature vector, not the title
         self.validator.log_prediction(
             intent, confidence,
             context=context,
@@ -288,3 +286,4 @@ class ActivityMonitor:
 
         logger.info(f"Tracking data exported to {output_file}")
         return export_data
+

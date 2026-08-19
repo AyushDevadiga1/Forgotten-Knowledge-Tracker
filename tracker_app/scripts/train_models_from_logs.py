@@ -1,4 +1,4 @@
-"""Train the intent classifier (RandomForest) from log/synthetic training data.
+﻿"""Train the intent classifier (RandomForest) from log/synthetic training data.
 
 Run: python -m tracker_app.scripts.train_models_from_logs
 """
@@ -9,15 +9,13 @@ import random
 import logging
 import argparse
 from datetime import datetime, timedelta
-import datetime as _stdlib_dt
 from pathlib import Path
+
+from tracker_app.utils import utcnow as _utcnow
 
 import numpy as np
 
 
-def _utcnow():
-    """Backward-compatible utcnow replacement (Python 3.12+ deprecation safe)."""
-    return _stdlib_dt.datetime.now(_stdlib_dt.timezone.utc).replace(tzinfo=None)
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
@@ -37,7 +35,7 @@ MODEL_PATH.parent.mkdir(exist_ok=True)
 FEEDBACK_SAMPLE_RETENTION_DAYS = 90
 
 
-# ────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def generate_synthetic_data(n_studying=900, n_passive=900, n_idle=700,
                             seed=42) -> dict:
     """
@@ -105,7 +103,7 @@ def generate_synthetic_data(n_studying=900, n_passive=900, n_idle=700,
     }
 
 
-# ────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def train(data: dict) -> dict:
     X = np.array(data["X"])
     y = np.array(data["y"])
@@ -133,7 +131,7 @@ def train(data: dict) -> dict:
 
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     cv_scores = cross_val_score(model, X_train, y_train, cv=cv, scoring="accuracy")
-    logger.info(f"5-fold CV accuracy: {cv_scores.mean():.4f} ± {cv_scores.std():.4f}")
+    logger.info(f"5-fold CV accuracy: {cv_scores.mean():.4f} Â± {cv_scores.std():.4f}")
 
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
@@ -216,7 +214,7 @@ def main():
         DATA_PATH.parent.mkdir(exist_ok=True)
         with open(DATA_PATH, "w") as f:
             json.dump(data, f, indent=2)
-        logger.info(f"Saved → {DATA_PATH}")
+        logger.info(f"Saved â†’ {DATA_PATH}")
 
     X = list(data["X"])
     y = list(data["y"])
@@ -224,7 +222,7 @@ def main():
     if args.include_feedback:
         X_fb, y_fb = load_feedback_samples()
         if X_fb:
-            # Weight user corrections 3x — they are ground truth
+            # Weight user corrections 3x â€” they are ground truth
             X += X_fb * 3
             y += y_fb * 3
             logger.info(f"Augmented to {len(X)} total samples with feedback.")
@@ -269,3 +267,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
