@@ -17,7 +17,7 @@ _FRAGMENT_BLOCKLIST = frozenset({
     'ano', 'ity', 'tion', 'ing', 'ent', 'ion', 'ati', 'ght', 'ack', 'ess',
     'ere', 'ive', 'ous', 'igh', 'ord', 'heh', 'bene', 'tae', 'eve', 'ane',
     'ation',
-    # High-confidence UI-colon/suffix fragments ('Downloads:' → 'ase', etc.)
+    # High-confidence UI-colon/suffix fragments ('Downloads:' â†’ 'ase', etc.)
     'ase', 'ade', 'ate', 'ene', 'ine', 'ose', 'one', 'ide', 'ies', 'ted',
     'red', 'res', 'ers', 'ans', 'ant', 'est', 'ons', 'ues',
     'ates', 'ines', 'ades', 'eses', 'erss',
@@ -34,7 +34,7 @@ _ACRONYM_WHITELIST = frozenset({
 
 # Genuine 3-letter English words a student might actually study. Standalone
 # 3-letter concepts are ONLY accepted if they are whitelisted acronyms or in
-# this set — otherwise every 'ase'/'res'-style OCR fragment and single-letter
+# this set â€” otherwise every 'ase'/'res'-style OCR fragment and single-letter
 # chrome residue would pass the structural rules. Multi-word phrases are not
 # restricted this way ('world war 2' needs 'war', 'net working capital' needs
 # 'net').
@@ -93,7 +93,7 @@ _PHRASE_CONNECTORS = frozenset({
 
 # Observed OCR misreads / glued screen-chrome tokens that are structurally
 # invisible (vowel-rich, normal-looking length) but never study content.
-# These came straight out of live E2E tracking — the sticky UI text that the
+# These came straight out of live E2E tracking â€” the sticky UI text that the
 # camera keeps re-reading. They are blocked at ingest so they never pollute
 # tracked_concepts again.
 _OCR_NOISE = frozenset({
@@ -256,7 +256,7 @@ def is_plausible_concept(text) -> bool:
     Catches the common OCR failure modes seen in live tracking:
     short word fragments ('ano', 'ity'), vowel-less garbage ('hty'), and
     doubled-character noise ('aannup'). Multi-word phrases pass only if
-    every word is plausible — with function-word connectors ('and', 'the',
+    every word is plausible â€” with function-word connectors ('and', 'the',
     'of') and short alphanumeric tokens ('c3', 'c4', 'python3') allowed.
     ALL-CAPS acronyms (SQL, CSS, HTML) are allowed even without a vowel so
     they are not dropped.
@@ -296,7 +296,7 @@ def _is_plausible_token(token: str, multiword: bool) -> bool:
             return multiword
         return _is_plausible_word(low)
 
-    # Token contains digits — 'c3', 'python3', '1995'.
+    # Token contains digits â€” 'c3', 'python3', '1995'.
     letters = re.findall(r"[a-z]", token.lower())
     digits  = re.findall(r"[0-9]", token)
     if not letters:
@@ -327,7 +327,7 @@ def _is_plausible_word(word: str) -> bool:
         return True
     if low in _ACRONYM_WHITELIST:
         return True
-    # Standalone 3-letter non-acronym words must be known English words —
+    # Standalone 3-letter non-acronym words must be known English words â€”
     # otherwise 'ase'/'res'-style suffix fragments pass every structural rule.
     if len(low) == 3 and low not in _THREE_LETTER_WORDS:
         return False
@@ -381,7 +381,21 @@ def _is_plausible_word(word: str) -> bool:
             })
             has_stem = any(low.startswith(s) for s in _COMPOUND_STEMS)
             if not has_stem:
-                # No recognized stem: require trigram coverage >= 30%.
+                # For short non-dictionary words that end in common English
+                # suffixes (-tion, -sion, -ment, -ness, etc.), require that
+                # the root before the suffix has substance.  Catches gibberish
+                # like 'abtion' (2-char root) while allowing 'equations'
+                # (4-char root 'equa').
+                _LONG_SUFFIXES = ('tion', 'sion', 'ment', 'ness', 'able',
+                                  'ible', 'ful', 'less', 'ous', 'ive', 'ity',
+                                  'ence', 'ance', 'ure', 'ary', 'ory')
+                for suf in _LONG_SUFFIXES:
+                    if low.endswith(suf) and len(low) - len(suf) < 3:
+                        return False
+                # No recognized stem: require aggregate trigram coverage
+                # >= 30%.  Blocks pure gibberish that shares no morphemes
+                # with English; lets legitimate non-dictionary words
+                # through (e.g. 'abtion' with 'tion' at 67% coverage).
                 covered = set()
                 for tri in _ENGLISH_TRIGRAMS:
                     start = 0
