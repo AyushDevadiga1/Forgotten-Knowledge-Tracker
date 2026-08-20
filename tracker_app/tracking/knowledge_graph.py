@@ -1,13 +1,13 @@
-﻿"""Knowledge graph of tracked concepts with pkl persistence and drift/gap analytics."""
+﻿"""Knowledge graph of tracked concepts with JSON persistence and drift/gap analytics."""
 import networkx as nx
 import numpy as np
-import pickle
+import json
 import threading
 import time
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from tracker_app.config import DB_PATH, KNOWLEDGE_GRAPH_PATH, DEFAULT_LAMBDA
+from tracker_app.config import DATA_DIR, KNOWLEDGE_GRAPH_PATH, DEFAULT_LAMBDA
 
 
 from tracker_app.utils import utcnow as _utcnow
@@ -29,7 +29,7 @@ _graph_dirty = False
 
 # Cap on in-memory graph size (H-6): _save_graph() evicts the lowest-
 # memory_score zero-edge nodes once the count exceeds this, keeping the
-# pkl small and _load_graph() fast after months of use.
+# JSON file small and _load_graph() fast after months of use.
 MAX_GRAPH_NODES = 5000
 
 # ----------------------------
@@ -91,7 +91,7 @@ def _ensure_graph_loaded():
     graph exists. After the initial load, a throttled DB re-sync runs at most
     once per DB_SYNC_INTERVAL_SECONDS so concepts captured mid-process (tracker
     loop, browser ingest) surface in quiz selection and graph stats without a
-    process restart. The pkl is a cache: it can always be rebuilt from
+    process restart. The persisted file is a cache: it can always be rebuilt from
     `tracked_concepts`, so a corrupt/missing file is not fatal.
     """
     global _loaded, _last_db_sync
@@ -99,7 +99,7 @@ def _ensure_graph_loaded():
     with _graph_lock:
         if not _loaded:
             if knowledge_graph.number_of_nodes() != 0:
-                # Graph already populated (e.g. by another module) â€” no pkl/DB
+                # Graph already populated (e.g. by another module) â€” no file/DB
                 # bootstrap needed, but subsequent calls still re-reconcile.
                 _loaded = True
             else:
@@ -114,8 +114,26 @@ def _ensure_graph_loaded():
             sync_db_to_graph()
             _last_db_sync = now
 
+def _jsonable(obj):
+    """Convert numpy scalars/arrays (and containers of them) to plain JSON types."""
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, np.generic):
+        return obj.item()
+    if isinstance(obj, dict):
+        return {k: _jsonable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_jsonable(v) for v in obj]
+    return obj
+
+
 def _load_graph_locked() -> bool:
     """Load a persisted graph from KNOWLEDGE_GRAPH_PATH. Returns True on success.
+
+    Tries the JSON format first; on failure falls back to legacy pickle files
+    (the configured path itself, then a sibling knowledge_graph.pkl from before
+    the JSON migration), migrating any pickle found to JSON on success. The
+    graph is a rebuildable cache: a corrupt/missing file is not fatal.
 
     Must be called with `_graph_lock` already held (M-9): this function
     mutates the shared in-memory graph and never acquires the lock itself --
@@ -123,21 +141,57 @@ def _load_graph_locked() -> bool:
     """
     global _graph_dirty
     path = Path(KNOWLEDGE_GRAPH_PATH)
-    if not path.exists():
-        return False
-    try:
-        with open(path, 'rb') as f:
-            data = pickle.load(f)
-        if not isinstance(data, nx.Graph) or data.number_of_nodes() == 0:
+
+    def _apply_json(data) -> bool:
+        if not (isinstance(data, dict)
+                and isinstance(data.get('nodes'), list)
+                and isinstance(data.get('edges'), list)):
             return False
         knowledge_graph.clear()
-        knowledge_graph.add_nodes_from(data.nodes(data=True))
-        knowledge_graph.add_edges_from(data.edges(data=True))
-        _graph_dirty = False
-        return True
-    except Exception as e:
-        logger.warning("Failed to load knowledge graph from %s: %s", path, e)
-        return False
+        knowledge_graph.add_nodes_from(
+            (n, dict(attrs)) for n, attrs in data['nodes']
+        )
+        knowledge_graph.add_edges_from(
+            (u, v, dict(attrs)) for u, v, attrs in data['edges']
+        )
+        return knowledge_graph.number_of_nodes() > 0
+
+    # 1. Current JSON format.
+    if path.exists():
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            if _apply_json(data):
+                _graph_dirty = False
+                return True
+        except Exception as e:
+            logger.warning("Failed to load knowledge graph JSON from %s: %s", path, e)
+
+    # 2. Legacy pickle auto-migration: the configured path itself, then the
+    # pre-migration default name next to it (DATA_DIR/knowledge_graph.pkl).
+    import pickle  # legacy read-only fallback; JSON is the write format now
+    candidates = [path]
+    legacy = path.parent / "knowledge_graph.pkl"
+    if legacy != path:
+        candidates.append(legacy)
+    for cand in candidates:
+        if not cand.exists():
+            continue
+        try:
+            with open(cand, 'rb') as f:
+                data = pickle.load(f)
+            if not isinstance(data, nx.Graph) or data.number_of_nodes() == 0:
+                continue
+            knowledge_graph.clear()
+            knowledge_graph.add_nodes_from(data.nodes(data=True))
+            knowledge_graph.add_edges_from(data.edges(data=True))
+            logger.info("Migrating legacy pickle knowledge graph %s -> %s", cand, path)
+            _save_graph()
+            _graph_dirty = False
+            return True
+        except Exception as e:
+            logger.warning("Failed to load legacy knowledge graph from %s: %s", cand, e)
+    return False
 
 def _evict_oversized_nodes():
     """Trim the graph back to MAX_GRAPH_NODES (best-effort, H-6).
@@ -174,15 +228,25 @@ def _evict_oversized_nodes():
 
 
 def _save_graph():
-    """Persist the in-memory graph to KNOWLEDGE_GRAPH_PATH (best-effort cache)."""
+    """Persist the in-memory graph to KNOWLEDGE_GRAPH_PATH as JSON (atomic write)."""
     global _graph_dirty
     try:
         _evict_oversized_nodes()
         path = Path(KNOWLEDGE_GRAPH_PATH)
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix('.pkl.tmp')
-        with open(tmp, 'wb') as f:
-            pickle.dump(knowledge_graph, f, protocol=pickle.HIGHEST_PROTOCOL)
+        payload = {
+            'nodes': [
+                [n, _jsonable(dict(d))]
+                for n, d in knowledge_graph.nodes(data=True)
+            ],
+            'edges': [
+                [u, v, _jsonable(dict(d))]
+                for u, v, d in knowledge_graph.edges(data=True)
+            ],
+        }
+        tmp = path.with_name(path.name + '.tmp')
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump(payload, f)
         tmp.replace(path)
         _graph_dirty = False
         logger.debug("Knowledge graph saved to %s", path)
@@ -266,9 +330,10 @@ def add_concepts(concepts):
         live_scores = _fetch_live_memory_scores(valid_concepts)
         for idx, concept in enumerate(valid_concepts):
             if concept not in knowledge_graph:
+                emb = embeddings[idx] if embeddings is not None else []
                 knowledge_graph.add_node(
                     concept,
-                    embedding=embeddings[idx].tolist() if embeddings is not None else [],
+                    embedding=emb.tolist() if hasattr(emb, "tolist") else list(emb),
                     count=1,
                     memory_score=live_scores.get(concept, 0.3),
                     next_review_time=_utcnow().strftime(DATETIME_FORMAT),

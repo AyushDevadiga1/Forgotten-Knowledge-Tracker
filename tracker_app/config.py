@@ -1,8 +1,9 @@
-"""Single source of truth for FKT configuration (env- and .env-driven).
+﻿"""Single source of truth for FKT configuration (env- and .env-driven).
 
 tracker_app.config_manager is DEPRECATED — never import it.
 """
 import os
+import secrets
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -12,6 +13,20 @@ if _ENV_FILE.exists():
     load_dotenv(_ENV_FILE)
 else:
     load_dotenv()  # fallback: search CWD
+
+# Auto-generate SECRET_KEY if not set
+if not os.environ.get('SECRET_KEY'):
+    _new_key = secrets.token_hex(32)
+    with open(_ENV_FILE, 'a') as f:
+        f.write(f'\nSECRET_KEY={_new_key}\n')
+    os.environ['SECRET_KEY'] = _new_key
+
+# Auto-generate API_KEY if not set
+if not os.environ.get('API_KEY'):
+    _new_key = secrets.token_hex(24)
+    with open(_ENV_FILE, 'a') as f:
+        f.write(f'\nAPI_KEY={_new_key}\n')
+    os.environ['API_KEY'] = _new_key
 
 # ----------------------------
 # Paths
@@ -92,7 +107,7 @@ SESSION_ALLOWED_INTENTS = tuple(
 # ----------------------------
 # Model paths
 # ----------------------------
-KNOWLEDGE_GRAPH_PATH = str(DATA_DIR / "knowledge_graph.pkl")
+KNOWLEDGE_GRAPH_PATH = str(DATA_DIR / "knowledge_graph.json")
 
 # ----------------------------
 # Memory / SM-2 parameters
