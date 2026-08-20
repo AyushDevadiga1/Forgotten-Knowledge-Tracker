@@ -68,13 +68,11 @@ apply_auth_to_blueprint(api_bp)   # API key check (disabled in dev by default)
 csrf.exempt(api_bp)
 app.register_blueprint(api_bp)
 
-# Allow Vite dev server (localhost:5173) and the Chrome extension
-# (chrome-extension://<id>) to reach the API
-import re
+# Allow only local origins (any localhost/loopback port, e.g. the Vite dev
+# server on 5173) to reach the API from JavaScript in a browser.
 CORS(app, resources={r"/api/*": {"origins": [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    re.compile(r"chrome-extension://.*"),
+    "http://localhost:*",
+    "http://127.0.0.1:*",
 ]}})
 
 # Initialize Socket.IO for real-time updates
@@ -100,10 +98,10 @@ def run_dashboard(debug=None, port=5000):
     if debug is None:
         debug = os.getenv('DEBUG', 'False').lower() == 'true'
     
-    print(f"\n[INFO] Dashboard running at: http://localhost:{port}")
-    print(f"   Add items: http://localhost:{port}/add")
-    print(f"   Stats API: http://localhost:{port}/stats")
-    print(f"   Real-time updates: Socket.IO enabled\n")
+    app.logger.info(f"Dashboard running at: http://localhost:{port}")
+    app.logger.info(f"   Add items: http://localhost:{port}/add")
+    app.logger.info(f"   Stats API: http://localhost:{port}/stats")
+    app.logger.info(f"Real-time updates: Socket.IO enabled")
     
     # Use socketio.run instead of app.run for WebSocket support
     host = '0.0.0.0' if os.getenv('DOCKER_CONTAINER') else '127.0.0.1'

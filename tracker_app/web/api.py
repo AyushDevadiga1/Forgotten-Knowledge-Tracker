@@ -1,6 +1,7 @@
-"""Flask API: tracking, feedback/retraining, knowledge graph, micro-quiz, and ingest endpoints."""
+﻿"""Flask API: tracking, feedback/retraining, knowledge graph, micro-quiz, and ingest endpoints."""
 
 import json
+import os
 import re
 import threading
 import logging
@@ -15,6 +16,20 @@ from tracker_app.config import DATA_DIR
 logger = logging.getLogger("API")
 
 api_bp = Blueprint('api', __name__, url_prefix='/api/v1')
+
+
+@api_bp.before_request
+def check_api_key():
+    """Require API key on all endpoints except health and static."""
+    if request.endpoint in ('api.health_check',):
+        return None
+    api_key = os.environ.get('API_KEY', '')
+    if not api_key:
+        return None  # auth disabled (dev mode)
+    provided = request.headers.get('X-API-Key', '')
+    if not provided or provided != api_key:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    return None
 
 # C-2: only one background retraining subprocess may run at a time â€” two
 # concurrent writes to models/intent_classifier.pkl corrupt the pickle.
@@ -701,6 +716,7 @@ def browser_ingest():
         return jsonify({'success': False, 'error': 'text field required'}), 400
 
     text  = str(data.get('text', ''))[:10000]
+    text_truncated = len(str(data.get('text', ''))) > 10000
     title = _sanitize_title(data.get('title', ''))[:200]
 
     if len(text.strip()) < 20:
@@ -759,6 +775,7 @@ def browser_ingest():
             'success':        True,
             'concepts_saved': saved,
             'keywords':       list(keywords.keys())[:5],
+            'text_truncated': text_truncated,
         })
     except Exception as e:
         logger.error(f"browser_ingest: {e}")

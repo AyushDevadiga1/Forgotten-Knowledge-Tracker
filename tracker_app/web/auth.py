@@ -1,4 +1,4 @@
-"""
+﻿"""
 Simple API Key Authentication Middleware for FKT
 
 Usage:
@@ -66,6 +66,8 @@ def apply_auth_to_blueprint(bp):
                        "Set API_KEY in .env to protect the API.")
     @bp.before_request
     def check_key():
+        if request.endpoint == "api.health_check":
+            return None  # health probe stays unauthenticated
         if _NO_AUTH or not _API_KEY:
             return  # Allow all in dev
         provided_key = request.headers.get("X-API-Key", "")
