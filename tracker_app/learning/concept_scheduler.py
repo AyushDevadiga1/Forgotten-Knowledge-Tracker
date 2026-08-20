@@ -48,6 +48,7 @@ class ConceptScheduler:
             logger.debug("Skipping sensitive keyword: %r", concept)
             return None
         concept = next(iter(cleaned))
+        concept = concept.lower().strip()
 
         if not is_plausible_concept(concept):
             logger.debug("Skipping implausible concept: %r", concept)
@@ -58,6 +59,7 @@ class ConceptScheduler:
         with SessionLocal() as db:
             existing = (db.query(TrackedConcept)
                           .filter(TrackedConcept.concept == concept)
+                          .with_for_update()
                           .first())
 
             if existing:

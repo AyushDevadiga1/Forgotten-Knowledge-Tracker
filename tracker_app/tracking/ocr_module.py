@@ -278,7 +278,7 @@ def extract_keywords(text, top_n=15, boost_repeats=True, graph=None):
     try:
         # 2️⃣ NLP nouns/proper nouns & entities (if available)
         if nlp is not None and text.strip():
-            doc = nlp(text[:100000])  # Limit text length for performance
+            doc = nlp(text[:50000])  # Limit text length for performance (matches keyword_extractor)
             
             # Extract nouns and proper nouns
             nlp_keywords = [
@@ -398,6 +398,7 @@ def ocr_pipeline():
 
         return {
             "raw_text": str(text)[:500],  # Limit text length
+            "text_truncated": len(text) > 500,
             "keywords": keywords_with_counts,
                     }
         
