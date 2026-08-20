@@ -25,7 +25,7 @@ SENSITIVE_PATTERNS_RAW = {
 }
 
 # Keywords that only exist because a redaction marker (or a sensitive value)
-# reached the extractor — never legitimate study concepts on their own.
+# reached the extractor â€” never legitimate study concepts on their own.
 # (Defense-in-depth: the markers are stripped before extraction, so this list
 # only catches stragglers.)
 SENSITIVE_KEYWORD_NOISE = frozenset({
@@ -33,6 +33,56 @@ SENSITIVE_KEYWORD_NOISE = frozenset({
     'passcode', 'passwd', 'pwd', 'field', 'token', 'bearer', 'acct',
     'routing', 'iban',
 })
+
+# Common personal names that spaCy NER may extract as PERSON entities.
+# Defense-in-depth: even if ENTITY_TYPES is tightened, names that slip
+# through extraction are caught here before reaching add_concept().
+_COMMON_FIRST_NAMES = frozenset({
+    'james', 'john', 'robert', 'michael', 'david', 'william', 'richard',
+    'joseph', 'thomas', 'charles', 'christopher', 'daniel', 'matthew',
+    'anthony', 'mark', 'donald', 'steven', 'paul', 'andrew', 'joshua',
+    'kenneth', 'kevin', 'brian', 'george', 'timothy', 'ronald', 'edward',
+    'jason', 'jeffrey', 'ryan', 'jacob', 'gary', 'nicholas', 'eric',
+    'jonathan', 'stephen', 'larry', 'justin', 'scott', 'brandon', 'benjamin',
+    'samuel', 'raymond', 'gregory', 'frank', 'patrick', 'jack', 'dennis',
+    'jerry', 'alexander', 'tyler', 'aaron', 'jose', 'adam', 'nathan',
+    'mary', 'patricia', 'jennifer', 'linda', 'barbara', 'elizabeth',
+    'susan', 'jessica', 'sarah', 'karen', 'lisa', 'nancy', 'betty',
+    'margaret', 'sandra', 'ashley', 'dorothy', 'kimberly', 'emily',
+    'donna', 'michelle', 'carol', 'amanda', 'melissa', 'deborah',
+    'stephanie', 'rebecca', 'sharon', 'laura', 'cynthia', 'kathleen',
+    'amy', 'angela', 'shirley', 'anna', 'brenda', 'pamela', 'emma',
+    'nicole', 'helen', 'samantha', 'katherine', 'christine', 'debra',
+    'rachel', 'carolyn', 'janet', 'catherine', 'maria', 'heather',
+    'diane', 'ruth', 'julie', 'olivia', 'joyce', 'virginia', 'victoria',
+    'kelly', 'lauren', 'christina', 'joan', 'evelyn', 'judith', 'megan',
+    'andrea', 'cheryl', 'hannah', 'jacqueline', 'martha', 'gloria',
+    'teresa', 'ann', 'sara', 'madison', 'frances', 'kathryn', 'janice',
+    'jean', 'abigail', 'alice', 'judy', 'sophia', 'grace', 'denise',
+})
+
+_COMMON_LAST_NAMES = frozenset({
+    'smith', 'johnson', 'williams', 'brown', 'jones', 'garcia', 'miller',
+    'davis', 'rodriguez', 'martinez', 'hernandez', 'lopez', 'gonzalez',
+    'wilson', 'anderson', 'thomas', 'taylor', 'moore', 'jackson', 'martin',
+    'lee', 'perez', 'thompson', 'white', 'harris', 'sanchez', 'clark',
+    'ramirez', 'lewis', 'robinson', 'walker', 'young', 'allen', 'king',
+    'wright', 'scott', 'torres', 'nguyen', 'hill', 'flores', 'green',
+    'adams', 'nelson', 'baker', 'hall', 'rivera', 'campbell', 'mitchell',
+    'carter', 'roberts', 'gomez', 'phillips', 'evans', 'turner', 'diaz',
+    'parker', 'cruz', 'edwards', 'collins', 'reyes', 'stewart', 'morris',
+    'morales', 'murphy', 'cook', 'rogers', 'gutierrez', 'ortiz', 'morgan',
+    'cooper', 'peterson', 'bailey', 'reed', 'kelly', 'howard', 'ramos',
+    'kim', 'cox', 'ward', 'richardson', 'watson', 'brooks', 'chavez',
+    'wood', 'james', 'bennett', 'gray', 'mendoza', 'ruiz', 'hughes',
+    'price', 'alvarez', 'castillo', 'sanders', 'patel', 'myers', 'long',
+    'ross', 'foster', 'jimenez', 'powell', 'jenkins', 'perry', 'russell',
+    'sullivan', 'bell', 'coleman', 'butler', 'henderson', 'barnes',
+    'fisher', 'vasquez', 'simmons', 'patterson', 'jordan',
+})
+
+_COMMON_NAMES = _COMMON_FIRST_NAMES | _COMMON_LAST_NAMES
+
 
 # Sensitive density at which the whole capture is skipped rather than redacted.
 MAX_REDACTION_DENSITY = 3
@@ -128,7 +178,7 @@ def sanitize_text_for_storage(text: str) -> dict:
 
     Sensitive values are redacted in place. If the text is dense with
     sensitive data (more than MAX_REDACTION_DENSITY hits), the whole capture
-    is rejected (safe_to_store=False) — redacting one value out of a page of
+    is rejected (safe_to_store=False) â€” redacting one value out of a page of
     PII still leaves the rest as usable concepts, which defeats the point.
 
     Returns dict with sanitized text and metadata.
@@ -144,7 +194,7 @@ def sanitize_text_for_storage(text: str) -> dict:
 
     detections = detect_sensitive_data(text)
 
-    # High-density sensitive content → reject the whole capture.
+    # High-density sensitive content â†’ reject the whole capture.
     if len(detections) > MAX_REDACTION_DENSITY:
         return {
             'text': '',
@@ -181,7 +231,7 @@ def strip_redaction_markers(text: str) -> str:
     """Remove [REDACTED:TYPE] markers so they never become keywords.
 
     The markers are informative for humans but must not reach keyword
-    extraction — 'email', 'phone', 'password' etc. are not study concepts.
+    extraction â€” 'email', 'phone', 'password' etc. are not study concepts.
     """
     if not text:
         return text
@@ -204,6 +254,8 @@ def filter_sensitive_keywords(keywords) -> dict:
         if not k:
             continue
         if k in SENSITIVE_KEYWORD_NOISE:
+            continue
+        if k in _COMMON_NAMES:
             continue
         if detect_sensitive_data(k):
             continue
