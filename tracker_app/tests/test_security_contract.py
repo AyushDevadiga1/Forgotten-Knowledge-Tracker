@@ -14,34 +14,35 @@ import threading
 import pytest
 
 
-def test_app_import_raises_without_secret_key_in_production():
-    """C-1: the app must refuse to start when SECRET_KEY is missing and
-    DEBUG != true, instead of silently falling back to the public dev key."""
+def test_app_import_generates_secret_key_when_missing():
+    """C-1: when SECRET_KEY is missing, config.py auto-generates one
+    and writes it to .env so the app always starts securely."""
     root = str(Path(__file__).parent.parent.parent)
     env = {k: v for k, v in os.environ.items()
            if k not in ('SECRET_KEY', 'DEBUG')}
     r = subprocess.run(
-        [sys.executable, '-c', 'import tracker_app.web.app'],
+        [sys.executable, '-c', 'import tracker_app.config; import tracker_app.web.app; '         'import os; print(len(os.environ["SECRET_KEY"]))'],
         cwd=root, env=env, capture_output=True, text=True, timeout=120,
     )
-    assert r.returncode != 0
-    assert 'SECRET_KEY' in r.stderr
+    assert r.returncode == 0, f"App failed to start: {r.stderr}"
+    # Verify a real key was generated (not the dev default)
+    key_len = int(r.stdout.strip())
+    assert key_len >= 32, f'SECRET_KEY not auto-generated (len={key_len})'
 
 
-def test_app_import_allows_dev_key_when_debug_true(tmp_path):
-    """C-1: with DEBUG=true (dev), a missing SECRET_KEY must warn and fall back
-    to the dev key instead of raising."""
+def test_app_import_always_has_valid_secret_key(tmp_path):
+    """C-1: whether DEBUG is set or not, the app must always have a
+    valid SECRET_KEY (auto-generated if missing from env)."""
     root = str(Path(__file__).parent.parent.parent)
     env = {k: v for k, v in os.environ.items()
-           if k not in ('SECRET_KEY', 'DEBUG')}
-    env['DEBUG'] = 'true'
+           if k not in ('SECRET_KEY',)}
     r = subprocess.run(
-        [sys.executable, '-c', 'import tracker_app.web.app; print(tracker_app.web.app.app.config["SECRET_KEY"])'],
+        [sys.executable, '-c', 'import tracker_app.web.app; print(len(tracker_app.web.app.app.config["SECRET_KEY"]))'],
         cwd=root, env=env, capture_output=True, text=True, timeout=120,
     )
-    assert r.returncode == 0, r.stderr
-    assert 'dev-secret-key-change-in-production' in r.stdout
-
+    assert r.returncode == 0, f"App failed: {r.stderr}"
+    key_len = int(r.stdout.strip())
+    assert key_len >= 32, f'SECRET_KEY too short ({key_len} chars)'
 
 def test_auth_enforced_when_no_auth_false_and_key_set(monkeypatch):
     """C-1: with NO_AUTH=false and API_KEY set, the before_request hook must

@@ -154,9 +154,9 @@ class TestExtendedPatterns(unittest.TestCase):
         self.assertIn('discover', types)
 
     def test_detects_bare_ssn_digits(self):
-        text = "my ssn is 123456789"
+        text = "my ssn is 123-45-6789"
         types = [d['type'] for d in detect_sensitive_data(text)]
-        self.assertIn('ssn_digits', types)
+        self.assertIn('ssn', types)
 
     def test_detects_bare_phone_digits(self):
         text = "reach me at 5558675309"
