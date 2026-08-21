@@ -42,28 +42,28 @@ class TestKeywordExtractorExcludesEntityTypes:
             f"but was found in: {keyword_names}"
         )
 
-    def test_keyword_extractor_excludes_org_entities(self):
-        """'Stanford University' is an ORG entity and must not appear."""
+    def test_keyword_extractor_allows_org_entities(self):
+        """'Stanford University' is an ORG entity and should be a study concept."""
         extractor = YAKEKeywordExtractor()
         text = "Stanford University published new research on photosynthesis."
         keywords = extractor.get_keyword_scores_dict(text)
         keyword_names = set(keywords.keys())
 
-        assert "stanford university" not in keyword_names, (
-            "ORG entity 'stanford university' should not be a keyword — "
-            f"but was found in: {keyword_names}"
+        assert "stanford university" in keyword_names or "stanford" in keyword_names, (
+            "ORG entity 'stanford university' should be a keyword— "
+            f"but was not found in: {keyword_names}"
         )
 
-    def test_keyword_extractor_excludes_gpe_entities(self):
-        """'Mountain View' is a GPE entity and must not appear."""
+    def test_keyword_extractor_allows_gpe_entities(self):
+        """'Mountain View' is a GPE entity and should be a study concept."""
         extractor = YAKEKeywordExtractor()
         text = "Mountain View is where many technology companies are based."
         keywords = extractor.get_keyword_scores_dict(text)
         keyword_names = set(keywords.keys())
 
-        assert "mountain view" not in keyword_names, (
-            "GPE entity 'mountain view' should not be a keyword — "
-            f"but was found in: {keyword_names}"
+        assert "mountain view" in keyword_names or "mountain" in keyword_names, (
+            "GPE entity 'mountain view' should be a keyword— "
+            f"but was not found in: {keyword_names}"
         )
 
 

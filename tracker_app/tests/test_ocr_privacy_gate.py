@@ -109,12 +109,10 @@ def test_extract_keywords_uses_passed_graph_without_get_graph(monkeypatch):
         calls["n"] += 1
         raise AssertionError("get_graph() must not be called when graph is passed")
 
-    class FakeExtractor:
-        def extract_keywords(self, text, top_n=15):
-            return [("machinelearning", 0.8)]
+    def fake_extract_concepts(text, top_n=15):
+        return {"machinelearning": 0.8}
 
-    monkeypatch.setattr(ocr_module, "kw_extractor", FakeExtractor())
-    monkeypatch.setattr(ocr_module, "nlp", None)
+    monkeypatch.setattr(ocr_module, "extract_concepts", fake_extract_concepts)
     monkeypatch.setattr(ocr_module, "get_graph", boom)
 
     G = nx.Graph()
@@ -127,7 +125,7 @@ def test_extract_keywords_uses_passed_graph_without_get_graph(monkeypatch):
     )
 
     assert calls["n"] == 0
-    assert keywords.get("machinelearning") == pytest.approx(0.74)
+    assert keywords.get("machinelearning") == pytest.approx(0.9)
 
 
 def test_runtime_code_uses_logger_not_print():

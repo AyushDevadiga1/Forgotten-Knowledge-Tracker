@@ -16,9 +16,8 @@ import tracker_app.learning.text_quality_validator as tq_mod
 import tracker_app.learning.concept_scheduler as cs_mod
 
 
-class _FakeExtractor:
-    def get_keyword_scores_dict(self, text, top_n=15):
-        return {"python": 0.9, "decorator": 0.7}
+def _fake_extract_concepts(text, top_n=15):
+    return {"python": 0.9, "decorator": 0.7}
 
 
 class _FakeScheduler:
@@ -63,8 +62,8 @@ class TestBrowserIngestTitleSanitised(unittest.TestCase):
 
     def _patch_heavy_deps(self):
         from unittest import mock
-        self._patch_ke = mock.patch.object(ke_mod, 'get_keyword_extractor',
-                                           return_value=_FakeExtractor())
+        self._patch_ke = mock.patch.object(ke_mod, 'extract_concepts',
+                                           side_effect=_fake_extract_concepts)
         self._patch_tq = mock.patch.object(
             tq_mod, 'validate_and_clean_extraction',
             return_value={'is_useful': True, 'cleaned_text': 'python decorators'})
