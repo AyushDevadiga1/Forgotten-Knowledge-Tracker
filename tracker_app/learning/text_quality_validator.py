@@ -268,6 +268,9 @@ def is_plausible_concept(text) -> bool:
         return False
     if stripped.lower() in _STOPWORD_CONCEPTS:
         return False
+    # Study-term whitelist: bypass UI blocklist for known study terms.
+    if stripped.lower() in _STUDY_TERM_WHITELIST:
+        return True
     if stripped.lower() in _UI_ELEMENT_BLOCKLIST:
         return False
 
@@ -314,6 +317,35 @@ def _is_plausible_token(token: str, multiword: bool) -> bool:
     return _is_plausible_word(letter_part)
 
 
+# Legitimate study terms that bypass trigram/dictionary quality checks.
+# These are real words/concepts that the quality filter incorrectly rejects
+# due to rare trigram patterns or not being in the English wordlist.
+_STUDY_TERM_WHITELIST = frozenset({
+    # Computer Science
+    'monad', 'functor', 'applicative', 'curry', 'compose', 'lens',
+    'phantom', 'algebraic', 'isomorphic', 'polymorphic', 'recursive',
+    'immutable', 'mutable', 'declarative', 'imperative', 'referential',
+    # Cryptocurrency/Blockchain
+    'bitcoin', 'ethereum', 'blockchain', 'cryptocurrency',
+    # Programming Languages
+    'python', 'javascript', 'typescript', 'haskell', 'scala', 'clojure',
+    'erlang', 'elixir', 'rust', 'golang', 'kotlin', 'swift',
+    # Frameworks/Libraries
+    'react', 'angular', 'vue', 'django', 'flask', 'fastapi',
+    'tensorflow', 'pytorch', 'pandas', 'numpy',
+    # Rare English (legitimate study terms)
+    'defenestration', 'sesquipedalian', 'quixotic', 'obsequious',
+    'perspicacious', 'ephemeral', 'ubiquitous', 'paradigm', 'heuristic',
+    'ontology', 'epistemology', 'dialectic',
+    # Scientific terms
+    'photosynthesis', 'mitochondria', 'chloroplast', 'thylakoid',
+    'glycolysis', 'chromosome', 'chromatid', 'telomere',
+    # Mathematics
+    'eigenvector', 'eigenvalue', 'determinant', 'convolution',
+    'manifold', 'topology', 'homomorphism', 'isomorphism',
+})
+
+
 def _is_plausible_word(word: str) -> bool:
     if len(word) < 3:
         return False
@@ -326,6 +358,9 @@ def _is_plausible_word(word: str) -> bool:
     if word.isupper() and len(word) <= 6:
         return True
     if low in _ACRONYM_WHITELIST:
+        return True
+    # Study-term whitelist: bypass trigram/dictionary checks for known terms.
+    if low in _STUDY_TERM_WHITELIST:
         return True
     # Standalone 3-letter non-acronym words must be known English words â€”
     # otherwise 'ase'/'res'-style suffix fragments pass every structural rule.
