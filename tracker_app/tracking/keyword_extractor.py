@@ -132,8 +132,8 @@ class YAKEKeywordExtractor:
                       "WORK_OF_ART", "LAW", "LANGUAGE"}
 
     # Entity types that should NOT be surfaced as study keywords.
-    # PERSON is handled by _BLOCKED_NAMES; ORG/GPE are locations/orgs, not concepts.
-    BLOCKED_ENTITY_TYPES = {"PERSON", "ORG", "GPE", "NORP", "FAC", "LOC"}
+    # Only PERSON is blocked (PII). ORG/GPE/NORP/LOC are allowed as study concepts.
+    BLOCKED_ENTITY_TYPES = {"PERSON"}
 
     # Multi-word candidates built around generic verbs / function words are
     # collocation fragments, not concepts ('converts sunlight', 'energy
@@ -159,6 +159,24 @@ class YAKEKeywordExtractor:
             return False
         return any(t in YAKEKeywordExtractor.WEAK_PHRASE_TOKENS for t in keyword.split())
 
+    @staticmethod
+    def _is_verb_containing_bigram(keyword: str, doc=None) -> bool:
+        """Reject YAKE bigrams that cross POS boundaries (verb + noun, name + verb).
+        
+        Uses spaCy POS tags from the already-parsed doc. If doc is None,
+        falls back to the WEAK_PHRASE_TOKENS check.
+        """
+        if ' ' not in keyword:
+            return False
+        if doc is None:
+            return False
+        words = keyword.lower().split()
+        for word in words:
+            for tok in doc:
+                if tok.text.lower() == word and tok.pos_ in ("VERB", "AUX"):
+                    return True
+        return False
+
     def extract_keywords(self, text: str, top_n: int = 15) -> List[Tuple[str, float]]:
         """
         Extract and rank keywords from a single text.
@@ -171,6 +189,16 @@ class YAKEKeywordExtractor:
             return []
 
         scores: dict[str, float] = {}
+
+        # -- 0. Parse spaCy doc first (used by YAKE filtering and NER) --
+        nlp = _get_nlp()
+        doc = None
+        blocked_entity_texts = set()
+        if nlp is not None:
+            try:
+                doc = nlp(text[:50_000])  # cap for performance
+            except Exception as e:
+                logger.warning(f"spaCy parsing failed: {e}")
 
         # -- 1. YAKE! extraction ------------------------------------
         yake = _get_yake()
@@ -188,6 +216,9 @@ class YAKEKeywordExtractor:
                             continue
                         if s > self.YAKE_SCORE_CAP:
                             continue
+                        # POS filter: reject bigrams containing verbs
+                        if self._is_verb_containing_bigram(kw, doc):
+                            continue
                         # invert: low yake score -> high relevance
                         rel = 1.0 - (s - min_s) / rng
                         scores[kw] = max(scores.get(kw, 0.0), round(rel, 4))
@@ -195,11 +226,8 @@ class YAKEKeywordExtractor:
                 logger.warning(f"YAKE! extraction failed: {e}")
 
         # -- 2. spaCy NER + noun chunks -----------------------------
-        nlp = _get_nlp()
-        blocked_entity_texts = set()
-        if nlp is not None:
+        if doc is not None:
             try:
-                doc = nlp(text[:50_000])  # cap for performance
 
                 # Named entities -- skip blocked types, boost allowed types
                 for ent in doc.ents:
@@ -270,6 +298,97 @@ def get_keyword_extractor() -> YAKEKeywordExtractor:
         _extractor_instance = YAKEKeywordExtractor()
     return _extractor_instance
 
+def extract_concepts(text: str, top_n: int = 15) -> dict:
+    """Unified concept extraction: spaCy-first, YAKE-supplementary.
+
+    spaCy noun chunks (0.7) and entities (0.8) are primary.
+    YAKE phrases (0.5) supplement when spaCy produces < 5 keywords.
+    POS filtering rejects YAKE bigrams containing verbs.
+
+    Returns: {keyword: score} dict sorted by score descending.
+    """
+    if not text or len(text.strip()) < 10:
+        return {}
+
+    scores: dict[str, float] = {}
+
+    # -- 1. spaCy: noun chunks + entities (PRIMARY) --
+    nlp = _get_nlp()
+    doc = None
+    blocked_entity_texts = set()
+    if nlp is not None:
+        try:
+            doc = nlp(text[:50_000])
+
+            # Named entities: block PERSON, allow ORG/GPE/NORP/LOC
+            for ent in doc.ents:
+                if ent.label_ in YAKEKeywordExtractor.BLOCKED_ENTITY_TYPES:
+                    blocked_entity_texts.add(ent.text.lower().strip())
+                    continue
+                if ent.label_ in YAKEKeywordExtractor.ENTITY_TYPES:
+                    kw = ent.text.lower().strip()
+                    if len(kw) >= YAKEKeywordExtractor.MIN_KW_LEN:
+                        scores[kw] = max(scores.get(kw, 0.0), 0.8)
+
+            # Noun chunks: primary concept source (both phrase and root)
+            _STOP_ARTICLES = {'the', 'a', 'an'}
+            for chunk in doc.noun_chunks:
+                # Full noun chunk phrase (e.g., "neural network")
+                # Strip leading articles: "The neural network" -> "neural network"
+                words = chunk.text.lower().strip().split()
+                while words and words[0] in _STOP_ARTICLES:
+                    words.pop(0)
+                phrase = ' '.join(words)
+                if len(phrase) >= YAKEKeywordExtractor.MIN_KW_LEN:
+                    scores[phrase] = max(scores.get(phrase, 0.0), 0.7)
+                # Root lemma as fallback
+                kw = chunk.root.lemma_.lower().strip()
+                if len(kw) >= YAKEKeywordExtractor.MIN_KW_LEN and not chunk.root.is_stop:
+                    scores[kw] = max(scores.get(kw, 0.0), 0.7)
+
+            # Individual nouns/proper nouns
+            for tok in doc:
+                if tok.pos_ in ("NOUN", "PROPN") and not tok.is_stop:
+                    kw = tok.lemma_.lower().strip()
+                    if len(kw) >= YAKEKeywordExtractor.MIN_KW_LEN and kw.isalpha():
+                        scores[kw] = max(scores.get(kw, 0.0), 0.35)
+        except Exception as e:
+            logger.warning(f"spaCy extraction failed: {e}")
+
+    # -- 2. YAKE: supplementary (only if spaCy produced < 5 keywords) --
+    if len(scores) < 5:
+        yake = _get_yake()
+        if yake is not None:
+            try:
+                raw = yake.extract_keywords(text)
+                if raw:
+                    min_s = min(s for _, s in raw)
+                    max_s = max(s for _, s in raw)
+                    rng = max(max_s - min_s, 1e-9)
+                    for kw, s in raw:
+                        kw = kw.lower().strip()
+                        if len(kw) < YAKEKeywordExtractor.MIN_KW_LEN:
+                            continue
+                        if s > YAKEKeywordExtractor.YAKE_SCORE_CAP:
+                            continue
+                        # POS filter: reject bigrams containing verbs
+                        if YAKEKeywordExtractor._is_verb_containing_bigram(kw, doc):
+                            continue
+                        # YAKE gets confidence 0.5 (supplementary)
+                        rel = 0.5
+                        scores[kw] = max(scores.get(kw, 0.0), rel)
+            except Exception as e:
+                logger.warning(f"YAKE extraction failed: {e}")
+
+    # -- 3. Filter: weak phrases, blocked names, blocked entities --
+    sorted_kws = sorted(scores.items(), key=lambda x: -x[1])
+    sorted_kws = [kv for kv in sorted_kws if not YAKEKeywordExtractor._is_weak_phrase(kv[0])]
+    sorted_kws = [kv for kv in sorted_kws
+                  if not all(w in _BLOCKED_NAMES for w in kv[0].split())]
+    if blocked_entity_texts:
+        sorted_kws = [kv for kv in sorted_kws if kv[0] not in blocked_entity_texts]
+
+    return dict(sorted_kws[:top_n])
 
 if __name__ == "__main__":
     text = (

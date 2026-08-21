@@ -1,4 +1,4 @@
-﻿"""Flask API: tracking, feedback/retraining, knowledge graph, micro-quiz, and ingest endpoints."""
+"""Flask API: tracking, feedback/retraining, knowledge graph, micro-quiz, and ingest endpoints."""
 
 import json
 import os
@@ -727,7 +727,7 @@ def browser_ingest():
             sanitize_text_for_storage, is_sensitive_window,
             strip_redaction_markers, filter_sensitive_keywords,
         )
-        from tracker_app.tracking.keyword_extractor import get_keyword_extractor
+        from tracker_app.tracking.keyword_extractor import extract_concepts
         from tracker_app.learning.concept_scheduler import ConceptScheduler
         from tracker_app.learning.text_quality_validator import validate_and_clean_extraction
 
@@ -747,11 +747,8 @@ def browser_ingest():
         if not validation.get('is_useful', False):
             return jsonify({'success': True, 'message': 'Text filtered as low quality'})
 
-        extractor = get_keyword_extractor()
-        keywords  = filter_sensitive_keywords(
-            extractor.get_keyword_scores_dict(
-                validation['cleaned_text'], top_n=15
-            )
+        keywords = filter_sensitive_keywords(
+            extract_concepts(validation['cleaned_text'], top_n=15)
         )
 
         if not keywords:

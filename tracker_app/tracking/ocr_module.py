@@ -9,6 +9,7 @@ import spacy
 import logging
 from tracker_app.tracking.knowledge_graph import get_graph
 from tracker_app.tracking.keyword_extractor import get_keyword_extractor
+from tracker_app.tracking.keyword_extractor import extract_concepts
 from tracker_app.learning.text_quality_validator import validate_and_clean_extraction
 from tracker_app.tracking.privacy_filter import (
     sanitize_text_for_storage, is_sensitive_window, strip_redaction_markers,
@@ -262,100 +263,29 @@ def extract_keywords(text, top_n=15, boost_repeats=True, graph=None):
     
     # Use cleaned text for extraction
     clean_text = validation['cleaned_text']
-    kw_dict = {}  # unified keyword dict used by all extraction steps below
     
+    # Unified extraction: spaCy-first, YAKE-supplementary
     try:
-        # TF-IDF extraction on VALIDATED and SANITIZED text
-        if kw_extractor:
-            keywords = kw_extractor.extract_keywords(clean_text, top_n=10)
-            for kw, score in keywords:
-                # Additional filter: skip single-char and UI garbage
-                if len(kw) > 2 and kw.lower() not in {'the', 'and', 'for', 'with'}:
-                    kw_dict[kw] = score * 0.8
+        kw_dict = extract_concepts(clean_text, top_n=top_n)
     except Exception as e:
-        logger.warning(f"Keyword extraction failed: {e}")
+        logger.warning(f"Concept extraction failed: {e}")
+        kw_dict = {}
 
-    try:
-        # 2️⃣ NLP nouns/proper nouns & entities (if available)
-        if nlp is not None and text.strip():
-            doc = nlp(text[:50000])  # Limit text length for performance (matches keyword_extractor)
-            
-            # Extract nouns and proper nouns
-            nlp_keywords = [
-                token.lemma_.lower() for token in doc
-                if token.is_alpha and not token.is_stop 
-                and token.pos_ in ("NOUN", "PROPN")
-                and len(token.lemma_) > 2
-            ]
-            
-            # Extract named entities
-            entities = [ent.text.lower() for ent in doc.ents if ent.label_ in ["PERSON", "ORG", "GPE", "PRODUCT", "EVENT"]]
-            
-            # Add to kw_dict with moderate scores
-            for kw in set(nlp_keywords + entities):
-                if kw not in kw_dict:
-                    kw_dict[kw] = 0.3
-    except Exception as e:
-        logger.warning(f"spaCy processing failed: {e}")
-
-    # 3️⃣ Split camelCase / snake_case — but keep multi-word phrases intact:
-    # 'calvin cycle' is a better concept than 'calvin' + 'cycle', and the old
-    # unconditional split was destroying every YAKE two-word keyword.
-    split_keywords = {}
-    for kw, score in kw_dict.items():
-        try:
-            if ' ' in kw:
-                split_keywords[kw] = max(score, split_keywords.get(kw, 0.0))
-                continue
-            split_keywords[kw.lower()] = max(score, split_keywords.get(kw.lower(), 0.0))
-            parts = re.split(r'[_]', kw)
-            final_parts = []
-            for part in parts:
-                camel_parts = re.findall(r'[A-Z]?[a-z]+|[A-Z]+(?=[A-Z]|$)', part)
-                final_parts.extend(camel_parts)
-            
-            for p in final_parts:
-                p = p.lower().strip()
-                if len(p) > 2:  # Only keep meaningful parts
-                    split_keywords[p] = max(score, split_keywords.get(p, 0.0))
-        except Exception as e:
-            logger.warning(f"Error splitting keyword {kw}: {e}")
-            continue
-            
-    kw_dict = split_keywords
-
-    # 4️⃣ Boost repeated keywords in text
-    if boost_repeats and text:
-        try:
-            words = re.findall(r'\b[a-z]{3,}\b', text.lower())  # Words of 3+ letters
-            word_counts = {}
-            for word in words:
-                word_counts[word] = word_counts.get(word, 0) + 1
-            
-            for kw in list(kw_dict.keys()):
-                if kw in word_counts and word_counts[kw] > 1:
-                    kw_dict[kw] += 0.05 * (word_counts[kw] - 1)  # Small boost per repetition
-        except Exception as e:
-            logger.warning(f"Repetition boosting failed: {e}")
-
-    # 5️⃣ Boost keywords existing in knowledge graph
+    # Boost keywords existing in knowledge graph (OCR-specific)
     try:
         if graph is None:
             graph = get_graph()
         for kw in list(kw_dict.keys()):
             if kw in graph.nodes:
-                kw_dict[kw] = min(1.0, kw_dict[kw] + 0.1)  # Small consistent boost
+                kw_dict[kw] = min(1.0, kw_dict[kw] + 0.1)
     except Exception as e:
         logger.warning(f"Knowledge graph boosting failed: {e}")
 
-    # 6️ Sort by score and return top_n
+    # Final privacy filter
     try:
-        sorted_keywords = dict(sorted(kw_dict.items(), key=lambda x: x[1], reverse=True))
-        top = dict(list(sorted_keywords.items())[:top_n])
-        # Drop any keyword that is itself sensitive data or marker noise.
-        return filter_sensitive_keywords(top)
+        return filter_sensitive_keywords(kw_dict)
     except Exception as e:
-        logger.warning(f"Error sorting keywords: {e}")
+        logger.warning(f"Error filtering keywords: {e}")
         return {}
 
 
