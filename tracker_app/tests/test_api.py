@@ -353,7 +353,7 @@ class TestTrendAnalysisBoundary(TestAPIBase):
                     concepts_encountered=1, avg_attention=0.5))
             db.commit()
 
-            with mock.patch("tracker_app.db.repository.datetime", fake_dt):
+            with mock.patch("tracker_app.db.repository._utcnow", return_value=fixed_now):
                 result = TrackingRepository.get_trend_analysis(db, days=7)
 
         self.assertEqual(result["tracking_days"], 2)
