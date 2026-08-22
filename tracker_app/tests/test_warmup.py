@@ -1,12 +1,12 @@
-"""Tests: startup warm-up pre-builds the knowledge graph (Phase 10.5).
+﻿"""Tests: startup warm-up pre-builds the knowledge graph (Phase 10.5).
 
 warm_up_all_pipelines() pre-loads lazy models in a background thread at startup
 so the micro-quiz hot path never triggers a multi-minute SentenceTransformer
 embed+sync inside the tracking loop. This verifies the graph is pre-built and
 that webcam warm-up only happens when webcam capture is enabled.
 
-psutil/pynput are deliberately excluded from CI's reduced Linux dep set, so the
-fixture stubs them (and the warm-up entry points) before importing loop.
+psutil/pynput are stubbed globally in conftest.py before any tracker_app
+imports, so this fixture only needs to mock the tracker_app-specific modules.
 
 Run: python -m pytest tracker_app/tests/test_warmup.py -v
 """
@@ -34,10 +34,6 @@ def loop_with_fakes(monkeypatch):
         return _inner
 
     fakes = {
-        "psutil": _fake_module("psutil"),
-        "pynput": _fake_module("pynput"),
-        "pynput.keyboard": _fake_module("pynput.keyboard", Listener=object),
-        "pynput.mouse": _fake_module("pynput.mouse", Listener=object),
         "tracker_app.tracking.keyword_extractor": _fake_module(
             "tracker_app.tracking.keyword_extractor",
             get_keyword_extractor=tracked("keyword_extractor")),
