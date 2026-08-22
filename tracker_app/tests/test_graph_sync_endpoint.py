@@ -37,12 +37,15 @@ class GraphSyncEndpointTest(unittest.TestCase):
     def test_get_does_not_trigger_sync_and_post_does(self):
         # The SPA catch-all serves index.html for any unmatched GET, so a GET
         # must return HTML and never invoke the force-sync; only POST runs it.
+        # Mock send_from_directory to avoid depending on frontend/dist existing.
         with mock.patch.object(kg, "sync_db_to_graph",
                                return_value={"nodes": 0, "edges": 0, "synced": 0}) as patched:
-            get_resp = self.client.get('/api/v1/graph/sync')
-            self.assertEqual(get_resp.status_code, 200)
-            self.assertIn('text/html', get_resp.content_type)
-            patched.assert_not_called()
+            with mock.patch('tracker_app.web.app.send_from_directory',
+                            return_value=('<html></html>', 200, {'Content-Type': 'text/html'})):
+                get_resp = self.client.get('/api/v1/graph/sync')
+                self.assertEqual(get_resp.status_code, 200)
+                self.assertIn('text/html', get_resp.content_type)
+                patched.assert_not_called()
             post_resp = self.client.post('/api/v1/graph/sync')
         self.assertEqual(post_resp.status_code, 200)
         patched.assert_called_once_with(force=True)

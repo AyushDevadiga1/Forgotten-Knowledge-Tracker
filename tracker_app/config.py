@@ -1,4 +1,4 @@
-﻿"""Single source of truth for FKT configuration (env- and .env-driven).
+"""Single source of truth for FKT configuration (env- and .env-driven).
 
 tracker_app.config_manager is DEPRECATED — never import it.
 """
@@ -14,11 +14,9 @@ if _ENV_FILE.exists():
 else:
     load_dotenv()  # fallback: search CWD
 
-# Auto-generate SECRET_KEY if not set
-if not os.environ.get('SECRET_KEY'):
+# Auto-generate SECRET_KEY if not set or too short (CI may inject a weak key)
+if not os.environ.get('SECRET_KEY') or len(os.environ.get('SECRET_KEY', '')) < 32:
     _new_key = secrets.token_hex(32)
-    with open(_ENV_FILE, 'a') as f:
-        f.write(f'\nSECRET_KEY={_new_key}\n')
     os.environ['SECRET_KEY'] = _new_key
 
 # Auto-generate API_KEY if not set

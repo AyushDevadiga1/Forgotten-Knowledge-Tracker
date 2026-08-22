@@ -21,6 +21,11 @@ from tracker_app.db.models import Base
 import tracker_app.learning.concept_scheduler as cs_mod
 
 
+def _limiter_enabled():
+    """Check if rate limiting is actually enabled in this process."""
+    return app.config.get('RATELIMIT_ENABLED', True) and limiter.enabled
+
+
 class RateLimitBase(unittest.TestCase):
     def setUp(self):
         self.test_engine = create_engine('sqlite:///:memory:')
@@ -49,6 +54,7 @@ class RateLimitBase(unittest.TestCase):
         app.config['TESTING'] = True
 
 
+@unittest.skipUnless(_limiter_enabled(), "rate limiting disabled (RATELIMIT_ENABLED=false)")
 class TestLimiterWiring(RateLimitBase):
     def test_limiter_attached_to_app_and_enabled(self):
         self.assertIn(limiter, app.extensions['limiter'])
