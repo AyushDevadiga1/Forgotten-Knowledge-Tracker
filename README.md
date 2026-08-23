@@ -368,35 +368,42 @@ FKT introduces several ideas not found in any existing knowledge management or s
 
 **Cognitive Load Estimator (CLE)** — Estimates mental engagement from keystroke dynamics (inter-key interval entropy, typing speed variance, backspace rate, pause density, burst length) without requiring a camera. Based on Epp et al. (2011) and Vizer et al. (2009).
 
-**Attention-Weighted Forgetting Curve (AWFC)** *(in development)* — Adjusts the Ebbinghaus decay constant λ based on your attention level at the moment a concept was first encountered. Concepts learned during high-focus sessions decay up to 30% slower.
+**Attention-Weighted Forgetting Curve (AWFC)** — Adjusts the Ebbinghaus decay constant λ based on your attention level at the moment a concept was first encountered. Concepts learned during high-focus sessions decay up to 30% slower. *(implemented)* — Adjusts the Ebbinghaus decay constant λ based on your attention level at the moment a concept was first encountered. Concepts learned during high-focus sessions decay up to 30% slower.
 
-**Cross-Session Concept Drift Detection** *(in development)* — Tracks how your understanding of each concept evolves across weeks using Jaccard distance on semantic co-occurrence. Surfaces stagnant or regressing concepts before they fully decay.
+**Cross-Session Concept Drift Detection** *(implemented)* — Tracks how your understanding of each concept evolves across weeks using Jaccard distance on semantic co-occurrence. Surfaces stagnant or regressing concepts before they fully decay.
 
-**Knowledge Gap Mapping** *(in development)* — Uses graph traversal to identify concepts that are adjacent to your existing knowledge but not yet in your graph, enabling proactive learning path suggestions.
+**Knowledge Gap Mapping** *(implemented)* — Uses graph traversal to identify concepts that are adjacent to your existing knowledge but not yet in your graph, enabling proactive learning path suggestions.
 
-**Micro-Quiz Interrupts** *(in development)* — Automatically generates contextual quiz questions from your own captured content during idle periods, feeding results back into SM-2 scheduling.
+**Micro-Quiz Interrupts** *(implemented)* — Automatically generates contextual quiz questions from your own captured content during idle periods, feeding results back into SM-2 scheduling.
 
 ---
 
 ## Roadmap
 
-| Phase | Status | Description |
-|---|---|---|
-| 1 — Crash Fixes | ✅ Done | All 5 critical crashes resolved; config unified; CLE built |
-| 2 — ML Pipeline | ✅ Done | YAKE! extractor; RandomForest intent classifier; training script |
-| 3 — Database | ✅ Done | SQLite + SQLAlchemy; custom migration runner; FK relationships |
-| 4 — AWFC | ✅ Done | Personalised forgetting curve (attention-weighted λ) |
-| 5 — Audio | ✅ Done | MFCC-based audio classifier; async recording |
-| 6 — Graph | ✅ Done | Concept graph; drift detection; graph page |
-| 7 — Micro-Quiz | ✅ Done | Idle-triggered quiz interrupts; quiz page |
-| 8 — Performance | ✅ Done | Thread pool; lazy-loaded pipelines; adaptive throttling |
-| 9 — Self-Improving | ✅ Done | Auto-retrain from session logs |
-| 10 — Browser Ext | ✅ Done | `/ingest` endpoint + FKT Capture Chrome extension |
-| 11 — Frontend | ✅ Done | React dashboard: overview, graph, quiz, review, add concept |
+### Completed
 
-See `architecture/` for the ADRs and design docs.
+| Phase | Description |
+|---|---|
+| 1-11 — Core Build | All core features: tracking loop, ML pipeline, DB, AWFC, audio, graph, quiz, performance, self-improving, browser extension, React frontend |
+| Security Hardening | API key auth, CSRF protection, rate limiting, secret validation, XSS prevention |
+| Concept Filtering | ML-based intent classifier + keyword blacklist + context-aware filtering |
+| Extraction Pipeline | YAKE + spaCy NER, deduplication, UI chrome filtering, multi-word span merging |
+| CI/CD | pynput headless stubs, mock fixes, .env config validation — 378 tests passing |
 
----
+### Current State (2026-08-22)
+
+378 tests passing, 0 failures. See `CURRENT-PROBLEMS.md` for the 10 open issues identified in the system health analysis. See `docs/project-metrics/HEALTH.md` for the full deep-dive.
+
+### Next Priorities
+
+1. Wire existing server features to API/UI (search, archive, export, daily summary, trends)
+2. Triage queue for captured concepts before they hit the deck
+3. Richer quiz types (cloze, typed recall, fill-in-the-blank)
+4. Bidirectional concept-deck sync
+5. Dashboard for existing telemetry (attention, cognitive load, study timeline)
+
+See `architecture/` for ADRs and design docs.
+
 
 ## Academic Background
 
@@ -407,6 +414,23 @@ FKT was developed as a final-year B.E. project in Computer Science (AI/ML) at Bh
 - **YAKE!** (Campos et al., 2020) — unsupervised single-document keyword extraction
 - **Keystroke dynamics** (Epp et al., 2011; Vizer et al., 2009) — cognitive load from typing patterns
 - **MediaPipe FaceMesh** — real-time facial landmark detection for EAR computation
+
+---
+
+## Project Health
+
+| Metric | Value |
+|--------|-------|
+| Python LOC | 14,768 (14.8 KLOC) |
+| Test files | 43 |
+| Passing tests | 378 |
+| API endpoints | 27 |
+| Git commits | 303+ |
+
+- `CURRENT-PROBLEMS.md` — 10 open issues with severity and effort estimates
+- `docs/project-metrics/HEALTH.md` — full system health deep-dive
+- `docs/project-metrics/snapshots/` — baseline metrics over time
+- `docs/dependency-map/index.html` — interactive function dependency map
 
 ---
 
