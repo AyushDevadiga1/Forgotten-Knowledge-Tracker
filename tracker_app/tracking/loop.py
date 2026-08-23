@@ -2,7 +2,6 @@
 
 import time
 import logging
-import threading
 from threading import Event
 from concurrent.futures import ThreadPoolExecutor, Future
 from typing import Optional, Tuple
@@ -11,7 +10,10 @@ import psutil
 from pynput import keyboard, mouse
 
 from tracker_app.config import (
-    TRACK_INTERVAL, SCREENSHOT_INTERVAL, AUDIO_INTERVAL, WEBCAM_INTERVAL,
+    TRACK_INTERVAL,
+    SCREENSHOT_INTERVAL,
+    AUDIO_INTERVAL,
+    WEBCAM_INTERVAL,
     SESSION_ALLOWED_INTENTS,
 )
 from tracker_app.db.db_module import init_all_databases
@@ -25,8 +27,8 @@ logger = logging.getLogger("TrackerLoop")
 
 # â”€â”€â”€ Lazy pipeline loaders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-_ocr_pipeline    = None
-_audio_pipeline  = None
+_ocr_pipeline = None
+_audio_pipeline = None
 _webcam_pipeline = None
 
 
@@ -34,6 +36,7 @@ def get_ocr_pipeline():
     global _ocr_pipeline
     if _ocr_pipeline is None:
         from tracker_app.tracking.ocr_module import ocr_pipeline
+
         _ocr_pipeline = ocr_pipeline
     return _ocr_pipeline
 
@@ -41,9 +44,8 @@ def get_ocr_pipeline():
 def get_audio_pipeline():
     global _audio_pipeline
     if _audio_pipeline is None:
-        from tracker_app.tracking.audio_module import (
-            audio_pipeline_async, get_cached_audio_result
-        )
+        from tracker_app.tracking.audio_module import audio_pipeline_async, get_cached_audio_result
+
         _audio_pipeline = (audio_pipeline_async, get_cached_audio_result)
     return _audio_pipeline
 
@@ -52,6 +54,7 @@ def get_webcam_pipeline():
     global _webcam_pipeline
     if _webcam_pipeline is None:
         from tracker_app.tracking.webcam_module import webcam_pipeline
+
         _webcam_pipeline = webcam_pipeline
     return _webcam_pipeline
 
@@ -60,13 +63,16 @@ def get_webcam_pipeline():
 # Callbacks are closures over the loop-local monitor/cle so that importing
 # this module does NOT instantiate any live resources at module load time.
 
+
 def _make_listeners(monitor, cle):
     """Return (on_key_press, on_mouse_click) closures bound to monitor/cle."""
+
     def on_key_press(key):
         monitor.keyboard_counter.increment()
         try:
             from pynput.keyboard import Key
-            is_backspace = (key == Key.backspace)
+
+            is_backspace = key == Key.backspace
         except Exception:
             is_backspace = False
         cle.record_key(is_backspace=is_backspace)
@@ -96,19 +102,21 @@ def start_listeners(monitor, cle):
 
 # â”€â”€â”€ Window / interaction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+
 def get_active_window(monitor) -> Tuple[str, float]:
     """Return (window_title, interaction_rate_per_second)."""
     try:
         try:
             import win32gui
-            hwnd  = win32gui.GetForegroundWindow()
+
+            hwnd = win32gui.GetForegroundWindow()
             title = win32gui.GetWindowText(hwnd) or "Unknown"
         except ImportError:
             title = "Unknown"
         kb_events = monitor.keyboard_counter.get_and_reset()
         ms_events = monitor.mouse_counter.get_and_reset()
-        total     = kb_events + ms_events
-        rate      = min(total / TRACK_INTERVAL if TRACK_INTERVAL > 0 else 0, 100)
+        total = kb_events + ms_events
+        rate = min(total / TRACK_INTERVAL if TRACK_INTERVAL > 0 else 0, 100)
         return title, rate
     except Exception as e:
         logger.error(f"get_active_window error: {e}")
@@ -116,6 +124,7 @@ def get_active_window(monitor) -> Tuple[str, float]:
 
 
 # â”€â”€â”€ Attention blending â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 def _get_attention_score(
     webcam_enabled: bool,
@@ -129,22 +138,24 @@ def _get_attention_score(
     compute_attention_score instead of hardcoded defaults.
     """
     from tracker_app.tracking.webcam_module import compute_attention_score
-    cle_score = cle.get_cle_score()['cle_score'] * 100
+
+    cle_score = cle.get_cle_score()["cle_score"] * 100
     if webcam_enabled and webcam_result is not None:
-        raw_ear = webcam_result.get('_raw_ear_values', [])
-        if raw_ear and ear_calibration and not ear_calibration.get('fallback'):
+        raw_ear = webcam_result.get("_raw_ear_values", [])
+        if raw_ear and ear_calibration and not ear_calibration.get("fallback"):
             webcam_score = compute_attention_score(
                 raw_ear,
-                ear_low=ear_calibration['personal_ear_low'],
-                ear_high=ear_calibration['personal_ear_high'],
+                ear_low=ear_calibration["personal_ear_low"],
+                ear_high=ear_calibration["personal_ear_high"],
             )
         else:
-            webcam_score = webcam_result.get('attentiveness_score', 50.0)
+            webcam_score = webcam_result.get("attentiveness_score", 50.0)
         return round(0.70 * webcam_score + 0.30 * cle_score, 1)
     return round(cle_score, 1)
 
 
 # â”€â”€â”€ Adaptive interval throttling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 def _get_effective_intervals() -> dict:
     """
@@ -159,13 +170,14 @@ def _get_effective_intervals() -> dict:
     else:
         mult = 1.0
     return {
-        'ocr':    SCREENSHOT_INTERVAL * mult,
-        'audio':  AUDIO_INTERVAL      * mult,
-        'webcam': WEBCAM_INTERVAL,           # already infrequent â€” don't throttle
+        "ocr": SCREENSHOT_INTERVAL * mult,
+        "audio": AUDIO_INTERVAL * mult,
+        "webcam": WEBCAM_INTERVAL,  # already infrequent â€” don't throttle
     }
 
 
 # â”€â”€â”€ Pipeline warm-up â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 def warm_up_all_pipelines(webcam_enabled: bool = True):
     """
@@ -177,6 +189,7 @@ def warm_up_all_pipelines(webcam_enabled: bool = True):
 
     try:
         from tracker_app.tracking.keyword_extractor import get_keyword_extractor
+
         get_keyword_extractor()
         log.info("  keyword extractor ready")
     except Exception as e:
@@ -184,13 +197,13 @@ def warm_up_all_pipelines(webcam_enabled: bool = True):
 
     try:
         from tracker_app.tracking.intent_module import _load_model
+
         _load_model()
         log.info("  intent classifier ready")
     except Exception as e:
         log.warning(f"  intent classifier: {e}")
 
     try:
-        import tracker_app.tracking.audio_module  # heuristics-only since ADR-002; import warms sounddevice
         log.info("  audio classifier ready")
     except Exception as e:
         log.warning(f"  audio classifier: {e}")
@@ -198,6 +211,7 @@ def warm_up_all_pipelines(webcam_enabled: bool = True):
     if webcam_enabled:
         try:
             from tracker_app.tracking.webcam_module import _get_face_mesh
+
             _get_face_mesh()
             log.info("  mediapipe face mesh ready")
         except Exception as e:
@@ -208,6 +222,7 @@ def warm_up_all_pipelines(webcam_enabled: bool = True):
         # the micro-quiz hot path never triggers a multi-minute embed+sync while
         # the tracking loop is mid-session.
         from tracker_app.tracking.knowledge_graph import get_graph
+
         get_graph()
         log.info("  knowledge graph ready")
     except Exception as e:
@@ -217,6 +232,7 @@ def warm_up_all_pipelines(webcam_enabled: bool = True):
 
 
 # â”€â”€â”€ Safe pipeline runner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 def _safe_run(fn):
     """Wrap a pipeline call to catch all exceptions gracefully."""
@@ -243,25 +259,27 @@ def _maybe_trigger_quiz(
     if not session_is_active():
         _idle_cycles = 0
         return
-    if intent_label == 'idle':
+    if intent_label == "idle":
         _idle_cycles += 1
     else:
         _idle_cycles = 0
 
     try:
-        from tracker_app.tracking.quiz_engine import (
-            should_show_quiz, generate_micro_quiz, record_quiz_broadcast
-        )
+        from tracker_app.tracking.quiz_engine import should_show_quiz, generate_micro_quiz, record_quiz_broadcast
         from tracker_app.tracking.knowledge_graph import get_graph
+
         if should_show_quiz(
-            _idle_cycles, webcam_enabled, attention_score,
+            _idle_cycles,
+            webcam_enabled,
+            attention_score,
             session_active=session_is_active(),
         ):
             graph = get_graph()
-            quiz  = generate_micro_quiz(graph)
+            quiz = generate_micro_quiz(graph)
             if quiz:
                 try:
                     from tracker_app.web.realtime import broadcast_micro_quiz
+
                     broadcast_micro_quiz(quiz)
                 except Exception:
                     pass  # dashboard may not be running
@@ -275,6 +293,7 @@ def _maybe_trigger_quiz(
 
 # â”€â”€â”€ Main tracking loop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+
 def track_loop(
     stop_event: Optional[Event] = None,
     webcam_enabled: bool = True,
@@ -283,9 +302,7 @@ def track_loop(
         stop_event = Event()
 
     logger.info("FKT 2.0 tracking loop starting...")
-    logger.info(
-        f"Webcam: {'ENABLED' if webcam_enabled else 'DISABLED (CLE fallback)'}"
-    )
+    logger.info(f"Webcam: {'ENABLED' if webcam_enabled else 'DISABLED (CLE fallback)'}")
 
     init_all_databases()
 
@@ -296,11 +313,12 @@ def track_loop(
     global _idle_cycles
     _idle_cycles = 0
     from tracker_app.tracking.quiz_engine import reset_quiz_state
+
     reset_quiz_state()
 
     # â”€â”€ Create session-scoped singletons here, not at module import â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     monitor = ActivityMonitor()
-    cle     = get_cle()
+    cle = get_cle()
 
     kb_listener, ms_listener = start_listeners(monitor, cle)
     if not kb_listener or not ms_listener:
@@ -310,8 +328,8 @@ def track_loop(
     cle.reset()
 
     audio_counter = ocr_counter = webcam_counter = save_counter = 0
-    ocr_result    = {'keywords': {}}
-    audio_result  = {'audio_label': 'silence', 'confidence': 0.9}
+    ocr_result = {"keywords": {}}
+    audio_result = {"audio_label": "silence", "confidence": 0.9}
     webcam_result: Optional[dict] = None
 
     # Compute attention BEFORE first cycle so the variable always exists
@@ -349,8 +367,9 @@ def track_loop(
                     from tracker_app.config import CALIBRATION_DURATION_SECONDS
                     from tracker_app.tracking import session_state as _ss
                     from tracker_app.tracking.session_state import set_calibration
+
                     existing = _ss.get_calibration()
-                    if existing is None or existing.get('fallback'):
+                    if existing is None or existing.get("fallback"):
                         logger.info("Starting EAR calibration (%ds)...", CALIBRATION_DURATION_SECONDS)
                         cal_result = calibrate_ear(CALIBRATION_DURATION_SECONDS)
                         set_calibration(cal_result)
@@ -359,6 +378,7 @@ def track_loop(
             ear_calibration = None
             if webcam_enabled:
                 from tracker_app.tracking import session_state as _ss
+
                 ear_calibration = _ss.get_calibration()
 
             window_title, interaction_rate = get_active_window(monitor)
@@ -373,10 +393,10 @@ def track_loop(
 
             # â”€â”€ Kick off async audio (non-blocking) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             audio_counter += TRACK_INTERVAL
-            if audio_counter >= intervals['audio']:
+            if audio_counter >= intervals["audio"]:
                 try:
                     audio_async, _ = get_audio_pipeline()
-                    audio_async()   # background thread â€” returns immediately
+                    audio_async()  # background thread â€” returns immediately
                 except Exception as e:
                     logger.warning(f"Audio launch error: {e}")
                 audio_counter = 0
@@ -386,20 +406,20 @@ def track_loop(
                 _, get_cached = get_audio_pipeline()
                 audio_result = get_cached()
             except Exception as exc:
-                logger.debug('audio pipeline cache failed: %s', exc)
+                logger.debug("audio pipeline cache failed: %s", exc)
 
             # â”€â”€ OCR + Webcam in parallel via thread pool â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            ocr_counter    += TRACK_INTERVAL
+            ocr_counter += TRACK_INTERVAL
             webcam_counter += TRACK_INTERVAL
 
             futures: dict[str, Future] = {}
 
-            if ocr_counter >= intervals['ocr']:
-                futures['ocr'] = executor.submit(_safe_run, get_ocr_pipeline())
+            if ocr_counter >= intervals["ocr"]:
+                futures["ocr"] = executor.submit(_safe_run, get_ocr_pipeline())
                 ocr_counter = 0
 
-            if webcam_counter >= intervals['webcam'] and webcam_enabled:
-                futures['webcam'] = executor.submit(_safe_run, get_webcam_pipeline())
+            if webcam_counter >= intervals["webcam"] and webcam_enabled:
+                futures["webcam"] = executor.submit(_safe_run, get_webcam_pipeline())
                 webcam_counter = 0
 
             # Collect results (with timeout to prevent stalling the loop).
@@ -409,9 +429,9 @@ def track_loop(
                     result = future.result(timeout=8)
                     if result is None:
                         continue
-                    if name == 'ocr':
+                    if name == "ocr":
                         ocr_result = result
-                    elif name == 'webcam':
+                    elif name == "webcam":
                         webcam_result = result
                 except Exception as e:
                     logger.warning(f"{name} pipeline future error: {e}")
@@ -421,15 +441,15 @@ def track_loop(
             monitor.update_attention(attention_score)
 
             # â”€â”€ Intent prediction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            intent_result = {'intent_label': 'unknown', 'confidence': 0.0}
+            intent_result = {"intent_label": "unknown", "confidence": 0.0}
             try:
                 intent_result = predict_intent(
-                    ocr_keywords=ocr_result.get('keywords', {}),
-                    audio_label=audio_result.get('audio_label', 'silence'),
+                    ocr_keywords=ocr_result.get("keywords", {}),
+                    audio_label=audio_result.get("audio_label", "silence"),
                     attention_score=attention_score,
                     interaction_rate=interaction_rate,
                     use_webcam=webcam_enabled,
-                    audio_confidence=audio_result.get('confidence', 0.7),
+                    audio_confidence=audio_result.get("confidence", 0.7),
                 )
                 monitor.process_intent(intent_result, context=context)
             except Exception as e:
@@ -439,10 +459,10 @@ def track_loop(
             # Even inside a study session, only persist concepts on cycles the
             # intent classifier labels as active studying, so a mid-session
             # distraction (YouTube tab, chat message) is not captured.
-            intent_label = intent_result.get('intent_label', 'unknown')
+            intent_label = intent_result.get("intent_label", "unknown")
             if intent_label in SESSION_ALLOWED_INTENTS:
                 monitor.process_concepts(
-                    ocr_result.get('keywords', {}),
+                    ocr_result.get("keywords", {}),
                     attention_score=attention_score,  # AWFC
                 )
 

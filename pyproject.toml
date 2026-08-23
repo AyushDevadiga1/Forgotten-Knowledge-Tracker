@@ -6,3 +6,47 @@ requires-python = ">=3.11"
 [tool.pytest.ini_options]
 testpaths = ["tracker_app/tests"]
 pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "B",     # flake8-bugbear
+    "S",     # flake8-bandit (security)
+    "T20",   # flake8-print (disallow print in production)
+    "SIM",   # flake8-simplify
+    "RUF",   # ruff-specific rules
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # function call in default argument (Flask pattern)
+    "S603",   # subprocess call - check for execution of untrusted input
+    "S607",   # start process with partial path
+    "T201",   # print found (allowed in scripts/tools)
+    "RUF012", # mutable class attributes (SQLAlchemy pattern)
+    "RUF001", # ambiguous unicode in strings (intentional Unicode chars)
+    "RUF002", # ambiguous unicode in docstrings (intentional Unicode chars)
+    "RUF003", # ambiguous unicode in comments (em dashes, arrows, etc.)
+    "E402",   # module import not at top (Flask app pattern)
+    "RUF013", # implicit optional (SQLAlchemy nullable pattern)
+    "S301",   # pickle usage (ML model loading - acceptable)
+    "S311",   # random (non-security usage)
+    "S324",   # hashlib (non-security usage)
+    "S104",   # hardcoded bind all interfaces (Flask dev)
+    "S105",   # hardcoded password (test fixtures, .env.example)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tracker_app/tests/*" = ["S", "T20", "B"]
+"tracker_app/tools/*" = ["T20", "S"]
+"tracker_app/scripts/*" = ["T20"]
+"setup.py" = ["T20"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

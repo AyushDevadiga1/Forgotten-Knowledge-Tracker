@@ -6,35 +6,35 @@ Run: python -m pytest tracker_app/tests/test_learning_tracker.py -v
 """
 
 import unittest
-import json
 import os
 import sys
-from datetime import datetime
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from tracker_app.learning.learning_tracker import LearningTracker
 from tracker_app.db import models
 from tracker_app.db.models import Base, LearningItem, ReviewHistory
 
+
 class TestLearningTrackerBase(unittest.TestCase):
     def setUp(self):
         # Create isolated in-memory engine and session
-        self.engine = create_engine('sqlite:///:memory:')
+        self.engine = create_engine("sqlite:///:memory:")
         self.SessionLocal = sessionmaker(bind=self.engine)
-        
+
         # Patch the global SessionLocal that LearningTracker uses
         self.orig_session = models.SessionLocal
         models.SessionLocal = self.SessionLocal
-        
+
         Base.metadata.create_all(self.engine)
         self.tracker = LearningTracker()
 
     def tearDown(self):
         Base.metadata.drop_all(self.engine)
         models.SessionLocal = self.orig_session
+
 
 class TestAddLearningItem(TestLearningTrackerBase):
     def test_add_valid_item_returns_id(self):
@@ -49,6 +49,7 @@ class TestAddLearningItem(TestLearningTrackerBase):
             self.assertIsNotNone(item)
             self.assertEqual(item.question, "What is recursion?")
 
+
 class TestGetItemsDue(TestLearningTrackerBase):
     def test_empty_db_returns_empty_list(self):
         result = self.tracker.get_items_due()
@@ -59,16 +60,18 @@ class TestGetItemsDue(TestLearningTrackerBase):
         due = self.tracker.get_items_due()
         self.assertEqual(len(due), 1)
 
+
 class TestGetLearningStats(TestLearningTrackerBase):
     def test_stats_with_empty_db(self):
         stats = self.tracker.get_learning_stats()
-        self.assertEqual(stats['total_items'], 0)
+        self.assertEqual(stats["total_items"], 0)
 
     def test_stats_reflect_added_items(self):
         self.tracker.add_learning_item("Q1", "A1")
         self.tracker.add_learning_item("Q2", "A2")
         stats = self.tracker.get_learning_stats()
-        self.assertEqual(stats['total_items'], 2)
+        self.assertEqual(stats["total_items"], 2)
+
 
 class TestRecordReview(TestLearningTrackerBase):
     def test_review_updates_repetitions(self):
@@ -89,11 +92,11 @@ class TestRecordReview(TestLearningTrackerBase):
         """FKT-F-003: last_review_date must be non-null after an sm2 review and
         survive a fresh-session reload (previously always null in API + DB)."""
         item_id = self.tracker.add_learning_item("Q?", "A.")
-        self.tracker.record_review(item_id, quality_rating=5, algorithm='sm2')
+        self.tracker.record_review(item_id, quality_rating=5, algorithm="sm2")
 
         # API surface reflects the persisted value
         item = self.tracker.get_item(item_id)
-        self.assertIsNotNone(item['last_review_date'])
+        self.assertIsNotNone(item["last_review_date"])
 
         # Fresh session reload reads the value back from the DB row
         with self.SessionLocal() as db:
@@ -101,6 +104,5 @@ class TestRecordReview(TestLearningTrackerBase):
             self.assertIsNotNone(row.last_review_date)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-

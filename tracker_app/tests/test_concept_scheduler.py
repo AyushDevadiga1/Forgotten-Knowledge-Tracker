@@ -19,7 +19,7 @@ from tracker_app.learning.concept_scheduler import ConceptScheduler
 
 @pytest.fixture
 def db(monkeypatch):
-    engine = create_engine('sqlite:///:memory:')
+    engine = create_engine("sqlite:///:memory:")
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
     monkeypatch.setattr(models, "engine", engine)
@@ -43,6 +43,7 @@ def scheduler(db):
 
 def _row(db, concept="backpropagation"):
     from tracker_app.db.models import TrackedConcept as TC
+
     with db() as session:
         return session.query(TC).filter(TC.concept == concept).first()
 
@@ -124,9 +125,7 @@ def test_reexposure_nudges_not_overwrites_lambda_after_reviews(db, scheduler, no
 
     scheduler.schedule_next_review("backpropagation", quality=5)
     with db() as session:
-        row = session.query(TrackedConcept).filter(
-            TrackedConcept.concept == "backpropagation"
-        ).first()
+        row = session.query(TrackedConcept).filter(TrackedConcept.concept == "backpropagation").first()
         row.lambda_personalised = 0.42  # simulate recalibrated personalisation
         session.commit()
 
@@ -172,12 +171,9 @@ def test_review_counters_track_quizzes(db, scheduler, no_graph_sync):
 def test_recalibration_waits_for_five_reviews(db, scheduler, no_graph_sync):
     # M-6: no lambda recalibration before 5 quiz reviews, no matter how many
     # OCR re-encounters the concept had.
-    from tracker_app.config import DEFAULT_LAMBDA
 
     with db() as session:
-        row = session.query(TrackedConcept).filter(
-            TrackedConcept.concept == "backpropagation"
-        ).first()
+        row = session.query(TrackedConcept).filter(TrackedConcept.concept == "backpropagation").first()
         row.lambda_personalised = 0.42
         row.frequency_count = 99  # old proxy must NOT trigger recalibration
         session.commit()
@@ -199,9 +195,7 @@ def test_recalibration_uses_cumulative_success_rate(db, scheduler, no_graph_sync
     from datetime import datetime, timedelta
 
     with db() as session:
-        row = session.query(TrackedConcept).filter(
-            TrackedConcept.concept == "backpropagation"
-        ).first()
+        row = session.query(TrackedConcept).filter(TrackedConcept.concept == "backpropagation").first()
         row.first_seen = datetime.utcnow() - timedelta(days=83)  # long-lived
         row.lambda_personalised = 0.1
         session.commit()
@@ -251,6 +245,7 @@ def test_reexposure_auto_promotes_to_deck_at_threshold(db, monkeypatch, no_graph
     from tracker_app.db.models import LearningItem
     from tracker_app.learning.concept_promotion import PROMOTE_AFTER_ENCOUNTERS
     from tracker_app.learning import concept_promotion as cp
+
     monkeypatch.setattr(cp, "SessionLocal", db)
 
     scheduler = ConceptScheduler()
@@ -258,20 +253,14 @@ def test_reexposure_auto_promotes_to_deck_at_threshold(db, monkeypatch, no_graph
         scheduler.add_concept("hash table", confidence=0.5, context="browser:Notes")
 
     with db() as session:
-        tc = session.query(TrackedConcept).filter(
-            TrackedConcept.concept == "hash table"
-        ).first()
+        tc = session.query(TrackedConcept).filter(TrackedConcept.concept == "hash table").first()
         assert tc.frequency_count == PROMOTE_AFTER_ENCOUNTERS
-        assert session.query(LearningItem).filter(
-            LearningItem.question == "hash table"
-        ).count() == 1
+        assert session.query(LearningItem).filter(LearningItem.question == "hash table").count() == 1
 
     # A 4th encounter must not create a duplicate deck item.
     scheduler.add_concept("hash table", confidence=0.5, context="browser:Notes")
     with db() as session:
-        assert session.query(LearningItem).filter(
-            LearningItem.question == "hash table"
-        ).count() == 1
+        assert session.query(LearningItem).filter(LearningItem.question == "hash table").count() == 1
 
 
 def test_reexposure_does_not_promote_noise(db, monkeypatch, no_graph_sync):
@@ -279,6 +268,7 @@ def test_reexposure_does_not_promote_noise(db, monkeypatch, no_graph_sync):
     # but never enters the learning deck.
     from tracker_app.db.models import LearningItem
     from tracker_app.learning import concept_promotion as cp
+
     monkeypatch.setattr(cp, "SessionLocal", db)
 
     scheduler = ConceptScheduler()
@@ -300,8 +290,7 @@ def test_add_concept_rejects_marker_noise_words(db, no_graph_sync):
 def test_add_concept_rejects_pii_patterns(db, no_graph_sync):
     # PII that slips past the pipeline redactor must still be blocked here.
     scheduler = ConceptScheduler()
-    for bad in ("john.doe@example.com", "123-45-6789", "555-867-5309",
-                "4111-1111-1111-1111"):
+    for bad in ("john.doe@example.com", "123-45-6789", "555-867-5309", "4111-1111-1111-1111"):
         assert scheduler.add_concept(bad, confidence=0.9, context="ocr") is None, bad
 
 
@@ -324,17 +313,18 @@ def test_add_concept_stores_explicit_source(db, no_graph_sync):
     from tracker_app.db.models import ConceptEncounter
 
     scheduler = ConceptScheduler()
-    assert scheduler.add_concept(
-        "backpropagation",
-        confidence=0.7,
-        context="browser:New Tab - Wikipedia",
-        source="browser_extension",
-    ) is not None
+    assert (
+        scheduler.add_concept(
+            "backpropagation",
+            confidence=0.7,
+            context="browser:New Tab - Wikipedia",
+            source="browser_extension",
+        )
+        is not None
+    )
 
     with db() as session:
-        rows = session.query(ConceptEncounter).filter(
-            ConceptEncounter.concept == "backpropagation"
-        ).all()
+        rows = session.query(ConceptEncounter).filter(ConceptEncounter.concept == "backpropagation").all()
     assert len(rows) == 1
     assert rows[0].source == "browser_extension"
 
@@ -345,14 +335,10 @@ def test_add_concept_default_source_is_ocr(db, no_graph_sync):
     from tracker_app.db.models import ConceptEncounter
 
     scheduler = ConceptScheduler()
-    assert scheduler.add_concept(
-        "backpropagation", confidence=0.7, context="ocr"
-    ) is not None
+    assert scheduler.add_concept("backpropagation", confidence=0.7, context="ocr") is not None
 
     with db() as session:
-        rows = session.query(ConceptEncounter).filter(
-            ConceptEncounter.concept == "backpropagation"
-        ).all()
+        rows = session.query(ConceptEncounter).filter(ConceptEncounter.concept == "backpropagation").all()
     assert len(rows) == 1
     assert rows[0].source == "ocr"
 
@@ -361,10 +347,12 @@ def test_get_scheduler_is_singleton():
     # H-2: record_quiz_result must reuse one shared scheduler instead of
     # spawning a throw-away ConceptScheduler on every call.
     from tracker_app.learning.concept_scheduler import get_scheduler
+
     assert get_scheduler() is get_scheduler()
     assert isinstance(get_scheduler(), ConceptScheduler)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
-    sys.exit(pytest.main([__file__, '-v']))
+
+    sys.exit(pytest.main([__file__, "-v"]))

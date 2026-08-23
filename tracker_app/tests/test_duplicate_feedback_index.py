@@ -69,9 +69,7 @@ def _real_db_snapshot():
 
 def _assert_real_db_untouched(before):
     after = _real_db_snapshot()
-    assert after == before, (
-        f"tracker_app/data/sessions.db changed during the test: {before} -> {after}"
-    )
+    assert after == before, f"tracker_app/data/sessions.db changed during the test: {before} -> {after}"
 
 
 def test_fresh_migrated_db_has_single_feedback_index(tmp_path):
@@ -100,8 +98,7 @@ def test_duplicate_index_converges_after_run_migrations(tmp_path):
         conn = sqlite3.connect(db_file)
         try:
             conn.execute(
-                "CREATE INDEX IF NOT EXISTS ix_feedback_samples_timestamp "
-                "ON feedback_training_samples (timestamp)"
+                "CREATE INDEX IF NOT EXISTS ix_feedback_samples_timestamp ON feedback_training_samples (timestamp)"
             )
             conn.commit()
         finally:

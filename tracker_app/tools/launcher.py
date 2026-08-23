@@ -19,20 +19,13 @@ class Launcher:
         print(f"\n  Starting dashboard at http://localhost:{port}")
         env = os.environ.copy()
         env["PORT"] = str(port)
-        subprocess.run(
-            [sys.executable, "-m", "tracker_app.web.app"],
-            cwd=str(ROOT), env=env
-        )
+        subprocess.run([sys.executable, "-m", "tracker_app.web.app"], cwd=str(ROOT), env=env)
 
     def launch_both(self, args):
         print("\n  Starting tracker + dashboard (use Ctrl+C to stop both)...")
-        tracker = subprocess.Popen(
-            [sys.executable, "-m", "tracker_app.main"], cwd=str(ROOT)
-        )
+        tracker = subprocess.Popen([sys.executable, "-m", "tracker_app.main"], cwd=str(ROOT))
         try:
-            subprocess.run(
-                [sys.executable, "-m", "tracker_app.web.app"], cwd=str(ROOT)
-            )
+            subprocess.run([sys.executable, "-m", "tracker_app.web.app"], cwd=str(ROOT))
         finally:
             tracker.terminate()
 
@@ -45,24 +38,15 @@ class Launcher:
 
     def launch_migrate(self, args):
         print("\n  Running database migrations...")
-        subprocess.run(
-            [sys.executable, "-m", "tracker_app.db.migrations"],
-            cwd=str(ROOT)
-        )
+        subprocess.run([sys.executable, "-m", "tracker_app.db.migrations"], cwd=str(ROOT))
 
     def launch_populate(self, args):
         print("\n  Seeding database with test data...")
-        subprocess.run(
-            [sys.executable, str(ROOT / "tracker_app" / "tools" / "populate.py")],
-            cwd=str(ROOT)
-        )
+        subprocess.run([sys.executable, str(ROOT / "tracker_app" / "tools" / "populate.py")], cwd=str(ROOT))
 
     def launch_check(self, args):
         print("\n  Running error checks...")
-        subprocess.run(
-            [sys.executable, str(ROOT / "tracker_app" / "check_all_errors.py")],
-            cwd=str(ROOT)
-        )
+        subprocess.run([sys.executable, str(ROOT / "tracker_app" / "check_all_errors.py")], cwd=str(ROOT))
 
     def main(self):
         parser = argparse.ArgumentParser(
@@ -77,7 +61,7 @@ Commands:
   migrate    Apply pending DB migrations
   populate   Seed DB with test data
   check      Run syntax + import checks
-            """
+            """,
         )
         sub = parser.add_subparsers(dest="command")
         sub.add_parser("tracker")
@@ -88,22 +72,21 @@ Commands:
         sub.add_parser("both")
 
         train_p = sub.add_parser("train")
-        train_p.add_argument("--feedback", action="store_true",
-                             help="Include user feedback in retraining")
+        train_p.add_argument("--feedback", action="store_true", help="Include user feedback in retraining")
 
         sub.add_parser("migrate")
         sub.add_parser("populate")
         sub.add_parser("check")
 
-        args   = parser.parse_args()
+        args = parser.parse_args()
         routes = {
-            "tracker":  self.launch_tracker,
-            "web":      self.launch_web,
-            "both":     self.launch_both,
-            "train":    self.launch_train,
-            "migrate":  self.launch_migrate,
+            "tracker": self.launch_tracker,
+            "web": self.launch_web,
+            "both": self.launch_both,
+            "train": self.launch_train,
+            "migrate": self.launch_migrate,
             "populate": self.launch_populate,
-            "check":    self.launch_check,
+            "check": self.launch_check,
         }
 
         if args.command in routes:

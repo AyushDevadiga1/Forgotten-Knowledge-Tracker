@@ -155,10 +155,8 @@ def test_migration_011_noop_when_no_t_rows(monkeypatch, tmp_path):
     conn = sqlite3.connect(db_file)
     try:
         conn.execute(
-            "INSERT INTO tracked_concepts (concept, first_seen, last_seen, next_review) "
-            "VALUES (?,?,?,?)",
-            ("space_only", "2026-08-13 06:00:00.000000", "2026-08-13 07:00:00.000000",
-             "2026-08-13 08:00:00.000000"),
+            "INSERT INTO tracked_concepts (concept, first_seen, last_seen, next_review) VALUES (?,?,?,?)",
+            ("space_only", "2026-08-13 06:00:00.000000", "2026-08-13 07:00:00.000000", "2026-08-13 08:00:00.000000"),
         )
         conn.commit()
     finally:
@@ -183,9 +181,7 @@ def test_migration_011_noop_when_no_t_rows(monkeypatch, tmp_path):
     # The migration itself is recorded in schema_migrations.
     conn = sqlite3.connect(db_file)
     try:
-        row = conn.execute(
-            "SELECT id FROM schema_migrations WHERE id = '011_datetime_storage_format'"
-        ).fetchone()
+        row = conn.execute("SELECT id FROM schema_migrations WHERE id = '011_datetime_storage_format'").fetchone()
         assert row is not None
     finally:
         conn.close()
@@ -223,7 +219,16 @@ def test_populate_writes_space_format_datetimes(tmp_path):
     try:
         for table, columns in date_columns.items():
             for col in columns:
-                allowed_cols = {"next_review", "first_seen", "last_seen", "start_ts", "end_ts", "timestamp", "last_seen_ts", "updated_at"}
+                allowed_cols = {
+                    "next_review",
+                    "first_seen",
+                    "last_seen",
+                    "start_ts",
+                    "end_ts",
+                    "timestamp",
+                    "last_seen_ts",
+                    "updated_at",
+                }
                 allowed_tables = {"tracked_concepts", "sessions", "multi_modal_logs", "memory_decay"}
                 assert col in allowed_cols, f"Unexpected col: {col}"
                 assert table in allowed_tables, f"Unexpected table: {table}"
@@ -231,11 +236,7 @@ def test_populate_writes_space_format_datetimes(tmp_path):
                 assert rows, f"{table}.{col} has no seeded rows"
                 for (value,) in rows:
                     assert value is not None, f"{table}.{col} contains NULL"
-                    assert _SPACE_FORMAT.match(value), (
-                        f"{table}.{col} = {value!r} is not space format"
-                    )
-                    assert value[10] == " ", (
-                        f"{table}.{col} = {value!r} has non-space separator at index 10"
-                    )
+                    assert _SPACE_FORMAT.match(value), f"{table}.{col} = {value!r} is not space format"
+                    assert value[10] == " ", f"{table}.{col} = {value!r} has non-space separator at index 10"
     finally:
         conn.close()

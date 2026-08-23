@@ -28,8 +28,7 @@ def test_init_db_logs_joined_sorted_tables(isolated_db, caplog):
     with caplog.at_level(logging.INFO, logger="Database"):
         db_module.init_db()
 
-    records = [r for r in caplog.records
-               if r.name == "Database" and "tables constructed" in r.message]
+    records = [r for r in caplog.records if r.name == "Database" and "tables constructed" in r.message]
     assert records, "init_db must log the constructed tables"
     expected = ", ".join(t.name for t in Base.metadata.sorted_tables)
     assert expected in records[0].message
@@ -39,8 +38,7 @@ def test_init_db_log_lists_every_orm_table(isolated_db, caplog):
     with caplog.at_level(logging.INFO, logger="Database"):
         db_module.init_db()
 
-    records = [r for r in caplog.records
-               if r.name == "Database" and "tables constructed" in r.message]
+    records = [r for r in caplog.records if r.name == "Database" and "tables constructed" in r.message]
     assert records
     msg = records[0].message
     for table in Base.metadata.sorted_tables:

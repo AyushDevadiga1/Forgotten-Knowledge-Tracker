@@ -1,10 +1,10 @@
-﻿"""Webcam pipeline: MediaPipe FaceMesh-based attention tracking (lazy-loaded)."""
+"""Webcam pipeline: MediaPipe FaceMesh-based attention tracking (lazy-loaded)."""
+
 import atexit
 import cv2
 import numpy as np
 import time
 import logging
-
 
 
 from tracker_app.utils import utcnow as _utcnow
@@ -17,24 +17,24 @@ logger = logging.getLogger("WebcamModule")
 _face_mesh = None
 _mp_face_mesh = None
 
+
 def _get_face_mesh():
     """Lazily initialise MediaPipe FaceMesh on first use."""
     global _face_mesh, _mp_face_mesh
     if _face_mesh is None:
         try:
             import mediapipe as mp
+
             _mp_face_mesh = mp.solutions.face_mesh
             _face_mesh = _mp_face_mesh.FaceMesh(
-                max_num_faces=1,
-                refine_landmarks=True,
-                min_detection_confidence=0.5,
-                min_tracking_confidence=0.5
+                max_num_faces=1, refine_landmarks=True, min_detection_confidence=0.5, min_tracking_confidence=0.5
             )
             logger.info("MediaPipe FaceMesh initialised successfully.")
         except Exception as e:
             logger.warning(f"MediaPipe FaceMesh init failed: {e}. Webcam attention disabled.")
             _face_mesh = None
     return _face_mesh
+
 
 # ----------------------------
 # EAR & attention helpers
@@ -62,6 +62,7 @@ def eye_aspect_ratio(landmarks, eye_indices):
         logger.warning(f"Error calculating EAR: {e}")
         return 0.0
 
+
 def calibrate_ear(duration_seconds=30):
     """Capture EAR samples over duration_seconds and compute per-user baselines.
 
@@ -70,7 +71,6 @@ def calibrate_ear(duration_seconds=30):
     camera is unavailable or face detection fails for most samples.
     """
     from tracker_app.config import CALIBRATION_MIN_SAMPLES
-    import datetime
 
     LEFT_EYE = [362, 385, 387, 263, 373, 380]
     RIGHT_EYE = [33, 160, 158, 133, 153, 144]
@@ -95,14 +95,14 @@ def calibrate_ear(duration_seconds=30):
                     right_ear = eye_aspect_ratio(lm, RIGHT_EYE)
                     ear_samples.append((left_ear + right_ear) / 2.0)
         except Exception as exc:
-            logger.warning(f'Calibration frame error: {exc}')
+            logger.warning(f"Calibration frame error: {exc}")
         time.sleep(0.1)
 
     if len(ear_samples) < CALIBRATION_MIN_SAMPLES:
-        logger.warning("Calibration: only %d samples (need %d); using defaults",
-                         len(ear_samples), CALIBRATION_MIN_SAMPLES)
-        return {"fallback": True, "reason": "insufficient_samples",
-                "samples": len(ear_samples)}
+        logger.warning(
+            "Calibration: only %d samples (need %d); using defaults", len(ear_samples), CALIBRATION_MIN_SAMPLES
+        )
+        return {"fallback": True, "reason": "insufficient_samples", "samples": len(ear_samples)}
 
     mean_ear = float(np.mean(ear_samples))
     std_ear = float(np.std(ear_samples))
@@ -110,10 +110,8 @@ def calibrate_ear(duration_seconds=30):
     personal_high = mean_ear + 1.0 * std_ear
 
     if personal_low < 0.05 or personal_high > 0.50:
-        logger.warning("Calibration: implausible range [%.3f, %.3f]; using defaults",
-                         personal_low, personal_high)
-        return {"fallback": True, "reason": "implausible_range",
-                "mean_ear": mean_ear, "std_ear": std_ear}
+        logger.warning("Calibration: implausible range [%.3f, %.3f]; using defaults", personal_low, personal_high)
+        return {"fallback": True, "reason": "implausible_range", "mean_ear": mean_ear, "std_ear": std_ear}
 
     result = {
         "personal_ear_low": round(personal_low, 4),
@@ -123,8 +121,9 @@ def calibrate_ear(duration_seconds=30):
         "fallback": False,
         "calibrated_at": _utcnow().isoformat(),
     }
-    logger.info("Calibration complete: low=%.3f high=%.3f mean=%.3f std=%.3f",
-                personal_low, personal_high, mean_ear, std_ear)
+    logger.info(
+        "Calibration complete: low=%.3f high=%.3f mean=%.3f std=%.3f", personal_low, personal_high, mean_ear, std_ear
+    )
     return result
 
 
@@ -146,6 +145,7 @@ def compute_attention_score(ear_values, ear_low=0.2, ear_high=0.35):
         return 100.0
     else:
         return 40.0 + ((avg_ear - ear_low) / max(ear_range, 0.01)) * 60.0
+
 
 # ----------------------------
 # Persistent camera handle
@@ -204,6 +204,7 @@ def capture_frame():
         logger.warning(f"Error capturing frame: {e}")
         return None
 
+
 # ----------------------------
 # Unified webcam pipeline
 # ----------------------------
@@ -214,30 +215,25 @@ def webcam_pipeline(num_frames=3):
     ear_values = []
     frames_processed = 0
     max_faces = 0
-    
+
     # Indices for eyes in MediaPipe Face Mesh (approximate)
     # Left eye: 362, 385, 387, 263, 373, 380
     # Right eye: 33, 160, 158, 133, 153, 144
-    LEFT_EYE = [362, 385, 387, 263, 373, 380] 
+    LEFT_EYE = [362, 385, 387, 263, 373, 380]
     RIGHT_EYE = [33, 160, 158, 133, 153, 144]
 
     face_mesh = _get_face_mesh()
     if face_mesh is None:
         # MediaPipe unavailable â€” return neutral score
-        return {
-            "attentiveness_score": 50.0,
-            "face_count": 0,
-            "frames_processed": 0,
-            "status": "mediapipe_unavailable"
-        }
+        return {"attentiveness_score": 50.0, "face_count": 0, "frames_processed": 0, "status": "mediapipe_unavailable"}
 
     for _ in range(num_frames):
         frame = capture_frame()
         if frame is None:
             continue
-            
+
         frames_processed += 1
-        
+
         try:
             # Convert to RGB for MediaPipe
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -245,26 +241,26 @@ def webcam_pipeline(num_frames=3):
             faces_in_frame = len(results.multi_face_landmarks or [])
             if faces_in_frame > max_faces:
                 max_faces = faces_in_frame
-            
+
             if results.multi_face_landmarks:
                 for face_landmarks in results.multi_face_landmarks:
                     landmarks = face_landmarks.landmark
-                    
+
                     left_ear = eye_aspect_ratio(landmarks, LEFT_EYE)
                     right_ear = eye_aspect_ratio(landmarks, RIGHT_EYE)
-                    
+
                     avg_ear = (left_ear + right_ear) / 2.0
                     ear_values.append(avg_ear)
-                    
+
         except Exception as e:
             logger.warning(f"Error in MediaPipe processing: {e}")
             continue
-            
+
         # Small delay between frames
         time.sleep(0.1)
 
     attention_score = compute_attention_score(ear_values) if ear_values else 50.0
-    
+
     # If no faces detected but frames processed, assume user is away
     if frames_processed > 0 and not ear_values:
         attention_score = 0.0
@@ -273,8 +269,9 @@ def webcam_pipeline(num_frames=3):
         "attentiveness_score": float(attention_score),
         "face_count": max_faces,
         "frames_processed": frames_processed,
-        "status": "active" if ear_values else "no_face_detected"
+        "status": "active" if ear_values else "no_face_detected",
     }
+
 
 if __name__ == "__main__":
     print("Testing webcam pipeline...")
@@ -282,4 +279,3 @@ if __name__ == "__main__":
     print(f"Status: {result['status']}")
     print(f"Attention Score: {result['attentiveness_score']:.1f}")
     print(f"Frames: {result['frames_processed']}")
-

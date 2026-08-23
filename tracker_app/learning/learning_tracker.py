@@ -1,4 +1,4 @@
-﻿import json
+import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from enum import Enum
@@ -10,49 +10,49 @@ from tracker_app.learning.sm2_memory_model import SM2Item, SM2Scheduler
 from tracker_app.db import models
 from tracker_app.db.models import LearningItem, ReviewHistory
 from tracker_app.db.repository import LearningRepository
-from sqlalchemy import func, or_
+from sqlalchemy import func
 from sqlalchemy.orm import Session
+
 
 class DifficultyLevel(Enum):
     """Content difficulty assessment"""
-    EASY = "easy"          # Can be mastered in 5-10 reviews
-    MEDIUM = "medium"      # Normal difficulty, 10-20 reviews
-    HARD = "hard"          # Requires significant effort, 20+ reviews
+
+    EASY = "easy"  # Can be mastered in 5-10 reviews
+    MEDIUM = "medium"  # Normal difficulty, 10-20 reviews
+    HARD = "hard"  # Requires significant effort, 20+ reviews
+
 
 class LearningItemType(Enum):
     """Types of learning content"""
-    CONCEPT = "concept"       # Theoretical knowledge (e.g., "Photosynthesis")
-    DEFINITION = "definition" # Vocabulary/definitions
-    FORMULA = "formula"       # Math/science formulas
-    PROCEDURE = "procedure"   # Step-by-step procedures
-    FACT = "fact"            # Historical/trivia facts
-    SKILL = "skill"          # Practical skills
-    CODE = "code"            # Programming snippets
+
+    CONCEPT = "concept"  # Theoretical knowledge (e.g., "Photosynthesis")
+    DEFINITION = "definition"  # Vocabulary/definitions
+    FORMULA = "formula"  # Math/science formulas
+    PROCEDURE = "procedure"  # Step-by-step procedures
+    FACT = "fact"  # Historical/trivia facts
+    SKILL = "skill"  # Practical skills
+    CODE = "code"  # Programming snippets
+
 
 class LearningTracker:
     """
     Main system for managing learning items and spaced repetition.
     Users explicitly log what they want to learn.
     """
-    
+
     def __init__(self, db_path: str = None):
         """Initialize learning tracker (SQLAlchemy db_path override not usually needed, but kept for signature compat)"""
-        # We rely on the global SessionLocal now, db_path parameter is largely ignored 
+        # We rely on the global SessionLocal now, db_path parameter is largely ignored
         # unless we explicitly alter the engine (which we don't for this refactor).
         # We assume `models.init_db()` is called at startup.
         pass
-    
+
     def _init_database(self):
         """Legacy method to create tables... handled globally by init_db() now"""
         pass
-    
+
     def add_learning_item(
-        self,
-        question: str,
-        answer: str,
-        difficulty: str = "medium",
-        item_type: str = "concept",
-        tags: List[str] = None
+        self, question: str, answer: str, difficulty: str = "medium", item_type: str = "concept", tags: List[str] = None
     ) -> str:
         if not question or not str(question).strip():
             raise ValueError("question cannot be empty")
@@ -62,7 +62,7 @@ class LearningTracker:
             raise ValueError("question must be under 1000 characters")
         if difficulty not in {"easy", "medium", "hard"}:
             raise ValueError("difficulty must be easy, medium, or hard")
-            
+
         item_id = str(uuid.uuid4())
         now = _utcnow()
 
@@ -76,43 +76,39 @@ class LearningTracker:
                 item_type=item_type,
                 tags=json.dumps(tags or []),
                 next_review_date=now,
-                updated_at=now
+                updated_at=now,
             )
             LearningRepository.add_item(db, new_item)
 
         return item_id
-    
+
     def get_items_due(self) -> List[Dict[str, Any]]:
         """Get items that are due for review now"""
         with models.SessionLocal() as db:
             items = LearningRepository.get_items_due(db)
             return [self._row_to_dict(item) for item in items]
-    
+
     def get_item(self, item_id: str) -> Optional[Dict[str, Any]]:
         """Get a single learning item by ID"""
         with models.SessionLocal() as db:
             item = LearningRepository.get_item(db, item_id)
             return self._row_to_dict(item) if item else None
-    
+
     def record_review(
-        self,
-        item_id: str,
-        quality_rating: int,
-        time_spent_seconds: int = None,
-        algorithm: str = "sm2"
+        self, item_id: str, quality_rating: int, time_spent_seconds: int = None, algorithm: str = "sm2"
     ) -> Dict[str, Any]:
         item_dict = self.get_item(item_id)
         if not item_dict:
             raise ValueError(f"Item {item_id} not found")
-        
+
         with models.SessionLocal() as db:
             item_record = LearningRepository.get_item(db, item_id)
-            
+
             # Reconstruct SM2Item
             item = self._dict_to_sm2item(item_dict)
-            
+
             result = SM2Scheduler.calculate_next_interval(item, quality_rating)
-                
+
             review_date = _utcnow()
             was_correct = quality_rating >= 3
 
@@ -121,14 +117,14 @@ class LearningTracker:
                 item_id=item_id,
                 timestamp=review_date,
                 quality_rating=quality_rating,
-                old_interval=item_dict['interval'],
+                old_interval=item_dict["interval"],
                 new_interval=item.interval,
-                old_ease=item_dict['ease_factor'],
-                new_ease=item.ease_factor
+                old_ease=item_dict["ease_factor"],
+                new_ease=item.ease_factor,
             )
 
             success_rate = item.correct_count / item.total_reviews if item.total_reviews > 0 else 0
-            status = 'mastered' if (success_rate > 0.95 and item.repetitions > 5) else 'active'
+            status = "mastered" if (success_rate > 0.95 and item.repetitions > 5) else "active"
 
             # Update item record with new SM-2 state
             item_record.interval = item.interval
@@ -143,43 +139,35 @@ class LearningTracker:
             item_record.updated_at = _utcnow()
 
             LearningRepository.record_review(db, history, item_record)
-            
+
         updated_item = self.get_item(item_id)
-        return {
-            'item': updated_item,
-            'result': result,
-            'retention_estimate': SM2Scheduler.estimate_retention(item)
-        }
-    
+        return {"item": updated_item, "result": result, "retention_estimate": SM2Scheduler.estimate_retention(item)}
+
     def get_learning_stats(self) -> Dict[str, Any]:
         with models.SessionLocal() as db:
             base_stats = LearningRepository.get_stats(db)
-            
+
             total_count = LearningRepository.get_total_count(db)
             avg_success = db.query(func.avg(LearningItem.success_rate)).scalar() or 0.0
             total_reviews = db.query(func.sum(LearningItem.total_reviews)).scalar() or 0
-            
+
             return {
-                'total_items': total_count,
-                'active_items': base_stats['total_active'],
-                'mastered_items': base_stats['mastered'],
-                'items_due_today': base_stats['total_due'],
-                'average_success_rate': avg_success,
-                'total_reviews': total_reviews,
-                'current_streak': self._compute_streak(db),
+                "total_items": total_count,
+                "active_items": base_stats["total_active"],
+                "mastered_items": base_stats["mastered"],
+                "items_due_today": base_stats["total_due"],
+                "average_success_rate": avg_success,
+                "total_reviews": total_reviews,
+                "current_streak": self._compute_streak(db),
                 # legacy aliases (kept for backward compatibility)
-                'due_now': base_stats['total_due'],
-                'total_reviews_ever': total_reviews
+                "due_now": base_stats["total_due"],
+                "total_reviews_ever": total_reviews,
             }
 
     @staticmethod
     def _compute_streak(db: Session) -> int:
         """Consecutive days with at least one review, counting back from today."""
-        review_days = {
-            row[0]
-            for row in db.query(func.date(ReviewHistory.timestamp)).distinct().all()
-            if row[0]
-        }
+        review_days = {row[0] for row in db.query(func.date(ReviewHistory.timestamp)).distinct().all() if row[0]}
         day = _utcnow().date()
         if str(day) not in review_days:
             day -= timedelta(days=1)  # today not reviewed yet â€” streak may still be alive
@@ -188,21 +176,21 @@ class LearningTracker:
             streak += 1
             day -= timedelta(days=1)
         return streak
-    
+
     def get_learning_today(self) -> Dict[str, Any]:
         with models.SessionLocal() as db:
             return LearningRepository.get_learning_today(db)
-            
+
     def search_items(self, query: str) -> List[Dict[str, Any]]:
         with models.SessionLocal() as db:
             items = LearningRepository.search_items(db, query)
             return [self._row_to_dict(item) for item in items]
 
-    def get_items(self, status: str = 'active', limit: int = 50) -> List[Dict[str, Any]]:
+    def get_items(self, status: str = "active", limit: int = 50) -> List[Dict[str, Any]]:
         with models.SessionLocal() as db:
             items = LearningRepository.get_items(db, status, limit)
             return [self._row_to_dict(item) for item in items]
-            
+
     def archive_item(self, item_id: str):
         with models.SessionLocal() as db:
             item = LearningRepository.get_item(db, item_id)
@@ -231,18 +219,18 @@ class LearningTracker:
                 item.status = "active"
                 item.updated_at = _utcnow()
                 db.commit()
-                
+
     def export_items(self, format: str = "json") -> str:
         with models.SessionLocal() as db:
             items = LearningRepository.get_all_items(db)
             items_dict = [self._row_to_dict(item) for item in items]
-            
+
             if format == "json":
                 return json.dumps(items_dict, indent=2, default=str)
             elif format == "anki":
                 lines = []
                 for item in items_dict:
-                    tags = ' '.join(item['tags'])
+                    tags = " ".join(item["tags"])
                     lines.append(f"{item['question']}\t{item['answer']}\t{tags}")
                 return "\n".join(lines)
             else:
@@ -253,25 +241,25 @@ class LearningTracker:
         if not row:
             return None
         return {
-            'id': row.id,
-            'created_at': row.created_at,
-            'question': row.question,
-            'answer': row.answer,
-            'difficulty': row.difficulty,
-            'item_type': row.item_type,
-            'tags': json.loads(row.tags) if row.tags else [],
-            'interval': row.interval,
-            'ease_factor': row.ease_factor,
-            'repetitions': row.repetitions,
-            'next_review_date': row.next_review_date,
-            'last_review_date': row.last_review_date,
-            'total_reviews': row.total_reviews,
-            'correct_count': row.correct_count,
-            'success_rate': row.success_rate,
-            'status': row.status,
-            'updated_at': row.updated_at
+            "id": row.id,
+            "created_at": row.created_at,
+            "question": row.question,
+            "answer": row.answer,
+            "difficulty": row.difficulty,
+            "item_type": row.item_type,
+            "tags": json.loads(row.tags) if row.tags else [],
+            "interval": row.interval,
+            "ease_factor": row.ease_factor,
+            "repetitions": row.repetitions,
+            "next_review_date": row.next_review_date,
+            "last_review_date": row.last_review_date,
+            "total_reviews": row.total_reviews,
+            "correct_count": row.correct_count,
+            "success_rate": row.success_rate,
+            "status": row.status,
+            "updated_at": row.updated_at,
         }
-        
+
     @staticmethod
     def _dict_to_sm2item(item_dict: Dict[str, Any]) -> SM2Item:
         def _to_dt(val):
@@ -283,26 +271,28 @@ class LearningTracker:
             return None
 
         item = SM2Item(
-            item_id=item_dict['id'],
-            question=item_dict['question'],
-            answer=item_dict['answer'],
-            difficulty=item_dict['difficulty'],
-            created_at=_to_dt(item_dict['created_at'])
+            item_id=item_dict["id"],
+            question=item_dict["question"],
+            answer=item_dict["answer"],
+            difficulty=item_dict["difficulty"],
+            created_at=_to_dt(item_dict["created_at"]),
         )
-        item.interval = item_dict['interval']
-        item.ease_factor = item_dict['ease_factor']
-        item.repetitions = item_dict['repetitions']
-        item.next_review_date = _to_dt(item_dict['next_review_date'])
+        item.interval = item_dict["interval"]
+        item.ease_factor = item_dict["ease_factor"]
+        item.repetitions = item_dict["repetitions"]
+        item.next_review_date = _to_dt(item_dict["next_review_date"])
 
-        lrd = item_dict.get('last_review_date')
+        lrd = item_dict.get("last_review_date")
         item.last_review_date = _to_dt(lrd) if lrd else None
 
-        item.total_reviews = item_dict['total_reviews']
-        item.correct_count = item_dict['correct_count']
+        item.total_reviews = item_dict["total_reviews"]
+        item.correct_count = item_dict["correct_count"]
         return item
+
 
 if __name__ == "__main__":
     from tracker_app.db.db_module import init_all_databases
+
     init_all_databases()
     tracker = LearningTracker()
     print("=== Learning Tracker ORM Example ===\n")
@@ -311,14 +301,13 @@ if __name__ == "__main__":
         answer="Object Relational Mapper",
         difficulty="easy",
         item_type="concept",
-        tags=["programming", "database"]
+        tags=["programming", "database"],
     )
     print(f"Added item: {id1}")
     due = tracker.get_items_due()
     print(f"\nItems due for review: {len(due)}")
     if due:
-        result = tracker.record_review(due[0]['id'], quality_rating=5, algorithm="sm2")
+        result = tracker.record_review(due[0]["id"], quality_rating=5, algorithm="sm2")
         print(f"Review recorded. Next review in {result['result']['next_interval_days']} days")
     stats = tracker.get_learning_stats()
     print(f"\nStats: {stats}")
-

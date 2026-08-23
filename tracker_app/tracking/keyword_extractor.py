@@ -27,7 +27,8 @@ logger = logging.getLogger("KeywordExtractor")
 
 # -- Lazy-loaded heavy objects ----------------------------------------
 _yake_extractor = None
-_spacy_nlp      = None
+_spacy_nlp = None
+
 
 def _get_yake():
     """Return the YAKE extractor singleton (lazy init).
@@ -41,10 +42,11 @@ def _get_yake():
     if _yake_extractor is None:
         try:
             import yake
+
             _yake_extractor = yake.KeywordExtractor(
                 lan="en",
                 n=2,
-                dedupLim=0.7,      # deduplicate near-identical keywords
+                dedupLim=0.7,  # deduplicate near-identical keywords
                 dedupFunc="seqm",
                 windowsSize=2,
                 top=20,
@@ -56,8 +58,10 @@ def _get_yake():
             _yake_extractor = None
     return _yake_extractor
 
+
 # None = never tried; _SPACY_NLP_FAILED = load failed (stop retrying + log spam)
 _SPACY_NLP_FAILED = object()
+
 
 def _get_nlp():
     """Return spaCy nlp model (lazy init)."""
@@ -67,6 +71,7 @@ def _get_nlp():
     if _spacy_nlp is None:
         try:
             import spacy
+
             _spacy_nlp = spacy.load("en_core_web_sm")
             logger.info("spaCy en_core_web_sm loaded for keyword extraction.")
         except Exception as e:
@@ -76,46 +81,260 @@ def _get_nlp():
     return _spacy_nlp
 
 
-_BLOCKED_NAMES = frozenset({
-    'james', 'john', 'robert', 'michael', 'david', 'william', 'richard',
-    'joseph', 'thomas', 'charles', 'christopher', 'daniel', 'matthew',
-    'anthony', 'mark', 'donald', 'steven', 'paul', 'andrew', 'joshua',
-    'kenneth', 'kevin', 'brian', 'george', 'timothy', 'ronald', 'edward',
-    'jason', 'jeffrey', 'ryan', 'jacob', 'gary', 'nicholas', 'eric',
-    'jonathan', 'stephen', 'larry', 'justin', 'scott', 'brandon', 'benjamin',
-    'samuel', 'raymond', 'gregory', 'frank', 'patrick', 'jack', 'dennis',
-    'jerry', 'alexander', 'tyler', 'aaron', 'jose', 'adam', 'nathan',
-    'mary', 'patricia', 'jennifer', 'linda', 'barbara', 'elizabeth',
-    'susan', 'jessica', 'sarah', 'karen', 'lisa', 'nancy', 'betty',
-    'margaret', 'sandra', 'ashley', 'dorothy', 'kimberly', 'emily',
-    'donna', 'michelle', 'carol', 'amanda', 'melissa', 'deborah',
-    'stephanie', 'rebecca', 'sharon', 'laura', 'cynthia', 'kathleen',
-    'amy', 'angela', 'shirley', 'anna', 'brenda', 'pamela', 'emma',
-    'nicole', 'helen', 'samantha', 'katherine', 'christine', 'debra',
-    'rachel', 'carolyn', 'janet', 'catherine', 'maria', 'heather',
-    'diane', 'ruth', 'julie', 'olivia', 'joyce', 'virginia', 'victoria',
-    'kelly', 'lauren', 'christina', 'joan', 'evelyn', 'judith', 'megan',
-    'andrea', 'cheryl', 'hannah', 'jacqueline', 'martha', 'gloria',
-    'teresa', 'ann', 'sara', 'madison', 'frances', 'kathryn', 'janice',
-    'jean', 'abigail', 'alice', 'judy', 'sophia', 'grace', 'denise',
-    'smith', 'johnson', 'williams', 'brown', 'jones', 'garcia', 'miller',
-    'davis', 'rodriguez', 'martinez', 'hernandez', 'lopez', 'gonzalez',
-    'wilson', 'anderson', 'thomas', 'taylor', 'moore', 'jackson', 'martin',
-    'lee', 'perez', 'thompson', 'white', 'harris', 'sanchez', 'clark',
-    'ramirez', 'lewis', 'robinson', 'walker', 'young', 'allen', 'king',
-    'wright', 'scott', 'torres', 'nguyen', 'hill', 'flores', 'green',
-    'adams', 'nelson', 'baker', 'hall', 'rivera', 'campbell', 'mitchell',
-    'carter', 'roberts', 'gomez', 'phillips', 'evans', 'turner', 'diaz',
-    'parker', 'cruz', 'edwards', 'collins', 'reyes', 'stewart', 'morris',
-    'morales', 'murphy', 'cook', 'rogers', 'gutierrez', 'ortiz', 'morgan',
-    'cooper', 'peterson', 'bailey', 'reed', 'kelly', 'howard', 'ramos',
-    'kim', 'cox', 'ward', 'richardson', 'watson', 'brooks', 'chavez',
-    'wood', 'james', 'bennett', 'gray', 'mendoza', 'ruiz', 'hughes',
-    'price', 'alvarez', 'castillo', 'sanders', 'patel', 'myers', 'long',
-    'ross', 'foster', 'jimenez', 'powell', 'jenkins', 'perry', 'russell',
-    'sullivan', 'bell', 'coleman', 'butler', 'henderson', 'barnes',
-    'gonzalez', 'fisher', 'vasquez', 'simmons', 'patterson', 'jordan',
-})
+_BLOCKED_NAMES = frozenset(
+    {
+        "james",
+        "john",
+        "robert",
+        "michael",
+        "david",
+        "william",
+        "richard",
+        "joseph",
+        "thomas",
+        "charles",
+        "christopher",
+        "daniel",
+        "matthew",
+        "anthony",
+        "mark",
+        "donald",
+        "steven",
+        "paul",
+        "andrew",
+        "joshua",
+        "kenneth",
+        "kevin",
+        "brian",
+        "george",
+        "timothy",
+        "ronald",
+        "edward",
+        "jason",
+        "jeffrey",
+        "ryan",
+        "jacob",
+        "gary",
+        "nicholas",
+        "eric",
+        "jonathan",
+        "stephen",
+        "larry",
+        "justin",
+        "scott",
+        "brandon",
+        "benjamin",
+        "samuel",
+        "raymond",
+        "gregory",
+        "frank",
+        "patrick",
+        "jack",
+        "dennis",
+        "jerry",
+        "alexander",
+        "tyler",
+        "aaron",
+        "jose",
+        "adam",
+        "nathan",
+        "mary",
+        "patricia",
+        "jennifer",
+        "linda",
+        "barbara",
+        "elizabeth",
+        "susan",
+        "jessica",
+        "sarah",
+        "karen",
+        "lisa",
+        "nancy",
+        "betty",
+        "margaret",
+        "sandra",
+        "ashley",
+        "dorothy",
+        "kimberly",
+        "emily",
+        "donna",
+        "michelle",
+        "carol",
+        "amanda",
+        "melissa",
+        "deborah",
+        "stephanie",
+        "rebecca",
+        "sharon",
+        "laura",
+        "cynthia",
+        "kathleen",
+        "amy",
+        "angela",
+        "shirley",
+        "anna",
+        "brenda",
+        "pamela",
+        "emma",
+        "nicole",
+        "helen",
+        "samantha",
+        "katherine",
+        "christine",
+        "debra",
+        "rachel",
+        "carolyn",
+        "janet",
+        "catherine",
+        "maria",
+        "heather",
+        "diane",
+        "ruth",
+        "julie",
+        "olivia",
+        "joyce",
+        "virginia",
+        "victoria",
+        "kelly",
+        "lauren",
+        "christina",
+        "joan",
+        "evelyn",
+        "judith",
+        "megan",
+        "andrea",
+        "cheryl",
+        "hannah",
+        "jacqueline",
+        "martha",
+        "gloria",
+        "teresa",
+        "ann",
+        "sara",
+        "madison",
+        "frances",
+        "kathryn",
+        "janice",
+        "jean",
+        "abigail",
+        "alice",
+        "judy",
+        "sophia",
+        "grace",
+        "denise",
+        "smith",
+        "johnson",
+        "williams",
+        "brown",
+        "jones",
+        "garcia",
+        "miller",
+        "davis",
+        "rodriguez",
+        "martinez",
+        "hernandez",
+        "lopez",
+        "gonzalez",
+        "wilson",
+        "anderson",
+        "taylor",
+        "moore",
+        "jackson",
+        "martin",
+        "lee",
+        "perez",
+        "thompson",
+        "white",
+        "harris",
+        "sanchez",
+        "clark",
+        "ramirez",
+        "lewis",
+        "robinson",
+        "walker",
+        "young",
+        "allen",
+        "king",
+        "wright",
+        "torres",
+        "nguyen",
+        "hill",
+        "flores",
+        "green",
+        "adams",
+        "nelson",
+        "baker",
+        "hall",
+        "rivera",
+        "campbell",
+        "mitchell",
+        "carter",
+        "roberts",
+        "gomez",
+        "phillips",
+        "evans",
+        "turner",
+        "diaz",
+        "parker",
+        "cruz",
+        "edwards",
+        "collins",
+        "reyes",
+        "stewart",
+        "morris",
+        "morales",
+        "murphy",
+        "cook",
+        "rogers",
+        "gutierrez",
+        "ortiz",
+        "morgan",
+        "cooper",
+        "peterson",
+        "bailey",
+        "reed",
+        "howard",
+        "ramos",
+        "kim",
+        "cox",
+        "ward",
+        "richardson",
+        "watson",
+        "brooks",
+        "chavez",
+        "wood",
+        "bennett",
+        "gray",
+        "mendoza",
+        "ruiz",
+        "hughes",
+        "price",
+        "alvarez",
+        "castillo",
+        "sanders",
+        "patel",
+        "myers",
+        "long",
+        "ross",
+        "foster",
+        "jimenez",
+        "powell",
+        "jenkins",
+        "perry",
+        "russell",
+        "sullivan",
+        "bell",
+        "coleman",
+        "butler",
+        "henderson",
+        "barnes",
+        "fisher",
+        "vasquez",
+        "simmons",
+        "patterson",
+        "jordan",
+    }
+)
 
 
 class YAKEKeywordExtractor:
@@ -126,10 +345,9 @@ class YAKEKeywordExtractor:
 
     # YAKE! scores are LOWER = more important (inverse of most systems)
     # We convert: relevance = 1 - normalised_yake_score  -> higher is better
-    YAKE_SCORE_CAP = 0.5   # scores above this are noise
-    MIN_KW_LEN     = 3
-    ENTITY_TYPES   = {"PRODUCT", "EVENT",
-                      "WORK_OF_ART", "LAW", "LANGUAGE"}
+    YAKE_SCORE_CAP = 0.5  # scores above this are noise
+    MIN_KW_LEN = 3
+    ENTITY_TYPES = {"PRODUCT", "EVENT", "WORK_OF_ART", "LAW", "LANGUAGE"}
 
     # Entity types that should NOT be surfaced as study keywords.
     # Only PERSON is blocked (PII). ORG/GPE/NORP/LOC are allowed as study concepts.
@@ -139,34 +357,113 @@ class YAKEKeywordExtractor:
     # collocation fragments, not concepts ('converts sunlight', 'energy
     # stored', 'produce atp'). Single-word keywords are left alone -- the
     # plausibility gate downstream filters those.
-    WEAK_PHRASE_TOKENS = frozenset({
-        'converts', 'convert', 'converters', 'provide', 'provides', 'produced',
-        'produce', 'produces', 'stored', 'store', 'stores', 'create', 'creates',
-        'using', 'used', 'based', 'include', 'includes', 'including', 'following',
-        'called', 'known', 'also', 'both', 'into', 'from', 'with', 'for',
-        'during', 'after', 'before', 'the', 'and', 'a', 'an', 'of', 'to', 'in',
-        'on', 'at', 'by', 'as', 'is', 'are', 'was', 'were', 'has', 'have',
-        'studying', 'study', 'studies', 'learn', 'learning', 'about', 'will',
-        'would', 'can', 'could', 'should', 'may', 'might', 'must', 'there',
-        'their', 'this', 'that', 'these', 'those', 'over', 'under', 'which',
-        'what', 'when', 'where', 'how', 'why', 'all', 'some', 'any', 'each',
-        'not', 'very', 'more', 'most', 'other', 'such', 'than', 'then', 'than',
-    })
+    WEAK_PHRASE_TOKENS = frozenset(
+        {
+            "converts",
+            "convert",
+            "converters",
+            "provide",
+            "provides",
+            "produced",
+            "produce",
+            "produces",
+            "stored",
+            "store",
+            "stores",
+            "create",
+            "creates",
+            "using",
+            "used",
+            "based",
+            "include",
+            "includes",
+            "including",
+            "following",
+            "called",
+            "known",
+            "also",
+            "both",
+            "into",
+            "from",
+            "with",
+            "for",
+            "during",
+            "after",
+            "before",
+            "the",
+            "and",
+            "a",
+            "an",
+            "of",
+            "to",
+            "in",
+            "on",
+            "at",
+            "by",
+            "as",
+            "is",
+            "are",
+            "was",
+            "were",
+            "has",
+            "have",
+            "studying",
+            "study",
+            "studies",
+            "learn",
+            "learning",
+            "about",
+            "will",
+            "would",
+            "can",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "there",
+            "their",
+            "this",
+            "that",
+            "these",
+            "those",
+            "over",
+            "under",
+            "which",
+            "what",
+            "when",
+            "where",
+            "how",
+            "why",
+            "all",
+            "some",
+            "any",
+            "each",
+            "not",
+            "very",
+            "more",
+            "most",
+            "other",
+            "such",
+            "than",
+            "then",
+        }
+    )
 
     @staticmethod
     def _is_weak_phrase(keyword: str) -> bool:
-        if ' ' not in keyword:
+        if " " not in keyword:
             return False
         return any(t in YAKEKeywordExtractor.WEAK_PHRASE_TOKENS for t in keyword.split())
 
     @staticmethod
     def _is_verb_containing_bigram(keyword: str, doc=None) -> bool:
         """Reject YAKE bigrams that cross POS boundaries (verb + noun, name + verb).
-        
+
         Uses spaCy POS tags from the already-parsed doc. If doc is None,
         falls back to the WEAK_PHRASE_TOKENS check.
         """
-        if ' ' not in keyword:
+        if " " not in keyword:
             return False
         if doc is None:
             return False
@@ -209,7 +506,7 @@ class YAKEKeywordExtractor:
                 if raw:
                     min_s = min(s for _, s in raw)
                     max_s = max(s for _, s in raw)
-                    rng   = max(max_s - min_s, 1e-9)
+                    rng = max(max_s - min_s, 1e-9)
                     for kw, s in raw:
                         kw = kw.lower().strip()
                         if len(kw) < self.MIN_KW_LEN:
@@ -228,7 +525,6 @@ class YAKEKeywordExtractor:
         # -- 2. spaCy NER + noun chunks -----------------------------
         if doc is not None:
             try:
-
                 # Named entities -- skip blocked types, boost allowed types
                 for ent in doc.ents:
                     if ent.label_ in self.BLOCKED_ENTITY_TYPES:
@@ -264,8 +560,7 @@ class YAKEKeywordExtractor:
         # Drop weak verb/function-word phrase fragments (keep single words).
         sorted_kws = [kv for kv in sorted_kws if not self._is_weak_phrase(kv[0])]
         # Filter out keywords that are entirely personal names (PII)
-        sorted_kws = [kv for kv in sorted_kws
-                      if not all(w in _BLOCKED_NAMES for w in kv[0].split())]
+        sorted_kws = [kv for kv in sorted_kws if not all(w in _BLOCKED_NAMES for w in kv[0].split())]
         # Filter out keywords that are blocked entity text (ORG/GPE/etc.)
         if blocked_entity_texts:
             sorted_kws = [kv for kv in sorted_kws if kv[0] not in blocked_entity_texts]
@@ -275,13 +570,30 @@ class YAKEKeywordExtractor:
     def _frequency_fallback(text: str, top_n: int) -> dict:
         """Last-resort: normalised word frequency (no dependencies)."""
         from collections import Counter
-        words = [w.lower() for w in re.findall(r'\b[a-zA-Z]{3,}\b', text)]
-        STOP  = {"the","and","for","with","that","this","are","was",
-                 "were","have","has","from","they","their","you","your"}
+
+        words = [w.lower() for w in re.findall(r"\b[a-zA-Z]{3,}\b", text)]
+        STOP = {
+            "the",
+            "and",
+            "for",
+            "with",
+            "that",
+            "this",
+            "are",
+            "was",
+            "were",
+            "have",
+            "has",
+            "from",
+            "they",
+            "their",
+            "you",
+            "your",
+        }
         words = [w for w in words if w not in STOP]
         counts = Counter(words)
-        total  = max(sum(counts.values()), 1)
-        return {w: round(c/total, 4) for w, c in counts.most_common(top_n)}
+        total = max(sum(counts.values()), 1)
+        return {w: round(c / total, 4) for w, c in counts.most_common(top_n)}
 
     def get_keyword_scores_dict(self, text: str, top_n: int = 15) -> dict:
         """Return {keyword: score} dict for easy downstream use."""
@@ -291,12 +603,14 @@ class YAKEKeywordExtractor:
 # -- Global singleton -------------------------------------------------
 _extractor_instance: Optional[YAKEKeywordExtractor] = None
 
+
 def get_keyword_extractor() -> YAKEKeywordExtractor:
     """Return the global YAKE extractor instance (lazy init)."""
     global _extractor_instance
     if _extractor_instance is None:
         _extractor_instance = YAKEKeywordExtractor()
     return _extractor_instance
+
 
 def extract_concepts(text: str, top_n: int = 15) -> dict:
     """Unified concept extraction: spaCy-first, YAKE-supplementary.
@@ -331,14 +645,14 @@ def extract_concepts(text: str, top_n: int = 15) -> dict:
                         scores[kw] = max(scores.get(kw, 0.0), 0.8)
 
             # Noun chunks: primary concept source (both phrase and root)
-            _STOP_ARTICLES = {'the', 'a', 'an'}
+            _STOP_ARTICLES = {"the", "a", "an"}
             for chunk in doc.noun_chunks:
                 # Full noun chunk phrase (e.g., "neural network")
                 # Strip leading articles: "The neural network" -> "neural network"
                 words = chunk.text.lower().strip().split()
                 while words and words[0] in _STOP_ARTICLES:
                     words.pop(0)
-                phrase = ' '.join(words)
+                phrase = " ".join(words)
                 if len(phrase) >= YAKEKeywordExtractor.MIN_KW_LEN:
                     scores[phrase] = max(scores.get(phrase, 0.0), 0.7)
                 # Root lemma as fallback
@@ -383,12 +697,12 @@ def extract_concepts(text: str, top_n: int = 15) -> dict:
     # -- 3. Filter: weak phrases, blocked names, blocked entities --
     sorted_kws = sorted(scores.items(), key=lambda x: -x[1])
     sorted_kws = [kv for kv in sorted_kws if not YAKEKeywordExtractor._is_weak_phrase(kv[0])]
-    sorted_kws = [kv for kv in sorted_kws
-                  if not all(w in _BLOCKED_NAMES for w in kv[0].split())]
+    sorted_kws = [kv for kv in sorted_kws if not all(w in _BLOCKED_NAMES for w in kv[0].split())]
     if blocked_entity_texts:
         sorted_kws = [kv for kv in sorted_kws if kv[0] not in blocked_entity_texts]
 
     return dict(sorted_kws[:top_n])
+
 
 if __name__ == "__main__":
     text = (

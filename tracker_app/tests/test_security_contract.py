@@ -11,38 +11,47 @@ import subprocess
 import sys
 import threading
 
-import pytest
-
 
 def test_app_import_generates_secret_key_when_missing():
     """C-1: when SECRET_KEY is missing, config.py auto-generates one
     and writes it to .env so the app always starts securely."""
     root = str(Path(__file__).parent.parent.parent)
-    env = {k: v for k, v in os.environ.items()
-           if k not in ('SECRET_KEY', 'DEBUG')}
+    env = {k: v for k, v in os.environ.items() if k not in ("SECRET_KEY", "DEBUG")}
     r = subprocess.run(
-        [sys.executable, '-c', 'import tracker_app.config; import tracker_app.web.app; '         'import os; print(len(os.environ["SECRET_KEY"]))'],
-        cwd=root, env=env, capture_output=True, text=True, timeout=120,
+        [
+            sys.executable,
+            "-c",
+            'import tracker_app.config; import tracker_app.web.app; import os; print(len(os.environ["SECRET_KEY"]))',
+        ],
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
     assert r.returncode == 0, f"App failed to start: {r.stderr}"
     # Verify a real key was generated (not the dev default)
     key_len = int(r.stdout.strip())
-    assert key_len >= 32, f'SECRET_KEY not auto-generated (len={key_len})'
+    assert key_len >= 32, f"SECRET_KEY not auto-generated (len={key_len})"
 
 
 def test_app_import_always_has_valid_secret_key(tmp_path):
     """C-1: whether DEBUG is set or not, the app must always have a
     valid SECRET_KEY (auto-generated if missing from env)."""
     root = str(Path(__file__).parent.parent.parent)
-    env = {k: v for k, v in os.environ.items()
-           if k not in ('SECRET_KEY',)}
+    env = {k: v for k, v in os.environ.items() if k not in ("SECRET_KEY",)}
     r = subprocess.run(
-        [sys.executable, '-c', 'import tracker_app.web.app; print(len(tracker_app.web.app.app.config["SECRET_KEY"]))'],
-        cwd=root, env=env, capture_output=True, text=True, timeout=120,
+        [sys.executable, "-c", 'import tracker_app.web.app; print(len(tracker_app.web.app.app.config["SECRET_KEY"]))'],
+        cwd=root,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
     )
     assert r.returncode == 0, f"App failed: {r.stderr}"
     key_len = int(r.stdout.strip())
-    assert key_len >= 32, f'SECRET_KEY too short ({key_len} chars)'
+    assert key_len >= 32, f"SECRET_KEY too short ({key_len} chars)"
+
 
 def test_auth_enforced_when_no_auth_false_and_key_set(monkeypatch):
     """C-1: with NO_AUTH=false and API_KEY set, the before_request hook must
@@ -50,18 +59,18 @@ def test_auth_enforced_when_no_auth_false_and_key_set(monkeypatch):
     import tracker_app.web.auth as auth
     from tracker_app.web.app import app
 
-    monkeypatch.setattr(auth, '_NO_AUTH', False)
-    monkeypatch.setattr(auth, '_API_KEY', 'sekrit')
-    app.config['TESTING'] = True
+    monkeypatch.setattr(auth, "_NO_AUTH", False)
+    monkeypatch.setattr(auth, "_API_KEY", "sekrit")
+    app.config["TESTING"] = True
     client = app.test_client()
 
-    resp = client.get('/api/v1/session/status')
+    resp = client.get("/api/v1/session/status")
     assert resp.status_code == 401
 
-    resp = client.get('/api/v1/session/status', headers={'X-API-Key': 'wrong'})
+    resp = client.get("/api/v1/session/status", headers={"X-API-Key": "wrong"})
     assert resp.status_code == 403
 
-    resp = client.get('/api/v1/session/status', headers={'X-API-Key': 'sekrit'})
+    resp = client.get("/api/v1/session/status", headers={"X-API-Key": "sekrit"})
     assert resp.status_code == 200
 
 
@@ -69,10 +78,10 @@ def test_auth_skipped_when_no_auth_true(monkeypatch):
     import tracker_app.web.auth as auth
     from tracker_app.web.app import app
 
-    monkeypatch.setattr(auth, '_NO_AUTH', True)
-    monkeypatch.setattr(auth, '_API_KEY', 'sekrit')
-    app.config['TESTING'] = True
-    resp = app.test_client().get('/api/v1/session/status')
+    monkeypatch.setattr(auth, "_NO_AUTH", True)
+    monkeypatch.setattr(auth, "_API_KEY", "sekrit")
+    app.config["TESTING"] = True
+    resp = app.test_client().get("/api/v1/session/status")
     assert resp.status_code == 200  # not blocked by auth
 
 
@@ -82,14 +91,16 @@ def test_retrain_lock_allows_single_concurrent_run(monkeypatch):
     import tracker_app.web.api as api_mod
     from tracker_app.db import repository as repo_mod
 
-    monkeypatch.setattr(repo_mod.FeedbackRepository, 'get_total_count',
-                        lambda db: 50)
+    monkeypatch.setattr(repo_mod.FeedbackRepository, "get_total_count", lambda db: 50)
     starts = []
-    monkeypatch.setattr(api_mod.FeedbackService, '_retrain_from_feedback',
-                        staticmethod(lambda: starts.append(threading.current_thread().name)))
+    monkeypatch.setattr(
+        api_mod.FeedbackService,
+        "_retrain_from_feedback",
+        staticmethod(lambda: starts.append(threading.current_thread().name)),
+    )
 
     fresh_lock = threading.Lock()
-    monkeypatch.setattr(api_mod, '_retrain_lock', fresh_lock)
+    monkeypatch.setattr(api_mod, "_retrain_lock", fresh_lock)
 
     api_mod.FeedbackService.maybe_trigger_retrain()
     api_mod.FeedbackService.maybe_trigger_retrain()
@@ -105,7 +116,5 @@ def test_socketio_cors_is_not_wildcard():
     """
     source = Path(__file__).resolve().parents[1] / "web" / "realtime.py"
     text = source.read_text(encoding="utf-8")
-    assert 'cors_allowed_origins="*"' not in text, (
-        "Socket.IO must not use wildcard CORS origin"
-    )
-    assert 'cors_allowed_origins' in text
+    assert 'cors_allowed_origins="*"' not in text, "Socket.IO must not use wildcard CORS origin"
+    assert "cors_allowed_origins" in text

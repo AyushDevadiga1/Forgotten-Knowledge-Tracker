@@ -1,4 +1,4 @@
-﻿"""Attention-Weighted Forgetting Curve (AWFC) retention model.
+"""Attention-Weighted Forgetting Curve (AWFC) retention model.
 
 Standard Ebbinghaus: R(t) = exp(-Î» * t)
 FKT AWFC:            R(t) = exp(-Î»_p * t), Î»_p = Î»_base * (1 - attention_norm * Î±)
@@ -17,12 +17,13 @@ from tracker_app.config import DEFAULT_LAMBDA, MEMORY_THRESHOLD
 
 logger = logging.getLogger("MemoryModel")
 
-AWFC_ALPHA       = 0.30    # dampening factor â€” max slowdown from attention
-LAMBDA_FLOOR     = 0.01    # minimum decay rate (concept never fully immortal)
-LAMBDA_CEIL      = 0.50    # maximum decay rate
+AWFC_ALPHA = 0.30  # dampening factor â€” max slowdown from attention
+LAMBDA_FLOOR = 0.01  # minimum decay rate (concept never fully immortal)
+LAMBDA_CEIL = 0.50  # maximum decay rate
 
 
 # â”€â”€â”€ Datetime helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 def safe_parse_datetime(dt_value, default=None) -> datetime:
     """Parse datetime from string, datetime, or None."""
@@ -48,6 +49,7 @@ def safe_parse_datetime(dt_value, default=None) -> datetime:
 
 # â”€â”€â”€ AWFC core â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+
 def compute_awfc_lambda(
     base_lambda: float,
     attention_at_encoding: float,
@@ -67,7 +69,7 @@ def compute_awfc_lambda(
         Personalised lambda in [LAMBDA_FLOOR, LAMBDA_CEIL]
     """
     att_norm = max(0.0, min(attention_at_encoding / 100.0, 1.0))
-    lambda_p  = base_lambda * (1.0 - att_norm * alpha)
+    lambda_p = base_lambda * (1.0 - att_norm * alpha)
     return max(LAMBDA_FLOOR, min(lambda_p, LAMBDA_CEIL))
 
 
@@ -93,12 +95,13 @@ def compute_memory_score_awfc(
         Float in [0.05, 1.0]
     """
     lambda_p = compute_awfc_lambda(base_lambda, attention_at_encoding)
-    t_hours  = max(0.0, (_utcnow() - last_review).total_seconds() / 3600.0)
-    R        = math.exp(-lambda_p * t_hours) * modality_boost
+    t_hours = max(0.0, (_utcnow() - last_review).total_seconds() / 3600.0)
+    R = math.exp(-lambda_p * t_hours) * modality_boost
     return max(0.05, min(1.0, R))
 
 
 # â”€â”€â”€ Review scheduling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 def schedule_next_review(
     last_review_time,
@@ -114,20 +117,21 @@ def schedule_next_review(
     Strong memory â†’ longer interval, scaled by personalised Î».
     """
     last_review = safe_parse_datetime(last_review_time)
-    lambda_p    = compute_awfc_lambda(lambda_val, attention_at_encoding)
+    lambda_p = compute_awfc_lambda(lambda_val, attention_at_encoding)
 
     if memory_score < MEMORY_THRESHOLD:
         interval_hours = hours_min
     else:
-        base_interval  = 1.0 / max(0.01, lambda_p)
-        strength_factor = memory_score ** 2
-        interval_hours  = max(hours_min, base_interval * strength_factor)
-        interval_hours  = min(interval_hours, 24 * 30)  # cap at 30 days
+        base_interval = 1.0 / max(0.01, lambda_p)
+        strength_factor = memory_score**2
+        interval_hours = max(hours_min, base_interval * strength_factor)
+        interval_hours = min(interval_hours, 24 * 30)  # cap at 30 days
 
     return _utcnow() + timedelta(hours=interval_hours)
 
 
 # â”€â”€â”€ Personalise Î» from review history â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 def recalibrate_lambda(
     concept: str,
@@ -159,24 +163,21 @@ def recalibrate_lambda(
     predicted_rate = math.exp(-current_lambda * t_hours) if t_hours > 0 else 1.0
 
     # Nudge Î» toward the right decay rate
-    adjustment  = 0.05 * (predicted_rate - actual_success_rate)
-    new_lambda  = current_lambda + adjustment
+    adjustment = 0.05 * (predicted_rate - actual_success_rate)
+    new_lambda = current_lambda + adjustment
     return max(LAMBDA_FLOOR, min(new_lambda, LAMBDA_CEIL))
 
 
 if __name__ == "__main__":
     # Quick smoke test
     from datetime import timedelta
+
     learned_5h_ago = _utcnow() - timedelta(hours=5)
 
     for att in [20, 50, 80]:
-        score = compute_memory_score_awfc(learned_5h_ago,
-                                          base_lambda=0.1,
-                                          attention_at_encoding=att)
-        lp    = compute_awfc_lambda(0.1, att)
+        score = compute_memory_score_awfc(learned_5h_ago, base_lambda=0.1, attention_at_encoding=att)
+        lp = compute_awfc_lambda(0.1, att)
         print(f"Attention={att:>3}  Î»_p={lp:.4f}  retention={score:.4f}")
 
-    next_rev = schedule_next_review(learned_5h_ago, memory_score=0.55,
-                                    lambda_val=0.1, attention_at_encoding=75)
+    next_rev = schedule_next_review(learned_5h_ago, memory_score=0.55, lambda_val=0.1, attention_at_encoding=75)
     print(f"\nNext review at: {next_rev.strftime('%Y-%m-%d %H:%M')} UTC")
-

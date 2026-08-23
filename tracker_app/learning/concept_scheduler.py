@@ -1,4 +1,4 @@
-﻿"""SM-2 concept scheduling with AWFC-personalised decay (lambda per concept)."""
+"""SM-2 concept scheduling with AWFC-personalised decay (lambda per concept)."""
 
 import logging
 from datetime import datetime, timedelta
@@ -6,7 +6,7 @@ from typing import Dict, Any, List, Optional
 
 from tracker_app.utils import utcnow as _utcnow
 
-from tracker_app.config import DATA_DIR, DEFAULT_LAMBDA
+from tracker_app.config import DEFAULT_LAMBDA
 from tracker_app.db import models
 from tracker_app.db.models import TrackedConcept, ConceptEncounter, SessionLocal
 
@@ -57,16 +57,12 @@ class ConceptScheduler:
         now = _utcnow()
 
         with SessionLocal() as db:
-            existing = (db.query(TrackedConcept)
-                          .filter(TrackedConcept.concept == concept)
-                          .with_for_update()
-                          .first())
+            existing = db.query(TrackedConcept).filter(TrackedConcept.concept == concept).with_for_update().first()
 
             if existing:
                 # Rolling average of attention at encoding (EMA 80/20)
                 existing.attention_at_encoding = (
-                    0.8 * (existing.attention_at_encoding or 50.0)
-                    + 0.2 * attention_at_encoding
+                    0.8 * (existing.attention_at_encoding or 50.0) + 0.2 * attention_at_encoding
                 )
                 # Once schedule_next_review() has recalibrated lambda from real
                 # recall performance (repetitions > 0), a passive re-encounter
@@ -78,22 +74,15 @@ class ConceptScheduler:
                 # afterwards, nudge gently toward the attention-based estimate
                 # instead of replacing it outright.
                 if (existing.repetitions or 0) == 0:
-                    existing.lambda_personalised = compute_awfc_lambda(
-                        DEFAULT_LAMBDA, existing.attention_at_encoding
-                    )
+                    existing.lambda_personalised = compute_awfc_lambda(DEFAULT_LAMBDA, existing.attention_at_encoding)
                 else:
-                    attention_lambda = compute_awfc_lambda(
-                        DEFAULT_LAMBDA, existing.attention_at_encoding
-                    )
+                    attention_lambda = compute_awfc_lambda(DEFAULT_LAMBDA, existing.attention_at_encoding)
                     existing.lambda_personalised = (
-                        0.9 * (existing.lambda_personalised or DEFAULT_LAMBDA)
-                        + 0.1 * attention_lambda
+                        0.9 * (existing.lambda_personalised or DEFAULT_LAMBDA) + 0.1 * attention_lambda
                     )
-                existing.last_seen       = now
+                existing.last_seen = now
                 existing.frequency_count = (existing.frequency_count or 0) + 1
-                existing.relevance_score = (
-                    ((existing.relevance_score or 0.5) + confidence) / 2.0
-                )
+                existing.relevance_score = ((existing.relevance_score or 0.5) + confidence) / 2.0
                 # Auto-promote into the learning deck once the concept has
                 # been re-encountered enough times to look like real study
                 # content, not a one-off glance. Promotion is best-effort and
@@ -102,14 +91,13 @@ class ConceptScheduler:
                     PROMOTE_AFTER_ENCOUNTERS,
                     is_kb_worthy,
                 )
-                if (
-                    existing.frequency_count == PROMOTE_AFTER_ENCOUNTERS
-                    and is_kb_worthy(concept)
-                ):
+
+                if existing.frequency_count == PROMOTE_AFTER_ENCOUNTERS and is_kb_worthy(concept):
                     try:
                         from tracker_app.learning.concept_promotion import (
                             promote_concept_to_deck,
                         )
+
                         promote_concept_to_deck(concept)
                     except Exception as e:
                         logger.debug(f"Deck promotion failed for {concept}: {e}")
@@ -140,6 +128,7 @@ class ConceptScheduler:
         # row (Phase 11.2) â€” a re-encounter resets the retention clock.
         try:
             from tracker_app.tracking.knowledge_graph import sync_concept_to_graph
+
             sync_concept_to_graph(concept)
         except Exception as e:
             logger.debug(f"Graph sync skipped for {concept}: {e}")
@@ -160,20 +149,18 @@ class ConceptScheduler:
             return
 
         from tracker_app.learning.sm2_memory_model import (
-            MIN_EASE_FACTOR, MAX_EASE_FACTOR, QUALITY_THRESHOLD,
-            SECOND_REVIEW_INTERVAL_DAYS,
+            QUALITY_THRESHOLD,
         )
+
         with models.SessionLocal() as db:
-            tracked = (db.query(TrackedConcept)
-                         .filter(TrackedConcept.concept == concept_id)
-                         .first())
+            tracked = db.query(TrackedConcept).filter(TrackedConcept.concept == concept_id).first()
 
             if not tracked:
                 logger.warning(f"schedule_next_review: '{concept_id}' not found.")
                 return
 
-            interval    = getattr(tracked, "interval", 1) or 1
-            ease        = getattr(tracked, "memory_strength", 2.5) or 2.5
+            interval = getattr(tracked, "interval", 1) or 1
+            ease = getattr(tracked, "memory_strength", 2.5) or 2.5
             repetitions = getattr(tracked, "repetitions", 0) or 0
 
             # Ease factor adjusts on every review (success AND failure) using
@@ -182,33 +169,34 @@ class ConceptScheduler:
             from tracker_app.learning.sm2_memory_model import (
                 calculate_sm2_interval,
             )
+
             sm2_result = calculate_sm2_interval(
                 interval=interval,
                 ease_factor=ease,
                 repetitions=repetitions,
                 quality=quality,
             )
-            new_interval = sm2_result['interval']
-            new_ease = sm2_result['ease_factor']
-            repetitions = sm2_result['repetitions']
+            new_interval = sm2_result["interval"]
+            new_ease = sm2_result["ease_factor"]
+            repetitions = sm2_result["repetitions"]
 
-            tracked.interval        = new_interval
+            tracked.interval = new_interval
             tracked.memory_strength = new_ease
-            tracked.repetitions     = repetitions
-            tracked.next_review     = _utcnow() + timedelta(days=new_interval)
+            tracked.repetitions = repetitions
+            tracked.next_review = _utcnow() + timedelta(days=new_interval)
             # Recalibration needs the decay window since the PREVIOUS
             # reinforcement, so snapshot last_seen before this review resets it.
             prev_last_seen = tracked.last_seen
             # A review is a reinforcement event: reset the retention clock so
             # the AWFC memory score (and the graph's live copy) reflect the
             # fresh recall rather than the last OCR encounter.
-            tracked.last_seen       = _utcnow()
+            tracked.last_seen = _utcnow()
 
             # Cumulative review history (M-6): every schedule_next_review call
             # is one quiz review, so review_count/correct_count give a true
             # cumulative success rate for recalibration instead of the old
             # "single rating / 5" approximation.
-            tracked.review_count  = (tracked.review_count or 0) + 1
+            tracked.review_count = (tracked.review_count or 0) + 1
             if quality >= QUALITY_THRESHOLD:
                 tracked.correct_count = (tracked.correct_count or 0) + 1
 
@@ -217,6 +205,7 @@ class ConceptScheduler:
             if review_count >= 5:
                 try:
                     from tracker_app.learning.memory_model import recalibrate_lambda
+
                     correct_rate = (tracked.correct_count or 0) / review_count
                     tracked.lambda_personalised = recalibrate_lambda(
                         concept_id,
@@ -229,12 +218,15 @@ class ConceptScheduler:
                     logger.debug(f"â•¬â•— recalibration skipped: {e}")
 
             db.commit()
-            logger.debug(f"Scheduled '{concept_id}' in {new_interval}d "
-                         f"(quality={quality}, â•¬â•—={tracked.lambda_personalised:.4f})")
+            logger.debug(
+                f"Scheduled '{concept_id}' in {new_interval}d "
+                f"(quality={quality}, â•¬â•—={tracked.lambda_personalised:.4f})"
+            )
 
             # Reflect the fresh review in the knowledge graph (Phase 11.2).
             try:
                 from tracker_app.tracking.knowledge_graph import sync_concept_to_graph
+
                 sync_concept_to_graph(concept_id)
             except Exception as e:
                 logger.debug(f"Graph sync skipped for {concept_id}: {e}")
@@ -248,61 +240,56 @@ class ConceptScheduler:
         with models.SessionLocal() as db:
             concepts = (
                 db.query(TrackedConcept)
-                  .filter(TrackedConcept.next_review <= now)
-                  .filter(TrackedConcept.status != 'archived')
-                  .order_by(
-                      TrackedConcept.relevance_score.desc(),
-                      TrackedConcept.next_review.asc(),
-                  )
-                  .limit(limit)
-                  .all()
+                .filter(TrackedConcept.next_review <= now)
+                .filter(TrackedConcept.status != "archived")
+                .order_by(
+                    TrackedConcept.relevance_score.desc(),
+                    TrackedConcept.next_review.asc(),
+                )
+                .limit(limit)
+                .all()
             )
 
             return [
                 {
-                    "id":                   c.concept,
-                    "concept":              c.concept,
-                    "encounter_count":      c.frequency_count,
-                    "interval":             getattr(c, "interval", 1),
-                    "relevance":            c.relevance_score,
+                    "id": c.concept,
+                    "concept": c.concept,
+                    "encounter_count": c.frequency_count,
+                    "interval": getattr(c, "interval", 1),
+                    "relevance": c.relevance_score,
                     "attention_at_encoding": getattr(c, "attention_at_encoding", 50.0),
-                    "lambda_personalised":  getattr(c, "lambda_personalised", DEFAULT_LAMBDA),
+                    "lambda_personalised": getattr(c, "lambda_personalised", DEFAULT_LAMBDA),
                 }
                 for c in concepts
             ]
 
     # Î“Ã¶Ã‡Î“Ã¶Ã‡ Concept history Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡Î“Ã¶Ã‡
 
-    def get_concept_history(
-        self, concept: str, days: int = 30
-    ) -> List[Dict[str, Any]]:
+    def get_concept_history(self, concept: str, days: int = 30) -> List[Dict[str, Any]]:
         """Encounter history for a concept over the last N days."""
         start = _utcnow() - timedelta(days=days)
 
         with models.SessionLocal() as db:
-            tc = (db.query(TrackedConcept)
-                    .filter(TrackedConcept.concept == concept)
-                    .first())
+            tc = db.query(TrackedConcept).filter(TrackedConcept.concept == concept).first()
             if not tc:
                 return []
 
             encounters = (
                 db.query(ConceptEncounter)
-                  .filter(
-                      ConceptEncounter.concept == tc.concept,
-                      ConceptEncounter.timestamp >= start,
-                  )
-                  .order_by(ConceptEncounter.timestamp.desc())
-                  .all()
+                .filter(
+                    ConceptEncounter.concept == tc.concept,
+                    ConceptEncounter.timestamp >= start,
+                )
+                .order_by(ConceptEncounter.timestamp.desc())
+                .all()
             )
 
             return [
                 {
-                    "timestamp":  e.timestamp.isoformat() if isinstance(e.timestamp, datetime)
-                                  else str(e.timestamp),
-                    "context":    e.context_snippet,
+                    "timestamp": e.timestamp.isoformat() if isinstance(e.timestamp, datetime) else str(e.timestamp),
+                    "context": e.context_snippet,
                     "confidence": e.confidence,
-                    "relevance":  tc.relevance_score,
+                    "relevance": tc.relevance_score,
                 }
                 for e in encounters
             ]
@@ -321,11 +308,10 @@ def get_scheduler() -> "ConceptScheduler":
 
 if __name__ == "__main__":
     from tracker_app.db.db_module import init_all_databases
+
     init_all_databases()
-    s  = ConceptScheduler()
-    cid = s.add_concept("backpropagation", 0.85,
-                        "studying neural networks", attention_at_encoding=78)
+    s = ConceptScheduler()
+    cid = s.add_concept("backpropagation", 0.85, "studying neural networks", attention_at_encoding=78)
     print(f"Added: {cid}")
     due = s.get_due_concepts()
     print(f"Due: {len(due)}")
-

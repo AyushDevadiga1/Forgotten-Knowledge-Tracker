@@ -95,37 +95,45 @@ def test_corrupt_state_file_falls_back_to_inactive(isolated_state):
 
 def test_intent_gate_default_allows_studying_only():
     from tracker_app.config import SESSION_ALLOWED_INTENTS
+
     assert "studying" in SESSION_ALLOWED_INTENTS
 
 
 def test_lock_file_created_as_sidecar(isolated_state, monkeypatch):
     """Lock sidecar file is created and used during acquire/release."""
-    lock_file = isolated_state.with_suffix('.json.lock')
-    monkeypatch.setattr(ss, '_LOCK_PATH', lock_file)
+    lock_file = isolated_state.with_suffix(".json.lock")
+    monkeypatch.setattr(ss, "_LOCK_PATH", lock_file)
     fl = ss.FileLock(lock_file, timeout=5)
-    monkeypatch.setattr(ss, '_file_lock', fl)
+    monkeypatch.setattr(ss, "_file_lock", fl)
     acquire_called = []
     original_acquire = fl.acquire
+
     def tracking_acquire(*a, **kw):
         result = original_acquire(*a, **kw)
         acquire_called.append(True)
         return result
+
     fl.acquire = tracking_acquire
     ss.start()
-    assert len(acquire_called) == 1, 'file_lock.acquire should be called once'
+    assert len(acquire_called) == 1, "file_lock.acquire should be called once"
+
 
 def test_lock_failure_falls_back_gracefully(isolated_state, monkeypatch):
     """When file lock acquisition fails, operations fall back to unlocked access."""
+
     class FailingLock:
         def acquire(self, *a, **kw):
             raise OSError("permission denied")
+
         def release(self, *a, **kw):
             pass
-    monkeypatch.setattr(ss, '_file_lock', FailingLock())
+
+    monkeypatch.setattr(ss, "_file_lock", FailingLock())
     result = ss.start()
     assert result["active"] is True
     assert ss.is_active() is True
     assert ss.get_status()["active"] is True
+
 
 _worker_script = """import sys, json
 from pathlib import Path
@@ -146,21 +154,24 @@ elif action == "read":
 
 
 def test_concurrent_start_stop_consistent(isolated_state, monkeypatch, tmp_path):
-    import multiprocessing, subprocess, textwrap
+    import multiprocessing
+    import subprocess
+    import textwrap
+
     lock_path = isolated_state.with_suffix(".json.lock")
     monkeypatch.setattr(ss, "_LOCK_PATH", lock_path)
     monkeypatch.setattr(ss, "_file_lock", ss.FileLock(lock_path, timeout=5))
-    script = tmp_path / '_worker.py'
-    script.write_text(textwrap.dedent(_worker_script), encoding='utf-8')
+    script = tmp_path / "_worker.py"
+    script.write_text(textwrap.dedent(_worker_script), encoding="utf-8")
     exe = ss.sys.executable if hasattr(ss, "sys") else __import__("sys").executable
-    ctx = multiprocessing.get_context('spawn')
+    ctx = multiprocessing.get_context("spawn")
     p1 = ctx.Process(
         target=subprocess.run,
-        args=([exe, str(script), str(isolated_state), str(lock_path), 'start'],),
+        args=([exe, str(script), str(isolated_state), str(lock_path), "start"],),
     )
     p2 = ctx.Process(
         target=subprocess.run,
-        args=([exe, str(script), str(isolated_state), str(lock_path), 'stop'],),
+        args=([exe, str(script), str(isolated_state), str(lock_path), "stop"],),
     )
     p1.start()
     p2.start()

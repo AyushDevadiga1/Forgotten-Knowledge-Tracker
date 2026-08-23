@@ -34,7 +34,7 @@ def test_save_graph_evicts_lowest_memory_isolated_nodes(monkeypatch, tmp_path):
     kg._save_graph()
 
     assert kg.knowledge_graph.number_of_nodes() == 5
-    assert "a" not in kg.knowledge_graph   # two lowest zero-edge nodes evicted
+    assert "a" not in kg.knowledge_graph  # two lowest zero-edge nodes evicted
     assert "b" not in kg.knowledge_graph
     assert "c" in kg.knowledge_graph
     assert "d" in kg.knowledge_graph

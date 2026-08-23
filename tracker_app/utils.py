@@ -1,4 +1,4 @@
-﻿"""Shared utility functions for the FKT codebase."""
+"""Shared utility functions for the FKT codebase."""
 
 import datetime as _stdlib_dt
 

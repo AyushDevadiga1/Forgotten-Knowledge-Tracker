@@ -35,10 +35,10 @@ logger = logging.getLogger("CLe")
 # ----------------------------
 # Constants
 # ----------------------------
-WINDOW_SECONDS = 30          # Rolling window for CLE calculation
-MIN_EVENTS_FOR_SCORE = 5     # Minimum events before issuing a score
-PAUSE_THRESHOLD_MS = 1500    # Gap longer than this = a "pause" (ms)
-BURST_GAP_MS = 300           # Gap shorter than this = same typing burst
+WINDOW_SECONDS = 30  # Rolling window for CLE calculation
+MIN_EVENTS_FOR_SCORE = 5  # Minimum events before issuing a score
+PAUSE_THRESHOLD_MS = 1500  # Gap longer than this = a "pause" (ms)
+BURST_GAP_MS = 300  # Gap shorter than this = same typing burst
 
 
 class CognitiveLoadEstimator:
@@ -64,7 +64,7 @@ class CognitiveLoadEstimator:
         """Record a keypress event (call from pynput on_press)."""
         now_ms = time.time() * 1000
         with self._lock:
-            event_type = 'backspace' if is_backspace else 'key'
+            event_type = "backspace" if is_backspace else "key"
             self._events.append((now_ms, event_type))
             if is_backspace:
                 self._total_backspaces += 1
@@ -76,7 +76,7 @@ class CognitiveLoadEstimator:
         """Record a mouse click (lighter signal than keypress)."""
         now_ms = time.time() * 1000
         with self._lock:
-            self._events.append((now_ms, 'mouse'))
+            self._events.append((now_ms, "mouse"))
             self._prune_old_events(now_ms)
 
     def _prune_old_events(self, now_ms: float):
@@ -105,30 +105,18 @@ class CognitiveLoadEstimator:
             events = list(self._events)
 
         if len(events) < MIN_EVENTS_FOR_SCORE:
-            return {
-                'cle_score': 0.0,
-                'label': 'idle',
-                'confidence': 0.0,
-                'signals': {},
-                'event_count': len(events)
-            }
+            return {"cle_score": 0.0, "label": "idle", "confidence": 0.0, "signals": {}, "event_count": len(events)}
 
-        key_events = [(ts, t) for ts, t in events if t in ('key', 'backspace')]
-        backspace_events = [ts for ts, t in events if t == 'backspace']
+        key_events = [(ts, t) for ts, t in events if t in ("key", "backspace")]
+        backspace_events = [ts for ts, t in events if t == "backspace"]
 
         if len(key_events) < 2:
-            return {
-                'cle_score': 0.1,
-                'label': 'passive',
-                'confidence': 0.2,
-                'signals': {},
-                'event_count': len(events)
-            }
+            return {"cle_score": 0.1, "label": "passive", "confidence": 0.2, "signals": {}, "event_count": len(events)}
 
         timestamps = [ts for ts, _ in key_events]
 
         # --- Signal 1: Inter-key interval entropy ---
-        ikis = [timestamps[i+1] - timestamps[i] for i in range(len(timestamps)-1)]
+        ikis = [timestamps[i + 1] - timestamps[i] for i in range(len(timestamps) - 1)]
         ikis_filtered = [iki for iki in ikis if 0 < iki < 5000]  # discard absurd gaps
 
         iki_entropy = 0.0
@@ -149,7 +137,7 @@ class CognitiveLoadEstimator:
         if len(ikis_filtered) > 1:
             mean_iki = sum(ikis_filtered) / len(ikis_filtered)
             variance = sum((x - mean_iki) ** 2 for x in ikis_filtered) / len(ikis_filtered)
-            cv = (variance ** 0.5) / mean_iki if mean_iki > 0 else 0  # coefficient of variation
+            cv = (variance**0.5) / mean_iki if mean_iki > 0 else 0  # coefficient of variation
             speed_variance_norm = min(cv / 2.0, 1.0)
         else:
             speed_variance_norm = 0.0
@@ -159,7 +147,7 @@ class CognitiveLoadEstimator:
         backspace_norm = min(backspace_rate / 0.25, 1.0)  # 25% backspace rate = max score
 
         # --- Signal 4: Pause density ---
-        all_gaps = [timestamps[i+1] - timestamps[i] for i in range(len(timestamps)-1)]
+        all_gaps = [timestamps[i + 1] - timestamps[i] for i in range(len(timestamps) - 1)]
         pauses = [g for g in all_gaps if g > PAUSE_THRESHOLD_MS]
         pause_density = len(pauses) / max(len(all_gaps), 1)
         # Moderate pauses = thinking = higher load; too many pauses = idle
@@ -184,19 +172,19 @@ class CognitiveLoadEstimator:
         # --- Combine signals with weights ---
         # Weights determined empirically from keystroke dynamics literature
         signals = {
-            'iki_entropy': round(iki_entropy_norm, 3),
-            'speed_variance': round(speed_variance_norm, 3),
-            'backspace_rate': round(backspace_norm, 3),
-            'pause_score': round(pause_score, 3),
-            'burst_score': round(burst_score, 3),
+            "iki_entropy": round(iki_entropy_norm, 3),
+            "speed_variance": round(speed_variance_norm, 3),
+            "backspace_rate": round(backspace_norm, 3),
+            "pause_score": round(pause_score, 3),
+            "burst_score": round(burst_score, 3),
         }
 
         weights = {
-            'iki_entropy': 0.30,
-            'speed_variance': 0.20,
-            'backspace_rate': 0.20,
-            'pause_score': 0.15,
-            'burst_score': 0.15,
+            "iki_entropy": 0.30,
+            "speed_variance": 0.20,
+            "backspace_rate": 0.20,
+            "pause_score": 0.15,
+            "burst_score": 0.15,
         }
 
         cle_score = sum(signals[k] * weights[k] for k in signals)
@@ -207,33 +195,33 @@ class CognitiveLoadEstimator:
 
         # Label
         if cle_score < 0.15:
-            label = 'idle'
+            label = "idle"
         elif cle_score < 0.35:
-            label = 'passive'
+            label = "passive"
         elif cle_score < 0.55:
-            label = 'light'
+            label = "light"
         elif cle_score < 0.75:
-            label = 'moderate'
+            label = "moderate"
         else:
-            label = 'high'
+            label = "high"
 
         return {
-            'cle_score': round(cle_score, 3),
-            'label': label,
-            'confidence': round(confidence, 3),
-            'signals': signals,
-            'event_count': len(events)
+            "cle_score": round(cle_score, 3),
+            "label": label,
+            "confidence": round(confidence, 3),
+            "signals": signals,
+            "event_count": len(events),
         }
 
     def get_session_stats(self) -> dict:
         """Get overall session keystroke stats."""
         elapsed = time.time() - self._session_start
         return {
-            'total_keys': self._total_keys,
-            'total_backspaces': self._total_backspaces,
-            'backspace_rate': self._total_backspaces / max(self._total_keys, 1),
-            'elapsed_minutes': round(elapsed / 60, 1),
-            'keys_per_minute': round(self._total_keys / max(elapsed / 60, 0.01), 1),
+            "total_keys": self._total_keys,
+            "total_backspaces": self._total_backspaces,
+            "backspace_rate": self._total_backspaces / max(self._total_keys, 1),
+            "elapsed_minutes": round(elapsed / 60, 1),
+            "keys_per_minute": round(self._total_keys / max(elapsed / 60, 0.01), 1),
         }
 
     def reset(self):
@@ -250,6 +238,7 @@ class CognitiveLoadEstimator:
 # ----------------------------
 _cle_instance: Optional[CognitiveLoadEstimator] = None
 
+
 def get_cle() -> CognitiveLoadEstimator:
     """Get or create the global CLE instance."""
     global _cle_instance
@@ -260,6 +249,7 @@ def get_cle() -> CognitiveLoadEstimator:
 
 if __name__ == "__main__":
     import random
+
     cle = CognitiveLoadEstimator(window_seconds=30)
 
     print("Simulating 60 keypresses with realistic timing...")
@@ -273,6 +263,6 @@ if __name__ == "__main__":
     print(f"\nCLE Score: {result['cle_score']:.3f} ({result['label']})")
     print(f"Confidence: {result['confidence']:.2f}")
     print("Signals:")
-    for k, v in result['signals'].items():
+    for k, v in result["signals"].items():
         print(f"  {k}: {v:.3f}")
     print(f"\nSession stats: {cle.get_session_stats()}")

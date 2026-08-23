@@ -40,7 +40,7 @@ def clean_graph():
 def db(monkeypatch):
     """Point SessionLocal (as imported by knowledge_graph + scheduler) at an
     in-memory DB for the duration of the test."""
-    engine = create_engine('sqlite:///:memory:')
+    engine = create_engine("sqlite:///:memory:")
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
     monkeypatch.setattr(models, "engine", engine)
@@ -48,8 +48,7 @@ def db(monkeypatch):
     return TestingSessionLocal
 
 
-def _add_concept(db, concept, last_seen=None, lambda_p=0.1, attention=50.0,
-                 interval=1, strength=2.5):
+def _add_concept(db, concept, last_seen=None, lambda_p=0.1, attention=50.0, interval=1, strength=2.5):
     with db() as session:
         row = TrackedConcept(
             concept=concept,
@@ -68,7 +67,7 @@ def _add_concept(db, concept, last_seen=None, lambda_p=0.1, attention=50.0,
 
 
 def _memory_score(concept):
-    return kg.knowledge_graph.nodes[concept]['memory_score']
+    return kg.knowledge_graph.nodes[concept]["memory_score"]
 
 
 def test_fresh_concept_syncs_to_high_score(isolated_graph_path, clean_graph, db):
@@ -78,7 +77,7 @@ def test_fresh_concept_syncs_to_high_score(isolated_graph_path, clean_graph, db)
         kg.knowledge_graph.add_node("transformer", count=1, memory_score=0.3)
 
     kg.sync_concept_to_graph("transformer")
-    assert _memory_score("transformer") > 0.9   # just reinforced → ~1.0
+    assert _memory_score("transformer") > 0.9  # just reinforced → ~1.0
     assert "interval" in kg.knowledge_graph.nodes["transformer"]
 
 
@@ -119,7 +118,7 @@ def test_sync_adds_missing_concept_from_db(isolated_graph_path, clean_graph, db,
     kg.sync_concept_to_graph("chloroplast")
 
     assert "chloroplast" in kg.knowledge_graph
-    assert _memory_score("chloroplast") > 0.9   # live AWFC score, not the 0.3 default
+    assert _memory_score("chloroplast") > 0.9  # live AWFC score, not the 0.3 default
 
 
 def test_sync_skips_concept_absent_from_db(isolated_graph_path, clean_graph, monkeypatch):
@@ -138,6 +137,7 @@ def test_sync_skips_concept_absent_from_db(isolated_graph_path, clean_graph, mon
 def test_schedule_next_review_bounces_memory_score(isolated_graph_path, clean_graph, db):
     """A review resets the retention clock: memory_score goes low -> high."""
     from tracker_app.learning.concept_scheduler import ConceptScheduler
+
     old = datetime.utcnow() - timedelta(days=5)
     _add_concept(db, "review-me", last_seen=old)
     with kg._graph_lock:
@@ -156,9 +156,10 @@ def test_schedule_next_review_bounces_memory_score(isolated_graph_path, clean_gr
     assert high > low
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
-    sys.exit(pytest.main([__file__, '-v']))
+
+    sys.exit(pytest.main([__file__, "-v"]))
 
 
 def test_get_graph_stats_is_json_safe_with_numpy_values(clean_graph, isolated_graph_path):
@@ -169,21 +170,21 @@ def test_get_graph_stats_is_json_safe_with_numpy_values(clean_graph, isolated_gr
     import json
     import numpy as np
     import time as _time
+
     with kg._graph_lock:
         kg.knowledge_graph.clear()
         kg.knowledge_graph.add_node("alpha", memory_score=np.float32(0.5))
-        kg.knowledge_graph.add_node("beta",  memory_score=np.float32(0.9))
+        kg.knowledge_graph.add_node("beta", memory_score=np.float32(0.9))
         kg.knowledge_graph.add_edge("alpha", "beta", weight=np.float32(0.8918))
         kg._loaded = True
         kg._last_db_sync = _time.monotonic()
 
     stats = kg.get_graph_stats()
 
-    assert isinstance(stats['avg_memory_score'], float)
-    assert isinstance(stats['density'], float)
-    for n in stats['nodes']:
-        assert isinstance(n['memory_score'], float)
-    for e in stats['edges']:
+    assert isinstance(stats["avg_memory_score"], float)
+    assert isinstance(stats["density"], float)
+    for n in stats["nodes"]:
+        assert isinstance(n["memory_score"], float)
+    for e in stats["edges"]:
         assert isinstance(e[2], float)
     json.dumps(stats)  # must not raise TypeError
-

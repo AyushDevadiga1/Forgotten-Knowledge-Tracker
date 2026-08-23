@@ -39,3 +39,4 @@ pywin32>=305; platform_system == "Windows"
 
 # Testing
 pytest>=7.0
+ruff>=0.6.0

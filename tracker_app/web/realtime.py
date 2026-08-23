@@ -6,12 +6,14 @@ from flask_socketio import SocketIO, emit
 from flask import request
 import logging
 
-logger   = logging.getLogger("Realtime")
+logger = logging.getLogger("Realtime")
 socketio = None
+
 
 # ── Singletons ────────────────────────────────────────────────────────────────
 def _get_tracker():
     from tracker_app.web.api import get_tracker
+
     return get_tracker()
 
 
@@ -28,10 +30,16 @@ def _ws_auth_ok():
 def init_socketio(app):
     global socketio
     # Match the Flask CORS origins — both dev (5173) and prod (5000)
-    socketio = SocketIO(app, cors_allowed_origins=[
-        "http://localhost:5000", "http://127.0.0.1:5000",
-        "http://localhost:5173", "http://127.0.0.1:5173",
-    ], async_mode="threading")
+    socketio = SocketIO(
+        app,
+        cors_allowed_origins=[
+            "http://localhost:5000",
+            "http://127.0.0.1:5000",
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+        ],
+        async_mode="threading",
+    )
 
     @socketio.on("connect")
     def handle_connect():
@@ -57,6 +65,7 @@ def init_socketio(app):
 
 
 # ── Broadcast helpers (called from loop.py) ───────────────────────────────────
+
 
 def broadcast_micro_quiz(quiz_data: dict):
     """Broadcast a micro-quiz to all connected dashboard clients."""

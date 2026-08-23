@@ -1,4 +1,4 @@
-﻿"""Micro-quiz interrupt: generates a contextual quiz from the weakest graph concept.
+"""Micro-quiz interrupt: generates a contextual quiz from the weakest graph concept.
 
 When idle for consecutive cycles, FKT quizzes the user via the dashboard
 (Socket.IO) and feeds results straight into SM-2 scheduling.
@@ -6,19 +6,18 @@ When idle for consecutive cycles, FKT quizzes the user via the dashboard
 
 import random
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional
 from tracker_app.learning.text_quality_validator import is_plausible_concept
-
 
 
 from tracker_app.utils import utcnow as _utcnow
 
 logger = logging.getLogger("QuizEngine")
 
-QUIZ_COOLDOWN_MINUTES = 20   # minimum gap between quizzes
-IDLE_CYCLES_REQUIRED  = 12   # consecutive idle cycles (~60 s at 5 s cadence) before trigger
-MIN_GRAPH_SIZE        = 4    # need at least this many concepts to quiz
+QUIZ_COOLDOWN_MINUTES = 20  # minimum gap between quizzes
+IDLE_CYCLES_REQUIRED = 12  # consecutive idle cycles (~60 s at 5 s cadence) before trigger
+MIN_GRAPH_SIZE = 4  # need at least this many concepts to quiz
 # With webcam enabled, only interrupt when attention is at least this high:
 # the user has paused but is still at the desk, so they can actually see and
 # answer the modal. Firing on *low* attention would hit someone who zoned out
@@ -55,6 +54,7 @@ def record_quiz_broadcast():
 
 # â”€â”€â”€ Trigger logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
+
 def should_show_quiz(
     idle_cycles: int,
     webcam_enabled: bool,
@@ -79,7 +79,7 @@ def should_show_quiz(
     global _last_quiz_time
 
     if not session_active:
-        return False   # never interrupt outside a study session
+        return False  # never interrupt outside a study session
 
     if idle_cycles < IDLE_CYCLES_REQUIRED:
         return False
@@ -90,12 +90,13 @@ def should_show_quiz(
             return False
 
     if webcam_enabled and attention_score < ATTENTION_PRESENT_MIN:
-        return False   # user stepped away / zoned out â€” won't see the modal
+        return False  # user stepped away / zoned out â€” won't see the modal
 
     return True
 
 
 # â”€â”€â”€ Quiz generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 def generate_micro_quiz(graph) -> Optional[dict]:
     """
@@ -125,29 +126,28 @@ def generate_micro_quiz(graph) -> Optional[dict]:
         return None
 
     # Pick weakest concept
-    weak = [x for x in nodes if x[1].get('memory_score', 0.5) < 0.65]
+    weak = [x for x in nodes if x[1].get("memory_score", 0.5) < 0.65]
     pool = weak if weak else nodes
-    pool.sort(key=lambda x: x[1].get('memory_score', 0.5))
+    pool.sort(key=lambda x: x[1].get("memory_score", 0.5))
     concept_name, concept_data = pool[0]
 
     # Build distractor list from neighbours
     neighbours = [
-        n for n in graph.neighbors(concept_name)
-        if isinstance(n, str) and n != concept_name and is_plausible_concept(n)
+        n for n in graph.neighbors(concept_name) if isinstance(n, str) and n != concept_name and is_plausible_concept(n)
     ]
-    neighbours.sort(
-        key=lambda n: graph[concept_name][n].get('weight', 0),
-        reverse=True
-    )
+    neighbours.sort(key=lambda n: graph[concept_name][n].get("weight", 0), reverse=True)
 
     if len(neighbours) >= 3:
         distractors = neighbours[:3]
     else:
         other_names = [n for n, _ in nodes if n != concept_name]
-        distractors = (neighbours + random.sample(
-            [n for n in other_names if n not in neighbours],
-            min(3 - len(neighbours), len(other_names) - len(neighbours))
-        ))[:3]
+        distractors = (
+            neighbours
+            + random.sample(
+                [n for n in other_names if n not in neighbours],
+                min(3 - len(neighbours), len(other_names) - len(neighbours)),
+            )
+        )[:3]
 
     if len(distractors) < 3:
         logger.debug("Not enough distractors for quiz")
@@ -158,22 +158,27 @@ def generate_micro_quiz(graph) -> Optional[dict]:
     correct_index = all_options.index(concept_name)
 
     return {
-        'concept':        concept_name,
-        'question':       f"Which of these concepts have you been studying?",
-        'correct_answer': concept_name,
-        'distractors':    distractors[:3],
-        'all_options':    all_options,
-        'correct_index':  correct_index,
-        'memory_score':   round(concept_data.get('memory_score', 0.5), 3),
+        "concept": concept_name,
+        "question": "Which of these concepts have you been studying?",
+        "correct_answer": concept_name,
+        "distractors": distractors[:3],
+        "all_options": all_options,
+        "correct_index": correct_index,
+        "memory_score": round(concept_data.get("memory_score", 0.5), 3),
         # dashboard (frontend) keys
-        'options':        all_options,
-        'difficulty':     ('easy' if concept_data.get('memory_score', 0.5) >= 0.65
-                           else 'medium' if concept_data.get('memory_score', 0.5) >= 0.4
-                           else 'hard'),
+        "options": all_options,
+        "difficulty": (
+            "easy"
+            if concept_data.get("memory_score", 0.5) >= 0.65
+            else "medium"
+            if concept_data.get("memory_score", 0.5) >= 0.4
+            else "hard"
+        ),
     }
 
 
 # â”€â”€â”€ Result recording â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 def record_quiz_result(concept: str, was_correct: bool):
     """
@@ -183,12 +188,9 @@ def record_quiz_result(concept: str, was_correct: bool):
     quality = 4 if was_correct else 0
     try:
         from tracker_app.learning.concept_scheduler import get_scheduler
+
         scheduler = get_scheduler()
         scheduler.schedule_next_review(concept, quality=quality)
-        logger.info(
-            f"Quiz: '{concept}' {'correct' if was_correct else 'wrong'} "
-            f"â†’ quality {quality} fed to SM-2"
-        )
+        logger.info(f"Quiz: '{concept}' {'correct' if was_correct else 'wrong'} â†’ quality {quality} fed to SM-2")
     except Exception as e:
         logger.error(f"Failed to record quiz result for '{concept}': {e}")
-

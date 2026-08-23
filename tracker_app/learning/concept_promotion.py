@@ -21,18 +21,34 @@ logger = logging.getLogger("ConceptPromotion")
 
 # Real English words captured from window titles / UI chrome that are never
 # study content. Kept OUT of the deck (the graph may still track them).
-UI_CHROME = frozenset({
-    'explorer', 'context', 'terminal', 'ports', 'code', 'new', 'part',
-    'thought', 'fashion', 'round', 'output', 'total', 'problems', 'youtube',
-    'device',
-})
+UI_CHROME = frozenset(
+    {
+        "explorer",
+        "context",
+        "terminal",
+        "ports",
+        "code",
+        "new",
+        "part",
+        "thought",
+        "fashion",
+        "round",
+        "output",
+        "total",
+        "problems",
+        "youtube",
+        "device",
+    }
+)
 
 # Curated phrases the structural gate rejects (odd lettering, function-word
 # components) but which are genuinely study topics.
-CURATED_EXCEPTIONS_DEFAULT = frozenset({
-    'big-o notation',
-    'ebbinghaus forgetting curve',
-})
+CURATED_EXCEPTIONS_DEFAULT = frozenset(
+    {
+        "big-o notation",
+        "ebbinghaus forgetting curve",
+    }
+)
 
 _CURATED_EXCEPTIONS_FILE = DATA_DIR / "curated_exceptions.txt"
 
@@ -48,11 +64,7 @@ def _load_curated_exceptions() -> frozenset:
         if not _CURATED_EXCEPTIONS_FILE.exists():
             return CURATED_EXCEPTIONS_DEFAULT
         with open(_CURATED_EXCEPTIONS_FILE, encoding="utf-8") as fh:
-            entries = {
-                line.strip().lower()
-                for line in fh
-                if line.strip() and not line.lstrip().startswith('#')
-            }
+            entries = {line.strip().lower() for line in fh if line.strip() and not line.lstrip().startswith("#")}
         return frozenset(entries) if entries else CURATED_EXCEPTIONS_DEFAULT
     except OSError:
         return CURATED_EXCEPTIONS_DEFAULT
@@ -82,14 +94,14 @@ def _answer_for(db, concept: str) -> str:
     """Build an answer from the most recent meaningful encounter context."""
     enc = (
         db.query(ConceptEncounter)
-          .filter(ConceptEncounter.concept == concept)
-          .order_by(ConceptEncounter.timestamp.desc())
-          .first()
+        .filter(ConceptEncounter.concept == concept)
+        .order_by(ConceptEncounter.timestamp.desc())
+        .first()
     )
     snippet = (enc.context_snippet or "").strip() if enc else ""
-    if snippet.startswith('browser:') and len(snippet) > len('browser:'):
-        return f"Captured from your study session on: {snippet[len('browser:'):].strip()}"
-    if snippet and snippet != 'ocr' and len(snippet) > 4:
+    if snippet.startswith("browser:") and len(snippet) > len("browser:"):
+        return f"Captured from your study session on: {snippet[len('browser:') :].strip()}"
+    if snippet and snippet != "ocr" and len(snippet) > 4:
         return f"Captured from your study session: {snippet}"
     return "Automatically tracked from your study sessions — write down what you know about this concept."
 
@@ -97,10 +109,10 @@ def _answer_for(db, concept: str) -> str:
 def _difficulty_for(relevance_score: Optional[float]) -> str:
     rel = relevance_score or 0.5
     if rel >= 0.7:
-        return 'easy'
+        return "easy"
     if rel >= 0.45:
-        return 'medium'
-    return 'hard'
+        return "medium"
+    return "hard"
 
 
 def _load_subsuming_phrases() -> frozenset:
@@ -111,23 +123,19 @@ def _load_subsuming_phrases() -> frozenset:
     plus Python set membership replaces it (M-8).
     """
     with SessionLocal() as db:
-        rows = db.query(
-            TrackedConcept.concept, TrackedConcept.frequency_count
-        ).filter(TrackedConcept.concept.like('% %')).all()
+        rows = (
+            db.query(TrackedConcept.concept, TrackedConcept.frequency_count)
+            .filter(TrackedConcept.concept.like("% %"))
+            .all()
+        )
     phrases = set()
     for concept, frequency_count in rows:
-        if (
-            concept and ' ' in concept
-            and frequency_count >= MIN_PROMOTION_FREQUENCY
-            and is_kb_worthy(concept)
-        ):
+        if concept and " " in concept and frequency_count >= MIN_PROMOTION_FREQUENCY and is_kb_worthy(concept):
             phrases.add(concept.strip().lower())
     return frozenset(phrases)
 
 
-def _is_subsumed_single_word(
-    concept: str, subsuming_phrases: Optional[frozenset] = None
-) -> bool:
+def _is_subsumed_single_word(concept: str, subsuming_phrases: Optional[frozenset] = None) -> bool:
     """A single-word concept already covered by a tracked multi-word phrase
     ('cellular' vs 'cellular respiration') is a fragment, not a concept.
     Only subsumes when the larger phrase is itself deck-eligible, so a concept
@@ -137,30 +145,29 @@ def _is_subsumed_single_word(
     subsuming_phrases: preloaded frozenset of deck-eligible multi-word
     concepts (M-8). When omitted, falls back to the per-concept DB lookup.
     """
-    if ' ' in concept:
+    if " " in concept:
         return False
     lc = concept.lower()
     if subsuming_phrases is not None:
         return any(lc in phrase.split() for phrase in subsuming_phrases)
     with SessionLocal() as db:
-        others = db.query(TrackedConcept).filter(
-            TrackedConcept.concept != concept,
-            TrackedConcept.concept.like(f"%{concept}%"),
-        ).all()
+        others = (
+            db.query(TrackedConcept)
+            .filter(
+                TrackedConcept.concept != concept,
+                TrackedConcept.concept.like(f"%{concept}%"),
+            )
+            .all()
+        )
     for other in others:
         if lc not in other.concept.lower().split():
             continue
-        if (
-            other.frequency_count >= MIN_PROMOTION_FREQUENCY
-            and is_kb_worthy(other.concept)
-        ):
+        if other.frequency_count >= MIN_PROMOTION_FREQUENCY and is_kb_worthy(other.concept):
             return True
     return False
 
 
-def promote_concept_to_deck(
-    concept: str, subsuming_phrases: Optional[frozenset] = None
-) -> Optional[str]:
+def promote_concept_to_deck(concept: str, subsuming_phrases: Optional[frozenset] = None) -> Optional[str]:
     """Create a learning item for an extracted concept (idempotent).
 
     Returns the new item id, or None if the concept already has a deck item
@@ -177,6 +184,7 @@ def promote_concept_to_deck(
     with SessionLocal() as db:
         # Exact-match idempotency check against the deck.
         from tracker_app.db.models import LearningItem
+
         dup = db.query(LearningItem).filter(LearningItem.question == concept).first()
         if dup:
             logger.debug(f"Already in deck: {concept!r}")
@@ -188,8 +196,8 @@ def promote_concept_to_deck(
         question=concept,
         answer=answer,
         difficulty=_difficulty_for(tc.relevance_score if tc else None),
-        item_type='concept',
-        tags=['extracted'],
+        item_type="concept",
+        tags=["extracted"],
     )
     logger.info(f"Promoted extracted concept to deck: {concept!r} -> {item_id}")
     return item_id
@@ -208,11 +216,11 @@ def backfill_items(
     with SessionLocal() as db:
         q = (
             db.query(TrackedConcept)
-              .filter(TrackedConcept.frequency_count >= min_frequency)
-              .order_by(
-                  TrackedConcept.frequency_count.desc(),
-                  TrackedConcept.last_seen.desc(),
-              )
+            .filter(TrackedConcept.frequency_count >= min_frequency)
+            .order_by(
+                TrackedConcept.frequency_count.desc(),
+                TrackedConcept.last_seen.desc(),
+            )
         )
         if limit:
             q = q.limit(limit)
@@ -225,15 +233,13 @@ def backfill_items(
         if not is_kb_worthy(concept):
             skipped.append(concept)
             continue
-        item_id = promote_concept_to_deck(
-            concept, subsuming_phrases=subsuming_phrases
-        )
+        item_id = promote_concept_to_deck(concept, subsuming_phrases=subsuming_phrases)
         (promoted if item_id else skipped).append(concept)
 
     return {
-        'promoted': promoted,
-        'skipped': skipped,
-        'promoted_count': len(promoted),
-        'skipped_count': len(skipped),
-        'min_frequency': min_frequency,
+        "promoted": promoted,
+        "skipped": skipped,
+        "promoted_count": len(promoted),
+        "skipped_count": len(skipped),
+        "min_frequency": min_frequency,
     }

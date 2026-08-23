@@ -111,14 +111,11 @@ def loop_env(monkeypatch):
     monkeypatch.setattr(loop, "init_all_databases", lambda: None)
     monkeypatch.setattr(loop, "ActivityMonitor", lambda: monitor)
     monkeypatch.setattr(loop, "get_cle", lambda: _FakeCle())
-    monkeypatch.setattr(loop, "start_listeners",
-                        lambda m, c: (_FakeListener(), _FakeListener()))
+    monkeypatch.setattr(loop, "start_listeners", lambda m, c: (_FakeListener(), _FakeListener()))
     monkeypatch.setattr(loop, "get_active_window", lambda m: ("notepad", 5.0))
     monkeypatch.setattr(loop, "is_sensitive_window", lambda title: False)
-    monkeypatch.setattr(loop, "_get_effective_intervals",
-                        lambda: {"ocr": 1, "audio": 1, "webcam": 1})
-    monkeypatch.setattr(loop, "_get_attention_score",
-                        lambda w, r, c, ear=None: 60.0)
+    monkeypatch.setattr(loop, "_get_effective_intervals", lambda: {"ocr": 1, "audio": 1, "webcam": 1})
+    monkeypatch.setattr(loop, "_get_attention_score", lambda w, r, c, ear=None: 60.0)
     monkeypatch.setattr(loop, "session_is_active", lambda: True)
     monkeypatch.setattr(loop, "time", _FakeTime())
 
@@ -127,26 +124,39 @@ def loop_env(monkeypatch):
         return {"keywords": {"hash table": 0.5}}
 
     monkeypatch.setattr(loop, "get_ocr_pipeline", lambda: fake_ocr)
-    monkeypatch.setattr(loop, "get_audio_pipeline", lambda: (
-        lambda: None,
-        lambda: {"audio_label": "speech", "confidence": 0.9},
-    ))
-    monkeypatch.setattr(loop, "get_webcam_pipeline", lambda: lambda: {
-        "attentiveness_score": 70.0, "face_count": 1,
-        "frames_processed": 1, "status": "active",
-    })
+    monkeypatch.setattr(
+        loop,
+        "get_audio_pipeline",
+        lambda: (
+            lambda: None,
+            lambda: {"audio_label": "speech", "confidence": 0.9},
+        ),
+    )
+    monkeypatch.setattr(
+        loop,
+        "get_webcam_pipeline",
+        lambda: (
+            lambda: {
+                "attentiveness_score": 70.0,
+                "face_count": 1,
+                "frames_processed": 1,
+                "status": "active",
+            }
+        ),
+    )
 
     def fake_predict(**kw):
         intent_calls.append(kw)
         return {"intent_label": "studying", "confidence": 0.9}
 
     monkeypatch.setattr(loop, "predict_intent", fake_predict)
-    monkeypatch.setattr(loop, "_maybe_trigger_quiz",
-                        lambda *a, **k: quiz_calls.append((a, k)))
+    monkeypatch.setattr(loop, "_maybe_trigger_quiz", lambda *a, **k: quiz_calls.append((a, k)))
 
     return {
-        "monitor": monitor, "ocr_calls": ocr_calls,
-        "intent_calls": intent_calls, "quiz_calls": quiz_calls,
+        "monitor": monitor,
+        "ocr_calls": ocr_calls,
+        "intent_calls": intent_calls,
+        "quiz_calls": quiz_calls,
     }
 
 
@@ -171,8 +181,7 @@ def test_maybe_trigger_quiz_resets_idle_when_session_inactive(monkeypatch):
     loop._idle_cycles = 7
     monkeypatch.setattr(loop, "session_is_active", lambda: False)
     called = []
-    monkeypatch.setattr(quiz_engine, "should_show_quiz",
-                        lambda *a, **k: called.append(1) or True)
+    monkeypatch.setattr(quiz_engine, "should_show_quiz", lambda *a, **k: called.append(1) or True)
 
     loop._maybe_trigger_quiz("idle", False, 0.0)
 
@@ -184,16 +193,12 @@ def test_maybe_trigger_quiz_fires_broadcast_and_stamps_cooldown(monkeypatch):
     loop._idle_cycles = 0
     monkeypatch.setattr(loop, "session_is_active", lambda: True)
     monkeypatch.setattr(quiz_engine, "should_show_quiz", lambda *a, **k: True)
-    monkeypatch.setattr(quiz_engine, "generate_micro_quiz",
-                        lambda graph: {"concept": "hash table"})
-    monkeypatch.setattr("tracker_app.tracking.knowledge_graph.get_graph",
-                        lambda: object())
+    monkeypatch.setattr(quiz_engine, "generate_micro_quiz", lambda graph: {"concept": "hash table"})
+    monkeypatch.setattr("tracker_app.tracking.knowledge_graph.get_graph", lambda: object())
     broadcast = []
-    monkeypatch.setattr(realtime, "broadcast_micro_quiz",
-                        lambda q: broadcast.append(q))
+    monkeypatch.setattr(realtime, "broadcast_micro_quiz", lambda q: broadcast.append(q))
     recorded = []
-    monkeypatch.setattr(quiz_engine, "record_quiz_broadcast",
-                        lambda: recorded.append(1))
+    monkeypatch.setattr(quiz_engine, "record_quiz_broadcast", lambda: recorded.append(1))
 
     loop._maybe_trigger_quiz("idle", False, 0.0)
 
@@ -206,13 +211,10 @@ def test_maybe_trigger_quiz_suppressed_inside_cooldown(monkeypatch):
     loop._idle_cycles = 12
     quiz_engine._last_quiz_time = datetime.utcnow() - timedelta(minutes=19)
     monkeypatch.setattr(loop, "session_is_active", lambda: True)
-    monkeypatch.setattr(quiz_engine, "generate_micro_quiz",
-                        lambda graph: {"concept": "hash table"})
-    monkeypatch.setattr("tracker_app.tracking.knowledge_graph.get_graph",
-                        lambda: object())
+    monkeypatch.setattr(quiz_engine, "generate_micro_quiz", lambda graph: {"concept": "hash table"})
+    monkeypatch.setattr("tracker_app.tracking.knowledge_graph.get_graph", lambda: object())
     broadcast = []
-    monkeypatch.setattr(realtime, "broadcast_micro_quiz",
-                        lambda q: broadcast.append(q))
+    monkeypatch.setattr(realtime, "broadcast_micro_quiz", lambda q: broadcast.append(q))
     injected = quiz_engine._last_quiz_time
 
     loop._maybe_trigger_quiz("idle", False, 0.0)
@@ -226,13 +228,10 @@ def test_maybe_trigger_quiz_fires_once_cooldown_expired(monkeypatch):
     loop._idle_cycles = 12
     quiz_engine._last_quiz_time = datetime.utcnow() - timedelta(minutes=21)
     monkeypatch.setattr(loop, "session_is_active", lambda: True)
-    monkeypatch.setattr(quiz_engine, "generate_micro_quiz",
-                        lambda graph: {"concept": "hash table"})
-    monkeypatch.setattr("tracker_app.tracking.knowledge_graph.get_graph",
-                        lambda: object())
+    monkeypatch.setattr(quiz_engine, "generate_micro_quiz", lambda graph: {"concept": "hash table"})
+    monkeypatch.setattr("tracker_app.tracking.knowledge_graph.get_graph", lambda: object())
     broadcast = []
-    monkeypatch.setattr(realtime, "broadcast_micro_quiz",
-                        lambda q: broadcast.append(q))
+    monkeypatch.setattr(realtime, "broadcast_micro_quiz", lambda q: broadcast.append(q))
 
     loop._maybe_trigger_quiz("idle", False, 0.0)
 

@@ -52,8 +52,8 @@ class TestSanitizeTitleUnit(unittest.TestCase):
 
 class TestBrowserIngestTitleSanitised(unittest.TestCase):
     def setUp(self):
-        app.config['TESTING'] = True
-        app.config['WTF_CSRF_ENABLED'] = False
+        app.config["TESTING"] = True
+        app.config["WTF_CSRF_ENABLED"] = False
         self.client = app.test_client()
         self.scheduler = _FakeScheduler()
         self._patch_ke = None
@@ -62,13 +62,14 @@ class TestBrowserIngestTitleSanitised(unittest.TestCase):
 
     def _patch_heavy_deps(self):
         from unittest import mock
-        self._patch_ke = mock.patch.object(ke_mod, 'extract_concepts',
-                                           side_effect=_fake_extract_concepts)
+
+        self._patch_ke = mock.patch.object(ke_mod, "extract_concepts", side_effect=_fake_extract_concepts)
         self._patch_tq = mock.patch.object(
-            tq_mod, 'validate_and_clean_extraction',
-            return_value={'is_useful': True, 'cleaned_text': 'python decorators'})
-        self._patch_cs = mock.patch.object(cs_mod, 'ConceptScheduler',
-                                           return_value=self.scheduler)
+            tq_mod,
+            "validate_and_clean_extraction",
+            return_value={"is_useful": True, "cleaned_text": "python decorators"},
+        )
+        self._patch_cs = mock.patch.object(cs_mod, "ConceptScheduler", return_value=self.scheduler)
         self._patch_ke.start()
         self._patch_tq.start()
         self._patch_cs.start()
@@ -80,10 +81,10 @@ class TestBrowserIngestTitleSanitised(unittest.TestCase):
 
     def _ingest(self, title):
         return self.client.post(
-            '/api/v1/ingest',
-            data=json.dumps({'text': 'Python decorators explained step by step guide',
-                             'title': title}),
-            content_type='application/json')
+            "/api/v1/ingest",
+            data=json.dumps({"text": "Python decorators explained step by step guide", "title": title}),
+            content_type="application/json",
+        )
 
     def test_control_chars_stripped_before_context(self):
         self._patch_heavy_deps()
@@ -92,29 +93,29 @@ class TestBrowserIngestTitleSanitised(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(len(self.scheduler.added), 2)
         for call in self.scheduler.added:
-            ctx = call['context']
-            self.assertTrue(ctx.startswith('browser:'))
-            self.assertNotIn('\x1b', ctx)
-            self.assertNotIn('\n', ctx)
-            self.assertNotIn('\t', ctx)
-            self.assertNotIn('\x00', ctx)
+            ctx = call["context"]
+            self.assertTrue(ctx.startswith("browser:"))
+            self.assertNotIn("\x1b", ctx)
+            self.assertNotIn("\n", ctx)
+            self.assertNotIn("\t", ctx)
+            self.assertNotIn("\x00", ctx)
 
     def test_sanitised_title_reaches_context(self):
         self._patch_heavy_deps()
         resp = self._ingest("Clean\x00 Title")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(self.scheduler.added[0]['context'], "browser:Clean Title")
+        self.assertEqual(self.scheduler.added[0]["context"], "browser:Clean Title")
 
     def test_title_truncated_to_80_chars(self):
         self._patch_heavy_deps()
         long_title = "word-" * 40
         self._ingest(long_title)
-        ctx = self.scheduler.added[0]['context']
-        self.assertTrue(ctx.startswith('browser:'))
-        self.assertLessEqual(len(ctx) - len('browser:'), 80)
+        ctx = self.scheduler.added[0]["context"]
+        self.assertTrue(ctx.startswith("browser:"))
+        self.assertLessEqual(len(ctx) - len("browser:"), 80)
 
     def test_missing_title_is_empty_not_crash(self):
         self._patch_heavy_deps()
         resp = self._ingest(None)
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(self.scheduler.added[0]['context'], "browser:")
+        self.assertEqual(self.scheduler.added[0]["context"], "browser:")

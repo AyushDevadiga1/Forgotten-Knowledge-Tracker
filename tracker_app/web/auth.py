@@ -1,4 +1,4 @@
-﻿"""
+"""
 Simple API Key Authentication Middleware for FKT
 
 Usage:
@@ -31,6 +31,7 @@ def require_api_key(f):
     Skip if NO_AUTH=true or API_KEY is unset (local dev friendly).
     """
     import functools
+
     @functools.wraps(f)
     def decorated(*args, **kwargs):
         if _NO_AUTH or not _API_KEY:
@@ -38,18 +39,13 @@ def require_api_key(f):
 
         provided_key = request.headers.get("X-API-Key", "")
         if not provided_key:
-            return jsonify({
-                "success": False,
-                "error": "Missing API key. Provide X-API-Key header."
-            }), 401
+            return jsonify({"success": False, "error": "Missing API key. Provide X-API-Key header."}), 401
 
         if not _check_api_key(provided_key):
-            return jsonify({
-                "success": False,
-                "error": "Invalid API key."
-            }), 403
+            return jsonify({"success": False, "error": "Invalid API key."}), 403
 
         return f(*args, **kwargs)
+
     return decorated
 
 
@@ -59,11 +55,12 @@ def apply_auth_to_blueprint(bp):
     This avoids decorating each route individually.
     """
     if _NO_AUTH:
-        logger.warning("API authentication is DISABLED (NO_AUTH=true). "
-                       "Set NO_AUTH=false and API_KEY to protect the API.")
+        logger.warning(
+            "API authentication is DISABLED (NO_AUTH=true). Set NO_AUTH=false and API_KEY to protect the API."
+        )
     elif not _API_KEY:
-        logger.warning("API authentication is DISABLED (API_KEY not set). "
-                       "Set API_KEY in .env to protect the API.")
+        logger.warning("API authentication is DISABLED (API_KEY not set). Set API_KEY in .env to protect the API.")
+
     @bp.before_request
     def check_key():
         if request.endpoint == "api.health_check":

@@ -7,10 +7,12 @@ import numpy as np
 @pytest.fixture
 def isolated_state(tmp_path, monkeypatch):
     from tracker_app.tracking import session_state as ss
+
     state_file = tmp_path / "session_state.json"
     monkeypatch.setattr(ss, "_STATE_PATH", state_file)
     monkeypatch.setattr(ss, "_LOCK_PATH", state_file.with_suffix(".json.lock"))
     from filelock import FileLock
+
     monkeypatch.setattr(ss, "_file_lock", FileLock(state_file.with_suffix(".json.lock"), timeout=5))
     return state_file
 
@@ -37,8 +39,8 @@ def mock_webcam(monkeypatch):
         def process(self, rgb_frame):
             return FakeResults()
 
-    monkeypatch.setattr(wm, 'capture_frame', lambda: np.zeros((480, 640, 3), dtype=np.uint8))
-    monkeypatch.setattr(wm, '_get_face_mesh', lambda: FakeFaceMesh())
+    monkeypatch.setattr(wm, "capture_frame", lambda: np.zeros((480, 640, 3), dtype=np.uint8))
+    monkeypatch.setattr(wm, "_get_face_mesh", lambda: FakeFaceMesh())
     return wm
 
 
@@ -49,11 +51,12 @@ def test_calibrate_ear_returns_valid_dict(mock_webcam, monkeypatch):
     # Mock eye_aspect_ratio to return a fixed value
     # Return varying EAR values to simulate real eye movement
     import itertools
+
     ear_cycle = itertools.cycle([0.22, 0.25, 0.28, 0.30, 0.27])
-    monkeypatch.setattr(wm, 'eye_aspect_ratio', lambda lm, idx: next(ear_cycle))
+    monkeypatch.setattr(wm, "eye_aspect_ratio", lambda lm, idx: next(ear_cycle))
 
     # Patch min samples so 1s of capture is enough
-    monkeypatch.setattr('tracker_app.config.CALIBRATION_MIN_SAMPLES', 5)
+    monkeypatch.setattr("tracker_app.config.CALIBRATION_MIN_SAMPLES", 5)
     result = calibrate_ear(duration_seconds=2)
     assert "personal_ear_low" in result
     assert "personal_ear_high" in result
@@ -69,10 +72,10 @@ def test_calibrate_ear_fallback_on_no_face(monkeypatch):
     from tracker_app.tracking import webcam_module as wm
 
     # Mock capture_frame to always return None (no camera)
-    monkeypatch.setattr(wm, 'capture_frame', lambda: None)
+    monkeypatch.setattr(wm, "capture_frame", lambda: None)
 
     # Patch min samples so 1s of capture is enough
-    monkeypatch.setattr('tracker_app.config.CALIBRATION_MIN_SAMPLES', 5)
+    monkeypatch.setattr("tracker_app.config.CALIBRATION_MIN_SAMPLES", 5)
     result = calibrate_ear(duration_seconds=2)
     assert result["fallback"] is True
 
@@ -120,11 +123,13 @@ def test_stop_clears_calibration(isolated_state):
     from tracker_app.tracking import session_state as ss
 
     ss.start()
-    ss.set_calibration({
-        "personal_ear_low": 0.15,
-        "personal_ear_high": 0.30,
-        "fallback": False,
-    })
+    ss.set_calibration(
+        {
+            "personal_ear_low": 0.15,
+            "personal_ear_high": 0.30,
+            "fallback": False,
+        }
+    )
     assert ss.get_calibration() is not None
     ss.stop()
     # After stop, calibration should be cleared

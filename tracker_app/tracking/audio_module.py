@@ -17,11 +17,11 @@ import numpy as np
 import sounddevice as sd
 import librosa
 
-warnings.filterwarnings('ignore', category=FutureWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 logger = logging.getLogger("AudioModule")
 
-DURATION    = 5
+DURATION = 5
 SAMPLE_RATE = 22050
 
 # ─── Thread-safe result cache ─────────────────────────────────────────────────
@@ -32,8 +32,8 @@ _audio_lock = threading.Lock()
 
 # ─── MFCC feature extraction ─────────────────────────────────────────────────
 
-def extract_mfcc_features(audio: np.ndarray, sr: int = SAMPLE_RATE,
-                           n_mfcc: int = 13) -> np.ndarray:
+
+def extract_mfcc_features(audio: np.ndarray, sr: int = SAMPLE_RATE, n_mfcc: int = 13) -> np.ndarray:
     """
     39-dimensional MFCC feature vector:
       13 MFCC means + 13 delta means + 13 delta-delta means.
@@ -42,14 +42,16 @@ def extract_mfcc_features(audio: np.ndarray, sr: int = SAMPLE_RATE,
     if len(audio) == 0 or np.max(np.abs(audio)) < 1e-6:
         return np.zeros(39)
     try:
-        mfccs  = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=n_mfcc)
-        delta  = librosa.feature.delta(mfccs)
+        mfccs = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=n_mfcc)
+        delta = librosa.feature.delta(mfccs)
         delta2 = librosa.feature.delta(mfccs, order=2)
-        return np.concatenate([
-            np.mean(mfccs,  axis=1),
-            np.mean(delta,  axis=1),
-            np.mean(delta2, axis=1),
-        ])
+        return np.concatenate(
+            [
+                np.mean(mfccs, axis=1),
+                np.mean(delta, axis=1),
+                np.mean(delta2, axis=1),
+            ]
+        )
     except Exception as e:
         logger.warning(f"MFCC extraction failed: {e}")
         return np.zeros(39)
@@ -57,9 +59,9 @@ def extract_mfcc_features(audio: np.ndarray, sr: int = SAMPLE_RATE,
 
 # ─── Energy-based fallback heuristic ─────────────────────────────────────────
 
-SILENCE_RMS_THRESHOLD     = 0.005   # below this the capture is treated as quiet
-TONAL_FLATNESS_THRESHOLD  = 0.35    # below this the spectrum is harmonic (music)
-SPEECH_SYLLABIC_THRESHOLD = 0.90    # above this the envelope is speech-paced
+SILENCE_RMS_THRESHOLD = 0.005  # below this the capture is treated as quiet
+TONAL_FLATNESS_THRESHOLD = 0.35  # below this the spectrum is harmonic (music)
+SPEECH_SYLLABIC_THRESHOLD = 0.90  # above this the envelope is speech-paced
 
 # Syllabic band (Hz): human speech modulates its envelope at 2–8 Hz (syllables).
 SYLLABIC_BAND = (1.0, 8.0)
@@ -105,11 +107,11 @@ def energy_based_classification(audio: np.ndarray) -> Tuple[str, float]:
     try:
         if len(audio) == 0 or np.max(np.abs(audio)) < 1e-6:
             return "silence", 0.95
-        rms = np.sqrt(np.mean(audio ** 2))
+        rms = np.sqrt(np.mean(audio**2))
         if rms < SILENCE_RMS_THRESHOLD:
             return "silence", 0.95
-        zcr  = float(np.mean(librosa.feature.zero_crossing_rate(audio)))
-        sc   = float(np.mean(librosa.feature.spectral_centroid(y=audio, sr=SAMPLE_RATE)))
+        zcr = float(np.mean(librosa.feature.zero_crossing_rate(audio)))
+        sc = float(np.mean(librosa.feature.spectral_centroid(y=audio, sr=SAMPLE_RATE)))
         flat = float(np.mean(librosa.feature.spectral_flatness(y=audio)))
         syll = _syllabic_modulation(audio)
         if flat < TONAL_FLATNESS_THRESHOLD:
@@ -126,6 +128,7 @@ def energy_based_classification(audio: np.ndarray) -> Tuple[str, float]:
 
 # ─── Classification ───────────────────────────────────────────────────────────
 
+
 def classify_audio(audio: np.ndarray) -> Tuple[str, float]:
     """Classify audio using deterministic RMS/spectral/modulation heuristics.
 
@@ -137,10 +140,10 @@ def classify_audio(audio: np.ndarray) -> Tuple[str, float]:
 
 # ─── Blocking pipeline (kept for backward compat / direct calls) ──────────────
 
+
 def record_audio(duration: int = DURATION) -> np.ndarray:
     try:
-        audio = sd.rec(int(duration * SAMPLE_RATE),
-                       samplerate=SAMPLE_RATE, channels=1, dtype='float32')
+        audio = sd.rec(int(duration * SAMPLE_RATE), samplerate=SAMPLE_RATE, channels=1, dtype="float32")
         sd.wait()
         return audio.flatten()
     except Exception as e:
@@ -160,6 +163,7 @@ def audio_pipeline() -> dict:
 
 # ─── Non-blocking async pipeline ─────────────────────────────────────────────
 
+
 def audio_pipeline_async(callback: Optional[Callable] = None):
     """
     Record and classify audio in a background daemon thread.
@@ -168,9 +172,10 @@ def audio_pipeline_async(callback: Optional[Callable] = None):
     When done, updates _audio_result_cache and optionally calls callback(result).
     loop.py should call this and read _audio_result_cache each cycle.
     """
+
     def _run():
         try:
-            audio  = record_audio(DURATION)
+            audio = record_audio(DURATION)
             label, conf = classify_audio(audio)
             result = {"audio_label": label, "confidence": conf}
             with _audio_lock:
@@ -193,6 +198,7 @@ def get_cached_audio_result() -> dict:
 
 if __name__ == "__main__":
     import time
+
     logging.basicConfig(level=logging.INFO)
     print("Testing async pipeline (5s recording)...")
     audio_pipeline_async()

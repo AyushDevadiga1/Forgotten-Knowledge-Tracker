@@ -1,4 +1,5 @@
-﻿"""Knowledge graph of tracked concepts with JSON persistence and drift/gap analytics."""
+"""Knowledge graph of tracked concepts with JSON persistence and drift/gap analytics."""
+
 import networkx as nx
 import numpy as np
 import json
@@ -7,7 +8,7 @@ import time
 import logging
 from datetime import datetime, timedelta
 from pathlib import Path
-from tracker_app.config import DATA_DIR, KNOWLEDGE_GRAPH_PATH, DEFAULT_LAMBDA
+from tracker_app.config import KNOWLEDGE_GRAPH_PATH, DEFAULT_LAMBDA
 
 
 from tracker_app.utils import utcnow as _utcnow
@@ -39,6 +40,7 @@ MAX_GRAPH_NODES = 5000
 _EMBED_FAILED = object()
 _embed_model = None
 
+
 def _get_embed_model():
     """Lazily load SentenceTransformer only when actually needed."""
     global _embed_model
@@ -47,7 +49,8 @@ def _get_embed_model():
     if _embed_model is None:
         try:
             from sentence_transformers import SentenceTransformer
-            _embed_model = SentenceTransformer('all-MiniLM-L6-v2')
+
+            _embed_model = SentenceTransformer("all-MiniLM-L6-v2")
             logger.info("SentenceTransformer loaded for knowledge graph.")
         except Exception as e:
             logger.warning(f"SentenceTransformer unavailable ({e}). Falling back to spaCy vectors. Will not retry.")
@@ -55,9 +58,11 @@ def _get_embed_model():
             return None
     return _embed_model
 
+
 # None = never tried; _SPACY_FAILED = load failed (stop retrying + log spam)
 _SPACY_FAILED = object()
 _nlp = None
+
 
 def _get_spacy_vectors(concepts):
     """Fallback: use spaCy word vectors for similarity."""
@@ -67,6 +72,7 @@ def _get_spacy_vectors(concepts):
     if _nlp is None:
         try:
             import spacy
+
             _nlp = spacy.load("en_core_web_sm")
         except Exception as e:
             logger.warning(f"spaCy vector fallback unavailable: {e}. Will not retry.")
@@ -77,6 +83,7 @@ def _get_spacy_vectors(concepts):
     except Exception as e:
         logger.warning(f"spaCy vector fallback failed: {e}")
         return None
+
 
 # Create the main knowledge graph
 knowledge_graph = nx.Graph()
@@ -114,6 +121,7 @@ def _ensure_graph_loaded():
             sync_db_to_graph()
             _last_db_sync = now
 
+
 def _jsonable(obj):
     """Convert numpy scalars/arrays (and containers of them) to plain JSON types."""
     if isinstance(obj, np.ndarray):
@@ -143,23 +151,17 @@ def _load_graph_locked() -> bool:
     path = Path(KNOWLEDGE_GRAPH_PATH)
 
     def _apply_json(data) -> bool:
-        if not (isinstance(data, dict)
-                and isinstance(data.get('nodes'), list)
-                and isinstance(data.get('edges'), list)):
+        if not (isinstance(data, dict) and isinstance(data.get("nodes"), list) and isinstance(data.get("edges"), list)):
             return False
         knowledge_graph.clear()
-        knowledge_graph.add_nodes_from(
-            (n, dict(attrs)) for n, attrs in data['nodes']
-        )
-        knowledge_graph.add_edges_from(
-            (u, v, dict(attrs)) for u, v, attrs in data['edges']
-        )
+        knowledge_graph.add_nodes_from((n, dict(attrs)) for n, attrs in data["nodes"])
+        knowledge_graph.add_edges_from((u, v, dict(attrs)) for u, v, attrs in data["edges"])
         return knowledge_graph.number_of_nodes() > 0
 
     # 1. Current JSON format.
     if path.exists():
         try:
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             if _apply_json(data):
                 _graph_dirty = False
@@ -170,6 +172,7 @@ def _load_graph_locked() -> bool:
     # 2. Legacy pickle auto-migration: the configured path itself, then the
     # pre-migration default name next to it (DATA_DIR/knowledge_graph.pkl).
     import pickle  # legacy read-only fallback; JSON is the write format now
+
     candidates = [path]
     legacy = path.parent / "knowledge_graph.pkl"
     if legacy != path:
@@ -178,7 +181,7 @@ def _load_graph_locked() -> bool:
         if not cand.exists():
             continue
         try:
-            with open(cand, 'rb') as f:
+            with open(cand, "rb") as f:
                 data = pickle.load(f)
             if not isinstance(data, nx.Graph) or data.number_of_nodes() == 0:
                 continue
@@ -192,6 +195,7 @@ def _load_graph_locked() -> bool:
         except Exception as e:
             logger.warning("Failed to load legacy knowledge graph from %s: %s", cand, e)
     return False
+
 
 def _evict_oversized_nodes():
     """Trim the graph back to MAX_GRAPH_NODES (best-effort, H-6).
@@ -207,13 +211,8 @@ def _evict_oversized_nodes():
         excess = knowledge_graph.number_of_nodes() - MAX_GRAPH_NODES
         if excess <= 0:
             return
-        candidates = [
-            n for n in knowledge_graph.nodes()
-            if knowledge_graph.degree(n) == 0
-        ]
-        candidates.sort(
-            key=lambda n: knowledge_graph.nodes[n].get('memory_score', 0.5)
-        )
+        candidates = [n for n in knowledge_graph.nodes() if knowledge_graph.degree(n) == 0]
+        candidates.sort(key=lambda n: knowledge_graph.nodes[n].get("memory_score", 0.5))
         evicted = 0
         for node in candidates:
             if evicted >= excess:
@@ -223,7 +222,8 @@ def _evict_oversized_nodes():
         if evicted:
             logger.info(
                 "Evicted %d low-relevance zero-edge nodes (graph cap %d)",
-                evicted, MAX_GRAPH_NODES,
+                evicted,
+                MAX_GRAPH_NODES,
             )
 
 
@@ -235,17 +235,11 @@ def _save_graph():
         path = Path(KNOWLEDGE_GRAPH_PATH)
         path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
-            'nodes': [
-                [n, _jsonable(dict(d))]
-                for n, d in knowledge_graph.nodes(data=True)
-            ],
-            'edges': [
-                [u, v, _jsonable(dict(d))]
-                for u, v, d in knowledge_graph.edges(data=True)
-            ],
+            "nodes": [[n, _jsonable(dict(d))] for n, d in knowledge_graph.nodes(data=True)],
+            "edges": [[u, v, _jsonable(dict(d))] for u, v, d in knowledge_graph.edges(data=True)],
         }
-        tmp = path.with_name(path.name + '.tmp')
-        with open(tmp, 'w', encoding='utf-8') as f:
+        tmp = path.with_name(path.name + ".tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(payload, f)
         tmp.replace(path)
         _graph_dirty = False
@@ -253,22 +247,21 @@ def _save_graph():
     except Exception as e:
         logger.warning("Failed to save knowledge graph: %s", e)
 
+
 def fetch_concepts_from_db():
     """Fetch concepts from tracked_concepts table (NOT window titles)."""
     try:
         from tracker_app.db.models import SessionLocal, TrackedConcept
+
         with SessionLocal() as db:
-            rows = (
-                db.query(TrackedConcept.concept)
-                  .filter(TrackedConcept.concept.isnot(None))
-                  .distinct()
-                  .all()
-            )
+            rows = db.query(TrackedConcept.concept).filter(TrackedConcept.concept.isnot(None)).distinct().all()
             concepts = [r.concept.strip() for (r,) in rows if r and r.strip()]
             return concepts
     except Exception as e:
         logger.error(f"Error fetching concepts from DB: {e}")
         return []
+
+
 def _memory_score_from_row(row):
     """Live AWFC retention for a TrackedConcept row (0.05â€“1.0).
 
@@ -276,6 +269,7 @@ def _memory_score_from_row(row):
     decay clock reset at the last encounter/review.
     """
     from tracker_app.learning.memory_model import compute_memory_score_awfc
+
     last_review = row.last_seen or row.first_seen or _utcnow()
     return compute_memory_score_awfc(
         last_review,
@@ -290,9 +284,9 @@ def _fetch_live_memory_scores(concepts):
         return {}
     try:
         from tracker_app.db.models import SessionLocal, TrackedConcept
+
         with SessionLocal() as db:
-            rows = db.query(TrackedConcept).filter(
-                TrackedConcept.concept.in_(concepts)).all()
+            rows = db.query(TrackedConcept).filter(TrackedConcept.concept.in_(concepts)).all()
         return {r.concept: _memory_score_from_row(r) for r in rows}
     except Exception as e:
         logger.debug(f"_fetch_live_memory_scores failed: {e}")
@@ -338,11 +332,11 @@ def add_concepts(concepts):
                     memory_score=live_scores.get(concept, 0.3),
                     next_review_time=_utcnow().strftime(DATETIME_FORMAT),
                     last_review=_utcnow().strftime(DATETIME_FORMAT),
-                    intent_conf=1.0
+                    intent_conf=1.0,
                 )
                 _graph_dirty = True
             else:
-                knowledge_graph.nodes[concept]['count'] += 1
+                knowledge_graph.nodes[concept]["count"] += 1
 
         # Add semantic edges only when embeddings are available
         if embeddings is not None:
@@ -359,17 +353,15 @@ def add_concepts(concepts):
                         if cosine_sim > 0.7:
                             if knowledge_graph.has_edge(valid_concepts[i], valid_concepts[j]):
                                 # EMA instead of unbounded accumulation
-                                old = knowledge_graph[valid_concepts[i]][valid_concepts[j]]['weight']
-                                knowledge_graph[valid_concepts[i]][valid_concepts[j]]['weight'] = (
-                                    min(1.0, 0.85 * old + 0.15 * cosine_sim)
+                                old = knowledge_graph[valid_concepts[i]][valid_concepts[j]]["weight"]
+                                knowledge_graph[valid_concepts[i]][valid_concepts[j]]["weight"] = min(
+                                    1.0, 0.85 * old + 0.15 * cosine_sim
                                 )
                             else:
-                                knowledge_graph.add_edge(
-                                    valid_concepts[i], valid_concepts[j],
-                                    weight=cosine_sim
-                                )
+                                knowledge_graph.add_edge(valid_concepts[i], valid_concepts[j], weight=cosine_sim)
                     except Exception as e:
                         logger.warning(f"Error adding edge between concepts: {e}")
+
 
 def sync_concept_to_graph(concept):
     """Refresh one graph node's memory fields from the live DB row.
@@ -384,9 +376,9 @@ def sync_concept_to_graph(concept):
         # Node missing: add it from the live DB row (pull live AWFC score).
         try:
             from tracker_app.db.models import SessionLocal, TrackedConcept
+
             with SessionLocal() as db:
-                exists = db.query(TrackedConcept.concept).filter(
-                    TrackedConcept.concept == concept).first() is not None
+                exists = db.query(TrackedConcept.concept).filter(TrackedConcept.concept == concept).first() is not None
         except Exception as e:
             logger.debug(f"sync_concept_to_graph lookup failed for {concept}: {e}")
             return
@@ -396,22 +388,22 @@ def sync_concept_to_graph(concept):
             return
     try:
         from tracker_app.db.models import SessionLocal, TrackedConcept
+
         with SessionLocal() as db:
-            row = db.query(TrackedConcept).filter(
-                TrackedConcept.concept == concept).first()
+            row = db.query(TrackedConcept).filter(TrackedConcept.concept == concept).first()
             if row is None:
                 return
-            score      = _memory_score_from_row(row)
-            interval   = getattr(row, "interval", 1) or 1
-            strength   = getattr(row, "memory_strength", 2.5) or 2.5
-            last_seen  = row.last_seen or row.first_seen
+            score = _memory_score_from_row(row)
+            interval = getattr(row, "interval", 1) or 1
+            strength = getattr(row, "memory_strength", 2.5) or 2.5
+            last_seen = row.last_seen or row.first_seen
         with _graph_lock:
             node = knowledge_graph.nodes[concept]
-            node['memory_score']    = round(score, 4)
-            node['interval']        = interval
-            node['memory_strength'] = strength
+            node["memory_score"] = round(score, 4)
+            node["interval"] = interval
+            node["memory_strength"] = strength
             if isinstance(last_seen, datetime):
-                node['last_review'] = last_seen.strftime(DATETIME_FORMAT)
+                node["last_review"] = last_seen.strftime(DATETIME_FORMAT)
     except Exception as e:
         logger.debug(f"sync_concept_to_graph failed for {concept}: {e}")
 
@@ -447,9 +439,9 @@ def _refresh_all_memory_scores(concepts):
         return
     try:
         from tracker_app.db.models import SessionLocal, TrackedConcept
+
         with SessionLocal() as db:
-            rows = db.query(TrackedConcept).filter(
-                TrackedConcept.concept.in_(concepts)).all()
+            rows = db.query(TrackedConcept).filter(TrackedConcept.concept.in_(concepts)).all()
     except Exception as e:
         logger.debug(f"_refresh_all_memory_scores failed: {e}")
         return
@@ -466,13 +458,13 @@ def _refresh_all_memory_scores(concepts):
         for concept, (score, interval, strength, last_seen) in updates.items():
             node = knowledge_graph.nodes[concept]
             new_score = round(score, 4)
-            if node.get('memory_score') != new_score:
+            if node.get("memory_score") != new_score:
                 _graph_dirty = True
-            node['memory_score']    = new_score
-            node['interval']        = interval
-            node['memory_strength'] = strength
+            node["memory_score"] = new_score
+            node["interval"] = interval
+            node["memory_strength"] = strength
             if isinstance(last_seen, datetime):
-                node['last_review'] = last_seen.strftime(DATETIME_FORMAT)
+                node["last_review"] = last_seen.strftime(DATETIME_FORMAT)
 
 
 def sync_db_to_graph(force: bool = False) -> dict:
@@ -503,9 +495,12 @@ def sync_db_to_graph(force: bool = False) -> dict:
         _refresh_all_memory_scores(db_concepts)
         if _graph_dirty:
             _save_graph()
-        logger.info("Synced %d concepts from DB to graph (%d new%s)",
-                    len(db_concepts), len(new_concepts),
-                    ", forced" if force else "")
+        logger.info(
+            "Synced %d concepts from DB to graph (%d new%s)",
+            len(db_concepts),
+            len(new_concepts),
+            ", forced" if force else "",
+        )
         return {
             "nodes": knowledge_graph.number_of_nodes(),
             "edges": knowledge_graph.number_of_edges(),
@@ -515,6 +510,7 @@ def sync_db_to_graph(force: bool = False) -> dict:
         logger.warning("Error syncing DB to graph: %s", e)
         return {"nodes": 0, "edges": 0, "synced": 0}
 
+
 def get_graph():
     """Get graph with thread-safe access"""
     _ensure_graph_loaded()
@@ -522,6 +518,7 @@ def get_graph():
 
 
 # â”€â”€â”€ Concept Drift Detector â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 def get_session_concepts(limit: int = 50) -> list:
     """Concepts encountered during the active study session.
@@ -583,49 +580,51 @@ def compute_concept_drift(
     with _graph_lock:
         if concept not in knowledge_graph:
             return {
-                'concept': concept, 'drift_score': 0.0, 'status': 'new',
-                'co_concepts_now': list(current_session_keywords),
-                'co_concepts_historic': [],
+                "concept": concept,
+                "drift_score": 0.0,
+                "status": "new",
+                "co_concepts_now": list(current_session_keywords),
+                "co_concepts_historic": [],
             }
 
-        current_neighbours = set(
-            k for k in current_session_keywords
-            if k != concept and isinstance(k, str)
-        )
+        current_neighbours = set(k for k in current_session_keywords if k != concept and isinstance(k, str))
         historic_neighbours = set(
-            n for n in knowledge_graph.neighbors(concept)
-            if isinstance(n, str) and
-            knowledge_graph[concept][n].get('weight', 0) > 0.3
+            n
+            for n in knowledge_graph.neighbors(concept)
+            if isinstance(n, str) and knowledge_graph[concept][n].get("weight", 0) > 0.3
         )
 
         if not historic_neighbours:
             return {
-                'concept': concept, 'drift_score': 0.0, 'status': 'new',
-                'co_concepts_now': sorted(current_neighbours),
-                'co_concepts_historic': [],
+                "concept": concept,
+                "drift_score": 0.0,
+                "status": "new",
+                "co_concepts_now": sorted(current_neighbours),
+                "co_concepts_historic": [],
             }
 
         intersection = len(current_neighbours & historic_neighbours)
-        union        = len(current_neighbours | historic_neighbours)
-        drift        = 1.0 - (intersection / union) if union > 0 else 0.0
+        union = len(current_neighbours | historic_neighbours)
+        drift = 1.0 - (intersection / union) if union > 0 else 0.0
 
         if not current_neighbours:
-            status = 'stagnant'
+            status = "stagnant"
         elif drift > 0.6:
-            status = 'evolving'
+            status = "evolving"
         else:
-            status = 'stable'
+            status = "stable"
 
         return {
-            'concept':              concept,
-            'drift_score':          round(drift, 4),
-            'status':               status,
-            'co_concepts_now':      sorted(current_neighbours),
-            'co_concepts_historic': sorted(historic_neighbours),
+            "concept": concept,
+            "drift_score": round(drift, 4),
+            "status": status,
+            "co_concepts_now": sorted(current_neighbours),
+            "co_concepts_historic": sorted(historic_neighbours),
         }
 
 
 # â”€â”€â”€ Knowledge Gap Map â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 def find_knowledge_gaps(top_k: int = 5) -> list:
     """
@@ -656,7 +655,7 @@ def find_knowledge_gaps(top_k: int = 5) -> list:
         # again independently.
         node_vecs = {}
         for n in nodes:
-            emb = knowledge_graph.nodes[n].get('embedding')
+            emb = knowledge_graph.nodes[n].get("embedding")
             if not emb:
                 continue
             arr = np.asarray(emb, dtype=float)
@@ -666,10 +665,13 @@ def find_knowledge_gaps(top_k: int = 5) -> list:
 
         gaps = {}
         edges = [
-            (u, v) for u, v, d in knowledge_graph.edges(data=True)
-            if isinstance(u, str) and isinstance(v, str)
-            and d.get('weight', 0) > 0.5
-            and u in node_vecs and v in node_vecs
+            (u, v)
+            for u, v, d in knowledge_graph.edges(data=True)
+            if isinstance(u, str)
+            and isinstance(v, str)
+            and d.get("weight", 0) > 0.5
+            and u in node_vecs
+            and v in node_vecs
         ]
 
         for node_a, node_b in edges:
@@ -679,8 +681,7 @@ def find_knowledge_gaps(top_k: int = 5) -> list:
             for node_c, vec_c in node_vecs.items():
                 if node_c in (node_a, node_b):
                     continue
-                if (knowledge_graph.has_edge(node_a, node_c) or
-                        knowledge_graph.has_edge(node_b, node_c)):
+                if knowledge_graph.has_edge(node_a, node_c) or knowledge_graph.has_edge(node_b, node_c):
                     continue  # already connected
 
                 sim_ac = float(np.dot(vec_a, vec_c))
@@ -688,20 +689,21 @@ def find_knowledge_gaps(top_k: int = 5) -> list:
 
                 if sim_ac > 0.55 and sim_bc > 0.55:
                     score = (sim_ac + sim_bc) / 2.0
-                    if node_c not in gaps or gaps[node_c]['score'] < score:
+                    if node_c not in gaps or gaps[node_c]["score"] < score:
                         gaps[node_c] = {
-                            'gap_concept':     node_c,
-                            'concept':         node_c,
-                            'bridge_concepts': [node_a, node_b],
-                            'score':           round(score, 4),
-                            'memory_strength': round(score, 4),
-                            'gap_score':       round(score, 4),
+                            "gap_concept": node_c,
+                            "concept": node_c,
+                            "bridge_concepts": [node_a, node_b],
+                            "score": round(score, 4),
+                            "memory_strength": round(score, 4),
+                            "gap_score": round(score, 4),
                         }
 
-        return sorted(gaps.values(), key=lambda x: -x['score'])[:top_k]
+        return sorted(gaps.values(), key=lambda x: -x["score"])[:top_k]
 
 
 # â”€â”€â”€ Graph statistics (for dashboard API) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 def get_graph_stats() -> dict:
     """Return summary statistics about the knowledge graph."""
@@ -713,15 +715,12 @@ def get_graph_stats() -> dict:
 
         avg_memory = 0.0
         if string_nodes:
-            scores = [
-                knowledge_graph.nodes[n].get('memory_score', 0.5)
-                for n in string_nodes
-            ]
+            scores = [knowledge_graph.nodes[n].get("memory_score", 0.5) for n in string_nodes]
             avg_memory = float(sum(scores)) / len(scores)
 
         top_concepts = sorted(
             (n for n in string_nodes),
-            key=lambda n: knowledge_graph.nodes[n].get('memory_score', 0.5),
+            key=lambda n: knowledge_graph.nodes[n].get("memory_score", 0.5),
             reverse=True,
         )[:10]
 
@@ -731,7 +730,7 @@ def get_graph_stats() -> dict:
         top_set = set(top_concepts)
         edges = sorted(
             (
-                [u, v, round(float(data.get('weight', 1.0)), 4)]
+                [u, v, round(float(data.get("weight", 1.0)), 4)]
                 for u, v, data in knowledge_graph.edges(data=True)
                 if u in top_set and v in top_set
             ),
@@ -743,35 +742,36 @@ def get_graph_stats() -> dict:
         # force-layout sizes/colours nodes from these (weak = small/dim).
         nodes = [
             {
-                'concept': n,
-                'memory_score': float(knowledge_graph.nodes[n].get('memory_score', 0.5)),
+                "concept": n,
+                "memory_score": float(knowledge_graph.nodes[n].get("memory_score", 0.5)),
             }
             for n in top_concepts
         ]
 
         return {
-            'total_nodes':    n_nodes,
-            'total_edges':    n_edges,
-            'concept_nodes':  len(string_nodes),
-            'avg_memory_score': round(avg_memory, 4),
-            'density':         round(nx.density(knowledge_graph), 6),
+            "total_nodes": n_nodes,
+            "total_edges": n_edges,
+            "concept_nodes": len(string_nodes),
+            "avg_memory_score": round(avg_memory, 4),
+            "density": round(nx.density(knowledge_graph), 6),
             # dashboard (frontend) keys
-            'total_concepts':  len(string_nodes),
-            'avg_memory_strength': round(avg_memory, 4),
-            'top_concepts':    top_concepts,
-            'nodes':           nodes,
-            'edges':           edges,  # [source, target, weight]
+            "total_concepts": len(string_nodes),
+            "avg_memory_strength": round(avg_memory, 4),
+            "top_concepts": top_concepts,
+            "nodes": nodes,
+            "edges": edges,  # [source, target, weight]
         }
 
 
 if __name__ == "__main__":
     sync_db_to_graph()
     stats = get_graph_stats()
-    print(f"Graph: {stats['concept_nodes']} concepts, "
-          f"{stats['total_edges']} edges, "
-          f"avg memory={stats['avg_memory_score']:.3f}")
+    print(
+        f"Graph: {stats['concept_nodes']} concepts, "
+        f"{stats['total_edges']} edges, "
+        f"avg memory={stats['avg_memory_score']:.3f}"
+    )
     gaps = find_knowledge_gaps(top_k=3)
     print(f"Knowledge gaps found: {len(gaps)}")
     for g in gaps:
-        print(f"  {g['gap_concept']} (bridges {g['bridge_concepts']}, "
-              f"score={g['score']:.3f})")
+        print(f"  {g['gap_concept']} (bridges {g['bridge_concepts']}, score={g['score']:.3f})")

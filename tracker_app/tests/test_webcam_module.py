@@ -57,10 +57,10 @@ def test_capture_reuses_single_handle(monkeypatch):
     f3 = wm.capture_frame()
 
     assert f1 is frame and f2 is frame and f3 is frame
-    assert opens["n"] == 1          # opened once, not once per frame
+    assert opens["n"] == 1  # opened once, not once per frame
     assert wm._cap is cap
     assert cap.read_calls == 3
-    assert cap.release_calls == 0   # not released between frames
+    assert cap.release_calls == 0  # not released between frames
     wm._release_cap()
     assert cap.release_calls == 1
     assert wm._cap is None
@@ -71,13 +71,13 @@ def test_failed_open_returns_none(monkeypatch):
     monkeypatch.setattr(wm.cv2, "VideoCapture", lambda index: cap)
 
     assert wm.capture_frame() is None
-    assert wm._cap is None          # no dead handle held
+    assert wm._cap is None  # no dead handle held
     assert cap.release_calls == 1
 
 
 def test_read_failure_releases_and_recovers(monkeypatch):
     frame = object()
-    cap1 = _FakeCap(frame=None)     # read returns (True, None)
+    cap1 = _FakeCap(frame=None)  # read returns (True, None)
     cap2 = _FakeCap(frame=frame)
     caps = [cap1, cap2]
     opens = {"n": 0}
@@ -102,6 +102,7 @@ def test_read_failure_releases_and_recovers(monkeypatch):
 
 def test_runtime_code_uses_logger_not_print():
     import inspect
+
     src = inspect.getsource(wm)
     main_idx = src.find('if __name__ == "__main__":')
     body = src if main_idx == -1 else src[:main_idx]

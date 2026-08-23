@@ -25,7 +25,6 @@ Run: python -m pytest tracker_app/tests/test_db_path_resolution.py -v
 
 import os
 
-import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
@@ -111,6 +110,7 @@ def test_session_rebind_honored_by_module_scope_importer(monkeypatch, tmp_path):
         # the proxy, NOT whatever models.SessionLocal is later rebound to.
         proxy = models.SessionLocal
         from tracker_app.learning import concept_scheduler as cs_mod
+
         assert cs_mod.SessionLocal is proxy
 
         # Rebind AFTER the capture.
@@ -135,13 +135,13 @@ def test_engine_rebind_honored_by_captured_proxy(monkeypatch, tmp_path):
     import tracker_app.db.models as models
 
     default_url = get_engine().url  # whatever the default/env-bound engine is
-    captured = models.engine        # the lazy proxy, as captured at import time
+    captured = models.engine  # the lazy proxy, as captured at import time
     rebound = create_engine(f"sqlite:///{_db_path(tmp_path, 'f001_engine.db')}")
     try:
         monkeypatch.setattr(models, "engine", rebound)
 
-        assert captured.url == rebound.url   # proxy re-resolves the rebind
-        assert captured.url != default_url   # genuinely the other engine
+        assert captured.url == rebound.url  # proxy re-resolves the rebind
+        assert captured.url != default_url  # genuinely the other engine
         assert models.engine.url == rebound.url  # direct access hits the rebind
     finally:
         rebound.dispose()

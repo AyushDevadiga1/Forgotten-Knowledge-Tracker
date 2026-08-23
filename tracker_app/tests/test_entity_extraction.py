@@ -5,6 +5,7 @@ Verifies that:
 - ORG entities (companies, institutions) ARE allowed
 - GPE entities (countries, cities) ARE allowed
 """
+
 import pytest
 from tracker_app.tracking.keyword_extractor import YAKEKeywordExtractor, get_keyword_extractor
 
@@ -44,7 +45,7 @@ class TestEntityFiltering:
 
     def test_blocked_entity_types_only_person(self):
         """BLOCKED_ENTITY_TYPES should only contain PERSON."""
-        assert YAKEKeywordExtractor.BLOCKED_ENTITY_TYPES == {"PERSON"}
+        assert {"PERSON"} == YAKEKeywordExtractor.BLOCKED_ENTITY_TYPES
 
 
 class TestPOSBigramFiltering:

@@ -1,14 +1,8 @@
-﻿"""SQLAlchemy ORM models for all FKT tables (lazy engine/session factories)."""
-
-import os
-from datetime import datetime
+"""SQLAlchemy ORM models for all FKT tables (lazy engine/session factories)."""
 
 from tracker_app.utils import utcnow as _utcnow
 
-from sqlalchemy import (
-    Column, Integer, String, Float, DateTime, Text,
-    ForeignKey, Index, event, create_engine
-)
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, event, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship, Session
 import logging
 
@@ -60,8 +54,7 @@ def get_session_local():
     """Return the shared sessionmaker, creating it on first call."""
     global _SessionLocal
     if _SessionLocal is None:
-        _SessionLocal = sessionmaker(autocommit=False, autoflush=False,
-                                     bind=get_engine())
+        _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=get_engine())
     return _SessionLocal
 
 
@@ -69,8 +62,10 @@ def get_session_local():
 # Existing code that does `from tracker_app.db.models import SessionLocal`
 # continues to work: accessing the attribute calls through to the lazy getter.
 
+
 class _LazySessionProxy:
     """Proxy that forwards all calls to the lazily-created SessionLocal."""
+
     def __call__(self, *args, **kwargs):
         # Re-resolve the current module attribute: module-scope importers
         # (e.g. `from tracker_app.db.models import SessionLocal`) capture this
@@ -78,6 +73,7 @@ class _LazySessionProxy:
         # patching models.SessionLocal), delegate to the rebound object
         # instead of silently forwarding to the global _SessionLocal.
         import tracker_app.db.models as models_mod
+
         current = getattr(models_mod, "SessionLocal", self)
         if current is not self:
             return current(*args, **kwargs)
@@ -100,6 +96,7 @@ class _LazyEngineProxy:
         # later rebinding of models.engine instead of always resolving the
         # default get_engine().
         import tracker_app.db.models as models_mod
+
         current = getattr(models_mod, "engine", self)
         if current is not self:
             return getattr(current, name)
@@ -127,6 +124,7 @@ def get_db():
 
 db_logger = logging.getLogger("DB_Models")
 
+
 @event.listens_for(Session, "after_flush")
 def receive_after_flush(session, flush_context):
     for obj in session.new:
@@ -141,50 +139,48 @@ def receive_after_flush(session, flush_context):
 # Learning Tracker Models
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
+
 class LearningItem(Base):
     __tablename__ = "learning_items"
 
-    id          = Column(String, primary_key=True)
-    question    = Column(String, nullable=False)
-    answer      = Column(String, nullable=False)
-    difficulty  = Column(String, default="medium")
-    item_type   = Column(String, default="concept")
-    tags        = Column(String, default="")
+    id = Column(String, primary_key=True)
+    question = Column(String, nullable=False)
+    answer = Column(String, nullable=False)
+    difficulty = Column(String, default="medium")
+    item_type = Column(String, default="concept")
+    tags = Column(String, default="")
 
     # SM-2 scheduling
-    interval         = Column(Integer, default=0)
-    ease_factor      = Column(Float,   default=2.5)
-    repetitions      = Column(Integer, default=0)
-    next_review_date = Column(DateTime, index=True)   # â† DateTime + index
+    interval = Column(Integer, default=0)
+    ease_factor = Column(Float, default=2.5)
+    repetitions = Column(Integer, default=0)
+    next_review_date = Column(DateTime, index=True)  # â† DateTime + index
     last_review_date = Column(DateTime, nullable=True)  # â† maps migration 005 column
 
     # Stats
     total_reviews = Column(Integer, default=0)
     correct_count = Column(Integer, default=0)
-    success_rate  = Column(Float,   default=0.0)
-    status        = Column(String,  default="active",  index=True)  # â† index
+    success_rate = Column(Float, default=0.0)
+    status = Column(String, default="active", index=True)  # â† index
 
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
     # Relationship
-    reviews = relationship("ReviewHistory", back_populates="item",
-                           cascade="all, delete-orphan", passive_deletes=True)
+    reviews = relationship("ReviewHistory", back_populates="item", cascade="all, delete-orphan", passive_deletes=True)
 
 
 class ReviewHistory(Base):
     __tablename__ = "review_history"
 
-    id             = Column(Integer, primary_key=True, autoincrement=True)
-    item_id        = Column(String,
-                            ForeignKey("learning_items.id", ondelete="CASCADE"),
-                            nullable=False, index=True)
-    timestamp      = Column(DateTime, default=_utcnow, nullable=False, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    item_id = Column(String, ForeignKey("learning_items.id", ondelete="CASCADE"), nullable=False, index=True)
+    timestamp = Column(DateTime, default=_utcnow, nullable=False, index=True)
     quality_rating = Column(Integer)
-    old_interval   = Column(Integer)
-    new_interval   = Column(Integer)
-    old_ease       = Column(Float)
-    new_ease       = Column(Float)
+    old_interval = Column(Integer)
+    new_interval = Column(Integer)
+    old_ease = Column(Float)
+    new_ease = Column(Float)
 
     item = relationship("LearningItem", back_populates="reviews")
 
@@ -193,96 +189,97 @@ class ReviewHistory(Base):
 # Intent & Activity Models
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
+
 class IntentPrediction(Base):
     __tablename__ = "intent_predictions"
 
-    id               = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp        = Column(DateTime, default=_utcnow, nullable=False, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(DateTime, default=_utcnow, nullable=False, index=True)
     predicted_intent = Column(String)
-    confidence       = Column(Float)
-    context_keywords = Column(String)   # JSON: [f1, f2, f3, f4, f5, f6] feature vector
-    user_feedback    = Column(Integer, nullable=True)   # 1=correct 0=wrong
-    actual_intent    = Column(String,  nullable=True)
+    confidence = Column(Float)
+    context_keywords = Column(String)  # JSON: [f1, f2, f3, f4, f5, f6] feature vector
+    user_feedback = Column(Integer, nullable=True)  # 1=correct 0=wrong
+    actual_intent = Column(String, nullable=True)
     feedback_timestamp = Column(DateTime, nullable=True)
-    prompted_at      = Column(DateTime, nullable=True)  # when the feedback toast last surfaced this row
-    window_title     = Column(String,  nullable=True)   # what was on screen when predicted
+    prompted_at = Column(DateTime, nullable=True)  # when the feedback toast last surfaced this row
+    window_title = Column(String, nullable=True)  # what was on screen when predicted
 
 
 class IntentAccuracy(Base):
     __tablename__ = "intent_accuracy"
 
-    intent               = Column(String, primary_key=True)
-    total_predictions    = Column(Integer, default=0)
-    correct_predictions  = Column(Integer, default=0)
-    accuracy             = Column(Float,   default=0.0)
-    last_updated         = Column(DateTime, default=_utcnow)
+    intent = Column(String, primary_key=True)
+    total_predictions = Column(Integer, default=0)
+    correct_predictions = Column(Integer, default=0)
+    accuracy = Column(Float, default=0.0)
+    last_updated = Column(DateTime, default=_utcnow)
 
 
 class TrackingSession(Base):
     __tablename__ = "tracking_sessions"
 
-    id                   = Column(Integer, primary_key=True, autoincrement=True)
-    start_time           = Column(DateTime, index=True)
-    end_time             = Column(DateTime)
-    duration_minutes     = Column(Float)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    start_time = Column(DateTime, index=True)
+    end_time = Column(DateTime)
+    duration_minutes = Column(Float)
     concepts_encountered = Column(Integer)
-    avg_attention        = Column(Float)
-    primary_activity     = Column(String)
+    avg_attention = Column(Float)
+    primary_activity = Column(String)
 
 
 class DailySummary(Base):
     __tablename__ = "daily_summary"
 
     # date kept as String (YYYY-MM-DD key, not a full timestamp)
-    date                   = Column(String, primary_key=True)
+    date = Column(String, primary_key=True)
     total_tracking_minutes = Column(Float)
-    concepts_encountered   = Column(Integer)
-    avg_attention          = Column(Float)
-    primary_intents        = Column(String)
+    concepts_encountered = Column(Integer)
+    avg_attention = Column(Float)
+    primary_intents = Column(String)
 
 
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 # Concept Tracking Models
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
+
 class TrackedConcept(Base):
     __tablename__ = "tracked_concepts"
 
-    concept         = Column(String, primary_key=True)
-    first_seen      = Column(DateTime, default=_utcnow, nullable=False)
-    last_seen       = Column(DateTime, default=_utcnow, nullable=False, index=True)
+    concept = Column(String, primary_key=True)
+    first_seen = Column(DateTime, default=_utcnow, nullable=False)
+    last_seen = Column(DateTime, default=_utcnow, nullable=False, index=True)
     frequency_count = Column(Integer, default=1)
-    relevance_score = Column(Float,   default=0.5)
-    context_tags    = Column(String,  default="")
-    status          = Column(String,  default="discovered")
+    relevance_score = Column(Float, default=0.5)
+    context_tags = Column(String, default="")
+    status = Column(String, default="discovered")
 
     # SM-2 scheduling fields
-    interval         = Column(Integer, default=1)
-    memory_strength  = Column(Float,   default=2.5)
-    next_review      = Column(DateTime, index=True)   # â† DateTime + index (critical query path)
-    repetitions      = Column(Integer, default=0)     # consecutive successful reviews
-    review_count     = Column(Integer, default=0)     # total quiz reviews (recalibration denominator)
-    correct_count    = Column(Integer, default=0)     # total correct quiz reviews
+    interval = Column(Integer, default=1)
+    memory_strength = Column(Float, default=2.5)
+    next_review = Column(DateTime, index=True)  # â† DateTime + index (critical query path)
+    repetitions = Column(Integer, default=0)  # consecutive successful reviews
+    review_count = Column(Integer, default=0)  # total quiz reviews (recalibration denominator)
+    correct_count = Column(Integer, default=0)  # total correct quiz reviews
 
     # AWFC fields â€” attention at time of first learning
-    attention_at_encoding = Column(Float, default=50.0)   # 0â€“100 scale
-    lambda_personalised   = Column(Float, default=0.1)    # personalised decay rate
+    attention_at_encoding = Column(Float, default=50.0)  # 0â€“100 scale
+    lambda_personalised = Column(Float, default=0.1)  # personalised decay rate
 
     # Relationship
-    encounters = relationship("ConceptEncounter", back_populates="tracked_concept",
-                              cascade="all, delete-orphan", passive_deletes=True)
+    encounters = relationship(
+        "ConceptEncounter", back_populates="tracked_concept", cascade="all, delete-orphan", passive_deletes=True
+    )
 
 
 class ConceptEncounter(Base):
     __tablename__ = "concept_encounters"
 
-    id              = Column(Integer, primary_key=True, autoincrement=True)
-    concept         = Column(String,
-                             ForeignKey("tracked_concepts.concept", ondelete="CASCADE"),
-                             nullable=False, index=True)
-    timestamp       = Column(DateTime, default=_utcnow, nullable=False, index=True)
-    source          = Column(String)   # 'ocr' | 'browser_extension' | 'manual'
-    confidence      = Column(Float, default=1.0)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    concept = Column(String, ForeignKey("tracked_concepts.concept", ondelete="CASCADE"), nullable=False, index=True)
+    timestamp = Column(DateTime, default=_utcnow, nullable=False, index=True)
+    source = Column(String)  # 'ocr' | 'browser_extension' | 'manual'
+    confidence = Column(Float, default=1.0)
     context_snippet = Column(String)
 
     tracked_concept = relationship("TrackedConcept", back_populates="encounters")
@@ -292,58 +289,60 @@ class ConceptEncounter(Base):
 # System Session Models
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
+
 class SystemSession(Base):
     __tablename__ = "sessions"
 
-    id               = Column(Integer, primary_key=True, autoincrement=True)
-    start_ts         = Column(DateTime, index=True)
-    end_ts           = Column(DateTime)
-    app_name         = Column(String)
-    window_title     = Column(String)
-    interaction_rate  = Column(Float, default=0)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    start_ts = Column(DateTime, index=True)
+    end_ts = Column(DateTime)
+    app_name = Column(String)
+    window_title = Column(String)
+    interaction_rate = Column(Float, default=0)
     interaction_count = Column(Integer, default=0)
-    audio_label      = Column(String)
-    intent_label     = Column(String)
+    audio_label = Column(String)
+    intent_label = Column(String)
     intent_confidence = Column(Float, default=0.0)
 
 
 class MultiModalLog(Base):
     __tablename__ = "multi_modal_logs"
 
-    id               = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp        = Column(DateTime, nullable=False, index=True)
-    window_title     = Column(String)
-    ocr_keywords     = Column(String)
-    audio_label      = Column(String)
-    attention_score  = Column(Float, default=0)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(DateTime, nullable=False, index=True)
+    window_title = Column(String)
+    ocr_keywords = Column(String)
+    audio_label = Column(String)
+    attention_score = Column(Float, default=0)
     interaction_rate = Column(Float, default=0)
-    intent_label     = Column(String)
+    intent_label = Column(String)
     intent_confidence = Column(Float, default=0.0)
-    memory_score     = Column(Float, default=0.0)
+    memory_score = Column(Float, default=0.0)
 
 
 class MemoryDecay(Base):
     __tablename__ = "memory_decay"
 
-    id              = Column(Integer, primary_key=True, autoincrement=True)
-    keyword         = Column(String,  nullable=False, index=True)
-    last_seen_ts    = Column(DateTime, nullable=False, index=True)
-    predicted_recall = Column(Float,  default=0.0)
-    observed_usage  = Column(Integer, default=1)
-    updated_at      = Column(DateTime, default=_utcnow)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    keyword = Column(String, nullable=False, index=True)
+    last_seen_ts = Column(DateTime, nullable=False, index=True)
+    predicted_recall = Column(Float, default=0.0)
+    observed_usage = Column(Integer, default=1)
+    updated_at = Column(DateTime, default=_utcnow)
 
 
 class Metric(Base):
     __tablename__ = "metrics"
 
-    id               = Column(Integer, primary_key=True, autoincrement=True)
-    concept          = Column(String)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    concept = Column(String)
     next_review_time = Column(DateTime)
-    memory_score     = Column(Float, default=0.0)
-    last_updated     = Column(DateTime, default=_utcnow)
+    memory_score = Column(Float, default=0.0)
+    last_updated = Column(DateTime, default=_utcnow)
 
 
 # â”€â”€â”€ Self-improving model: feedback training samples â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
 
 class FeedbackTrainingSample(Base):
     """
@@ -351,14 +350,14 @@ class FeedbackTrainingSample(Base):
     Populated when a user clicks 'wrong' on an IntentFeedbackToast.
     Used by scripts/train_models_from_logs.py --include-feedback.
     """
+
     __tablename__ = "feedback_training_samples"
 
-    id              = Column(Integer, primary_key=True, autoincrement=True)
-    timestamp       = Column(DateTime, default=_utcnow, nullable=False, index=True)
-    feature_vector  = Column(String, nullable=False)   # JSON: [f1, f2, f3, f4, f5, f6]
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(DateTime, default=_utcnow, nullable=False, index=True)
+    feature_vector = Column(String, nullable=False)  # JSON: [f1, f2, f3, f4, f5, f6]
     predicted_label = Column(String, nullable=False)
-    actual_label    = Column(String, nullable=False)   # ground truth from user
-    confidence      = Column(Float, default=0.0)
-    window_title    = Column(String, default="")
+    actual_label = Column(String, nullable=False)  # ground truth from user
+    confidence = Column(Float, default=0.0)
+    window_title = Column(String, default="")
     used_in_training = Column(Integer, default=0, nullable=False)
-

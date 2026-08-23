@@ -5,8 +5,6 @@ with multiple detected faces still reported 1. The pipeline now counts the
 faces per frame and reports the maximum seen across frames.
 """
 
-import pytest
-
 import tracker_app.tracking.webcam_module as wm
 
 

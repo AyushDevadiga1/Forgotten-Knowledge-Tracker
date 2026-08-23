@@ -12,7 +12,8 @@ def ask_user_permissions() -> bool:
     # Non-interactive override (matches README: "set ALLOW_WEBCAM in .env").
     # Use from config so the constant is the single source of truth.
     from tracker_app.config import USER_ALLOW_WEBCAM
-    if 'ALLOW_WEBCAM' in os.environ:
+
+    if "ALLOW_WEBCAM" in os.environ:
         if USER_ALLOW_WEBCAM:
             print("  [OK] ALLOW_WEBCAM=true — webcam enabled.\n")
         else:
@@ -38,10 +39,10 @@ def ask_user_permissions() -> bool:
     print()
     while True:
         val = input("  Enable webcam? (y/n): ").strip().lower()
-        if val in ('y', 'yes'):
+        if val in ("y", "yes"):
             print("\n  [OK] Webcam enabled. CLE also active as backup.\n")
             return True
-        if val in ('n', 'no'):
+        if val in ("n", "no"):
             print("\n  [OK] Webcam disabled. Using CLE (keystroke-based).")
             print("       Tip: enable webcam later for better accuracy.\n")
             return False
@@ -50,15 +51,13 @@ def ask_user_permissions() -> bool:
 
 if __name__ == "__main__":
     from tracker_app.config import LOGS_DIR
+
     log_file = LOGS_DIR / "tracker.log"
-    
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler()
-        ]
+        handlers=[logging.FileHandler(log_file), logging.StreamHandler()],
     )
 
     setup_directories()

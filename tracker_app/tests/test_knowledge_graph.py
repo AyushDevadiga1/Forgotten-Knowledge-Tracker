@@ -87,7 +87,7 @@ def test_ensure_graph_loaded_reconciles_mid_process(clean_graph, monkeypatch):
     clock = [0.0]
     monkeypatch.setattr(kg.time, "monotonic", lambda: clock[0])
 
-    db_concepts = ["alpha", "beta"]   # alpha from pkl, beta new in DB
+    db_concepts = ["alpha", "beta"]  # alpha from pkl, beta new in DB
 
     def fake_fetch():
         return list(db_concepts)
@@ -104,11 +104,11 @@ def test_ensure_graph_loaded_reconciles_mid_process(clean_graph, monkeypatch):
     monkeypatch.setattr(kg, "_save_graph", lambda: None)
 
     with kg._graph_lock:
-        kg.knowledge_graph.clear()   # fresh process: pkl+DB bootstrap runs
+        kg.knowledge_graph.clear()  # fresh process: pkl+DB bootstrap runs
 
     kg.get_graph()
-    assert "alpha" in kg.knowledge_graph   # from the simulated pkl load
-    assert "beta" in kg.knowledge_graph     # reconciled on first load
+    assert "alpha" in kg.knowledge_graph  # from the simulated pkl load
+    assert "beta" in kg.knowledge_graph  # reconciled on first load
 
     # A concept the DB gains mid-process is not visible yet...
     db_concepts.append("gamma")
@@ -143,10 +143,12 @@ def test_graph_stats_includes_real_edges(clean_graph):
     stats = kg.get_graph_stats()
     assert stats["top_concepts"][:3] == ["alpha", "beta", "gamma"]
     assert "low" not in stats["top_concepts"]
-    assert sorted(stats["edges"]) == sorted([
-        ["alpha", "beta", 0.98],
-        ["alpha", "gamma", 0.71],
-    ])
+    assert sorted(stats["edges"]) == sorted(
+        [
+            ["alpha", "beta", 0.98],
+            ["alpha", "gamma", 0.71],
+        ]
+    )
     # the strongest edge is listed first
     assert stats["edges"][0] == ["alpha", "beta", 0.98]
 
@@ -197,9 +199,7 @@ def test_load_graph_renamed_to_locked_contract(clean_graph):
     assert hasattr(kg, "_load_graph_locked")
 
 
-def test_load_graph_locked_does_not_acquire_lock(
-    isolated_graph_path, clean_graph, monkeypatch
-):
+def test_load_graph_locked_does_not_acquire_lock(isolated_graph_path, clean_graph, monkeypatch):
     with kg._graph_lock:
         kg.knowledge_graph.add_node("neural network", count=1, memory_score=0.3)
     kg._save_graph()
@@ -257,7 +257,6 @@ def test_sync_db_to_graph_returns_zero_stats_on_error(clean_graph, monkeypatch):
     assert stats == {"nodes": 0, "edges": 0, "synced": 0}
 
 
-
 def test_sync_db_to_graph_skips_save_when_clean(clean_graph, monkeypatch):
     """sync_db_to_graph() must not pickle when nothing changed (dirty flag)."""
     monkeypatch.setattr(kg, "_ensure_graph_loaded", lambda: None)
@@ -269,7 +268,7 @@ def test_sync_db_to_graph_skips_save_when_clean(clean_graph, monkeypatch):
 
     saves = []
     monkeypatch.setattr(kg, "_save_graph", lambda: saves.append(1))
-    kg._graph_dirty = False          # start clean
+    kg._graph_dirty = False  # start clean
     kg.sync_db_to_graph(force=True)
     assert saves == [], "_save_graph() called when graph was clean"
 

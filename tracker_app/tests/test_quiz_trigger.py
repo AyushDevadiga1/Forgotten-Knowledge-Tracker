@@ -15,7 +15,7 @@ import os
 import sys
 from datetime import datetime, timedelta
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from tracker_app.tracking import quiz_engine
 
@@ -26,18 +26,13 @@ class TestQuizTrigger(unittest.TestCase):
 
     def test_below_threshold_never_fires(self):
         for cycles in range(0, quiz_engine.IDLE_CYCLES_REQUIRED):
-            self.assertFalse(
-                quiz_engine.should_show_quiz(cycles, False, 0.0))
+            self.assertFalse(quiz_engine.should_show_quiz(cycles, False, 0.0))
 
     def test_at_threshold_fires(self):
-        self.assertTrue(
-            quiz_engine.should_show_quiz(
-                quiz_engine.IDLE_CYCLES_REQUIRED, False, 0.0))
+        self.assertTrue(quiz_engine.should_show_quiz(quiz_engine.IDLE_CYCLES_REQUIRED, False, 0.0))
 
     def test_beyond_threshold_fires(self):
-        self.assertTrue(
-            quiz_engine.should_show_quiz(
-                quiz_engine.IDLE_CYCLES_REQUIRED + 8, False, 0.0))
+        self.assertTrue(quiz_engine.should_show_quiz(quiz_engine.IDLE_CYCLES_REQUIRED + 8, False, 0.0))
 
     def test_attention_gate_fires_when_user_present(self):
         # 10.3: a pause while attention stays moderate/high reaches the user.
@@ -49,20 +44,16 @@ class TestQuizTrigger(unittest.TestCase):
         self.assertFalse(quiz_engine.should_show_quiz(12, True, 0.0))
 
     def test_inactive_session_never_fires(self):
-        self.assertFalse(
-            quiz_engine.should_show_quiz(12, False, 0.0, session_active=False))
-        self.assertFalse(
-            quiz_engine.should_show_quiz(12, False, 0.0, session_active=False))
-        self.assertTrue(
-            quiz_engine.should_show_quiz(12, False, 0.0, session_active=True))
+        self.assertFalse(quiz_engine.should_show_quiz(12, False, 0.0, session_active=False))
+        self.assertFalse(quiz_engine.should_show_quiz(12, False, 0.0, session_active=False))
+        self.assertTrue(quiz_engine.should_show_quiz(12, False, 0.0, session_active=True))
 
     def test_cooldown_blocks_repeat_quiz(self):
         quiz_engine._last_quiz_time = datetime.utcnow()
         self.assertFalse(quiz_engine.should_show_quiz(12, False, 0.0))
 
     def test_cooldown_expires(self):
-        quiz_engine._last_quiz_time = datetime.utcnow() - timedelta(
-            minutes=quiz_engine.QUIZ_COOLDOWN_MINUTES + 1)
+        quiz_engine._last_quiz_time = datetime.utcnow() - timedelta(minutes=quiz_engine.QUIZ_COOLDOWN_MINUTES + 1)
         self.assertTrue(quiz_engine.should_show_quiz(12, False, 0.0))
 
     def test_reset_quiz_state_clears_cooldown(self):
@@ -83,5 +74,5 @@ class TestQuizTrigger(unittest.TestCase):
         self.assertEqual(quiz_engine.ATTENTION_PRESENT_MIN, 35)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

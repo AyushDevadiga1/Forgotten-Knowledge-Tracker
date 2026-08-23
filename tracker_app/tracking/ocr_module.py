@@ -1,4 +1,5 @@
 """OCR pipeline: active-window capture, Tesseract extraction, keyword/concept extraction."""
+
 import cv2
 import numpy as np
 import pytesseract
@@ -12,10 +13,11 @@ from tracker_app.tracking.keyword_extractor import get_keyword_extractor
 from tracker_app.tracking.keyword_extractor import extract_concepts
 from tracker_app.learning.text_quality_validator import validate_and_clean_extraction
 from tracker_app.tracking.privacy_filter import (
-    sanitize_text_for_storage, is_sensitive_window, strip_redaction_markers,
+    sanitize_text_for_storage,
+    is_sensitive_window,
+    strip_redaction_markers,
     filter_sensitive_keywords,
 )
-import re
 
 logger = logging.getLogger("OCRModule")
 
@@ -24,6 +26,7 @@ pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
 
 # Startup sanity-check: warn loudly if Tesseract isn't where we expect it.
 import os as _os
+
 if TESSERACT_PATH.lower() != "tesseract" and not _os.path.exists(TESSERACT_PATH):
     logger.warning(
         f"[OCR] Tesseract binary NOT found at '{TESSERACT_PATH}'. "
@@ -31,6 +34,7 @@ if TESSERACT_PATH.lower() != "tesseract" and not _os.path.exists(TESSERACT_PATH)
     )
 elif TESSERACT_PATH.lower() == "tesseract":
     import shutil as _shutil
+
     if not _shutil.which("tesseract"):
         logger.warning(
             "[OCR] Tesseract is not on PATH. OCR will silently return empty text. "
@@ -60,9 +64,11 @@ _last_screenshot_hash = None
 # Screenshot hashing helpers
 # ----------------------------
 
+
 def should_skip_window(title: str) -> bool:
     """Return True if the window title suggests sensitive/private content."""
     return is_sensitive_window(title)
+
 
 def capture_active_window():
     """
@@ -71,6 +77,7 @@ def capture_active_window():
     """
     try:
         import win32gui
+
         hwnd = win32gui.GetForegroundWindow()
         title = win32gui.GetWindowText(hwnd) or ""
         rect = win32gui.GetWindowRect(hwnd)
@@ -91,90 +98,93 @@ def capture_active_window():
         logger.debug(f"capture_active_window failed: {e}")
         return None, None
 
+
 def capture_screenshot(use_roi=True):
     """
     Capture screenshot with deduplication and optional ROI detection.
-    
+
     Args:
         use_roi: If True, capture only active window (faster, more private)
     """
     global _last_screenshot_hash
-    
+
     try:
         # Try ROI capture first (active window only)
         if use_roi:
             try:
                 img, window_info = capture_active_window()
-                
+
                 if img is not None and window_info:
                     # Privacy check
-                    if should_skip_window(window_info['title']):
+                    if should_skip_window(window_info["title"]):
                         logger.warning(f"[PRIVACY] Skipped sensitive window: {window_info['title']}")
                         return None
-                    
+
                     # Deduplication check — hash a small thumbnail (~100x faster than full frame)
                     thumb = cv2.resize(img, (192, 108)) if img is not None else img
                     img_hash = hashlib.md5(thumb.tobytes()).hexdigest()
                     if img_hash == _last_screenshot_hash:
                         return None
-                    
+
                     _last_screenshot_hash = img_hash
                     return img
             except ImportError:
                 pass  # Fall back to full screen
-        
+
         # Fallback: Full screen capture
         with mss() as sct:
             monitor = sct.monitors[1]
             img = np.array(sct.grab(monitor))
-            
+
             # Calculate hash for deduplication — use thumbnail for speed
             thumb = cv2.resize(img, (192, 108))
             img_hash = hashlib.md5(thumb.tobytes()).hexdigest()
-            
+
             # Skip if same as last screenshot
             if img_hash == _last_screenshot_hash:
                 return None
-            
+
             _last_screenshot_hash = img_hash
-            
+
             # Convert BGRA to BGR if needed
             if img.shape[2] == 4:
                 img = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-                
+
             return img
     except Exception as e:
         logger.warning(f"Error capturing screenshot: {e}")
         return None
 
+
 def preprocess_image(img):
     """Preprocess image for better OCR results"""
     if img is None:
         return None
-        
+
     try:
         # Convert to grayscale
         if len(img.shape) == 3:
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         else:
             gray = img
-            
+
         # Apply preprocessing for better OCR
         # 1. Noise reduction
         denoised = cv2.medianBlur(gray, 3)
-        
+
         # 2. Thresholding to binary
         _, binary = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        
+
         # 3. Morphological operations to clean up text
-        kernel = np.ones((2,2), np.uint8)
+        kernel = np.ones((2, 2), np.uint8)
         cleaned = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
-        
+
         return cleaned
-        
+
     except Exception as e:
         logger.warning(f"Error preprocessing image: {e}")
-        return gray if 'gray' in locals() else img
+        return gray if "gray" in locals() else img
+
 
 def extract_text(img, min_confidence: int = None):
     """Extract text from image using optimized OCR strategy.
@@ -193,37 +203,36 @@ def extract_text(img, min_confidence: int = None):
 
     try:
         # Use ONLY PSM 6 (default) - removed PSM 7 and 8 for performance
-        custom_config = r'--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,!?;:()[]{}@#$%&*+-/=<> '
-        data = pytesseract.image_to_data(
-            img, config=custom_config, output_type=pytesseract.Output.DICT
-        )
+        custom_config = r"--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,!?;:()[]{}@#$%&*+-/=<> "
+        data = pytesseract.image_to_data(img, config=custom_config, output_type=pytesseract.Output.DICT)
 
         # Reconstruct text line-by-line, keeping only confident words.
         # Key = (block, paragraph, line) so reading order survives sorting.
         lines: dict = {}
-        n = len(data.get('text', []))
+        n = len(data.get("text", []))
         for i in range(n):
-            word = (data['text'][i] or '').strip()
+            word = (data["text"][i] or "").strip()
             if not word:
                 continue
             try:
-                conf = float(data['conf'][i])
+                conf = float(data["conf"][i])
             except (TypeError, ValueError):
                 continue
             if conf < min_confidence:
                 continue
-            key = (data['block_num'][i], data['par_num'][i], data['line_num'][i])
+            key = (data["block_num"][i], data["par_num"][i], data["line_num"][i])
             lines.setdefault(key, []).append(word)
 
         if not lines:
             return ""
 
-        pieces = [' '.join(lines[key]) for key in sorted(lines.keys())]
-        return '\n'.join(pieces).strip()
+        pieces = [" ".join(lines[key]) for key in sorted(lines.keys())]
+        return "\n".join(pieces).strip()
 
     except Exception as e:
         logger.warning(f"Error extracting text with OCR: {e}")
         return ""
+
 
 def extract_keywords(text, top_n=15, boost_repeats=True, graph=None):
     """Extract keywords with quality validation and privacy filtering.
@@ -234,36 +243,36 @@ def extract_keywords(text, top_n=15, boost_repeats=True, graph=None):
     """
     if not text or len(text.strip()) < 10:
         return {}
-    
+
     # Privacy filter FIRST (mandatory structural gate — imported at module load,
     # so this can never silently disappear)
     sanitized = sanitize_text_for_storage(text)
 
-    if not sanitized['safe_to_store']:
+    if not sanitized["safe_to_store"]:
         logger.warning("[PRIVACY] Text rejected due to sensitive content")
         return {}
 
     # Use sanitized text
-    text = sanitized['text']
+    text = sanitized["text"]
 
-    if sanitized['is_sanitized']:
+    if sanitized["is_sanitized"]:
         logger.warning(f"[PRIVACY] Redacted {sanitized['num_redactions']} sensitive items")
 
     # Strip [REDACTED:TYPE] markers so 'email'/'phone'/'password' etc. can
     # never become extracted concepts (they are marker noise, not study terms).
     text = strip_redaction_markers(text)
-    
+
     # Quality validation
     validation = validate_and_clean_extraction(text)
-    
+
     # Reject garbage immediately
-    if not validation['is_useful']:
+    if not validation["is_useful"]:
         logger.info(f"[FILTERED] Rejected text: {validation['reason']}")
         return {}
-    
+
     # Use cleaned text for extraction
-    clean_text = validation['cleaned_text']
-    
+    clean_text = validation["cleaned_text"]
+
     # Unified extraction: spaCy-first, YAKE-supplementary
     try:
         kw_dict = extract_concepts(clean_text, top_n=top_n)
@@ -310,18 +319,15 @@ def ocr_pipeline():
         # Extract keywords with scores (graph loaded once per pipeline, M-4)
         G = get_graph()
         keywords_with_scores = extract_keywords(text, top_n=15, graph=G)
-        
+
         # Convert to proper format with counts
         text_lower = text.lower()
         keywords_with_counts = {}
-        
+
         for kw, score in keywords_with_scores.items():
             try:
                 count = text_lower.count(kw.lower())
-                keywords_with_counts[str(kw)] = {
-                    "score": float(score),
-                    "count": int(count)
-                }
+                keywords_with_counts[str(kw)] = {"score": float(score), "count": int(count)}
             except Exception as e:
                 logger.warning(f"Error processing keyword {kw}: {e}")
                 continue
@@ -330,13 +336,14 @@ def ocr_pipeline():
             "raw_text": str(text)[:500],  # Limit text length
             "text_truncated": len(text) > 500,
             "keywords": keywords_with_counts,
-                    }
-        
+        }
+
     except Exception as e:
         logger.warning(f"Error in OCR pipeline: {e}")
         return {"keywords": {}, "raw_text": ""}
 
+
 if __name__ == "__main__":
     result = ocr_pipeline()
-    print("Keywords count:", len(result.get('keywords', {})))
-    print("Text snippet:", result.get('raw_text', '')[:200] + "...")
+    print("Keywords count:", len(result.get("keywords", {})))
+    print("Text snippet:", result.get("raw_text", "")[:200] + "...")

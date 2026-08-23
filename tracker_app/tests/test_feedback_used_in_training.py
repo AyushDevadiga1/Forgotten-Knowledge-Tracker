@@ -22,9 +22,8 @@ from tracker_app.db.models import Base, FeedbackTrainingSample
 
 class FeedbackUsedBase(unittest.TestCase):
     def setUp(self):
-        self.engine = create_engine('sqlite:///:memory:')
-        self.Session = sessionmaker(autocommit=False, autoflush=False,
-                                    bind=self.engine)
+        self.engine = create_engine("sqlite:///:memory:")
+        self.Session = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         self.orig_engine = models.engine
         self.orig_session = models.SessionLocal
         models.engine = self.engine
@@ -41,8 +40,8 @@ class FeedbackUsedBase(unittest.TestCase):
             s = FeedbackTrainingSample(
                 timestamp=ts,
                 feature_vector=json.dumps([1.0] * 6),
-                predicted_label='idle',
-                actual_label='studying',
+                predicted_label="idle",
+                actual_label="studying",
                 used_in_training=1 if used else 0,
             )
             db.add(s)
@@ -51,14 +50,13 @@ class FeedbackUsedBase(unittest.TestCase):
 
 
 class TestUsedInTrainingFlag(FeedbackUsedBase):
-
     def test_new_sample_defaults_to_unused(self):
         with self.Session() as db:
             s = FeedbackTrainingSample(
                 timestamp=datetime.datetime.utcnow(),
-                feature_vector='[]',
-                predicted_label='a',
-                actual_label='b',
+                feature_vector="[]",
+                predicted_label="a",
+                actual_label="b",
             )
             db.add(s)
             db.commit()
@@ -69,8 +67,7 @@ class TestUsedInTrainingFlag(FeedbackUsedBase):
         with self.Session() as db:
             repo_mod.FeedbackRepository.mark_samples_used(db, [sid])
         with self.Session() as db:
-            self.assertEqual(
-                db.get(FeedbackTrainingSample, sid).used_in_training, 1)
+            self.assertEqual(db.get(FeedbackTrainingSample, sid).used_in_training, 1)
 
     def test_mark_samples_used_empty_is_noop(self):
         with self.Session() as db:
@@ -82,8 +79,7 @@ class TestUsedInTrainingFlag(FeedbackUsedBase):
         old_unused = self._add_sample(now - datetime.timedelta(days=200), used=False)
         new_used = self._add_sample(now - datetime.timedelta(days=1), used=True)
         with self.Session() as db:
-            deleted = repo_mod.FeedbackRepository.cleanup_used_samples(
-                db, now - datetime.timedelta(days=90))
+            deleted = repo_mod.FeedbackRepository.cleanup_used_samples(db, now - datetime.timedelta(days=90))
         self.assertEqual(deleted, 1)
         with self.Session() as db:
             self.assertIsNone(db.get(FeedbackTrainingSample, old_used))
@@ -92,10 +88,9 @@ class TestUsedInTrainingFlag(FeedbackUsedBase):
 
 
 class TestTrainerMarkAndCleanup(FeedbackUsedBase):
-
     def test_load_feedback_samples_marks_used_and_prunes_old(self):
-        from tracker_app.scripts.train_models_from_logs import (
-            load_feedback_samples)
+        from tracker_app.scripts.train_models_from_logs import load_feedback_samples
+
         now = datetime.datetime.utcnow()
         old_used = self._add_sample(now - datetime.timedelta(days=200), used=True)
         fresh = self._add_sample(now, used=False)
@@ -106,26 +101,23 @@ class TestTrainerMarkAndCleanup(FeedbackUsedBase):
         X, y = load_feedback_samples()
 
         self.assertEqual(len(X), 2)
-        self.assertEqual(y, ['studying', 'studying'])
+        self.assertEqual(y, ["studying", "studying"])
         with self.Session() as db:
-            self.assertEqual(
-                db.get(FeedbackTrainingSample, fresh).used_in_training, 1)
+            self.assertEqual(db.get(FeedbackTrainingSample, fresh).used_in_training, 1)
             self.assertIsNone(db.get(FeedbackTrainingSample, old_used))
 
     def test_load_feedback_samples_leaves_recent_used_samples(self):
-        from tracker_app.scripts.train_models_from_logs import (
-            load_feedback_samples)
+        from tracker_app.scripts.train_models_from_logs import load_feedback_samples
+
         now = datetime.datetime.utcnow()
-        recent_used = self._add_sample(
-            now - datetime.timedelta(days=10), used=True)
+        recent_used = self._add_sample(now - datetime.timedelta(days=10), used=True)
 
         X, y = load_feedback_samples()
 
         self.assertEqual(len(X), 1)
         with self.Session() as db:
             self.assertIsNotNone(db.get(FeedbackTrainingSample, recent_used))
-            self.assertEqual(
-                db.get(FeedbackTrainingSample, recent_used).used_in_training, 1)
+            self.assertEqual(db.get(FeedbackTrainingSample, recent_used).used_in_training, 1)
 
 
 def test_migration_013_adds_column_to_stale_table(tmp_path):
@@ -153,17 +145,14 @@ def test_migration_013_adds_column_to_stale_table(tmp_path):
 
     conn = sqlite3.connect(db_file)
     try:
-        cols = [row[1] for row in conn.execute(
-            "PRAGMA table_info(feedback_training_samples)")]
+        cols = [row[1] for row in conn.execute("PRAGMA table_info(feedback_training_samples)")]
         assert "used_in_training" in cols
         conn.execute("""
             INSERT INTO feedback_training_samples
             (timestamp, feature_vector, predicted_label, actual_label)
             VALUES ('2026-01-01 00:00:00', '[]', 'idle', 'studying')
         """)
-        row = conn.execute(
-            "SELECT used_in_training FROM feedback_training_samples"
-        ).fetchone()
+        row = conn.execute("SELECT used_in_training FROM feedback_training_samples").fetchone()
         assert row[0] == 0
     finally:
         conn.close()

@@ -87,10 +87,7 @@ def _release_engine():
 def _applied_migration_ids(db_file):
     conn = sqlite3.connect(db_file)
     try:
-        return [
-            row[0]
-            for row in conn.execute("SELECT id FROM schema_migrations ORDER BY id")
-        ]
+        return [row[0] for row in conn.execute("SELECT id FROM schema_migrations ORDER BY id")]
     finally:
         conn.close()
 

@@ -28,8 +28,7 @@ class _StubAnalytics:
     def __init__(self):
         self.logged = []
 
-    def log_session(self, start_time, end_time, concepts_count,
-                    avg_attention, primary_activity):
+    def log_session(self, start_time, end_time, concepts_count, avg_attention, primary_activity):
         self.logged.append(avg_attention)
 
     def get_daily_summary(self, *args, **kwargs):

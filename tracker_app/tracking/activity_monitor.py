@@ -1,8 +1,7 @@
-﻿import time
 import os
 import json
 from collections import deque
-from datetime import datetime, timedelta
+from datetime import datetime
 from threading import Lock
 from typing import Dict, Any, Optional
 import logging
@@ -20,14 +19,15 @@ logger = logging.getLogger("ActivityMonitor")
 
 class ThreadSafeCounter:
     """Thread-safe counter for keyboard and mouse events"""
+
     def __init__(self):
         self._value = 0
         self._lock = Lock()
-    
+
     def increment(self):
         with self._lock:
             self._value += 1
-    
+
     def get_and_reset(self):
         with self._lock:
             value = self._value
@@ -37,18 +37,17 @@ class ThreadSafeCounter:
 
 class IntentValidator:
     """Validates and improves intent predictions over time.
-    
+
     Writes directly to the shared ORM database (sessions.db) so that
     the web API reads the same data the tracker writes.
     """
-    
+
     def __init__(self, db_path: str = None):
         # db_path parameter kept for backward-compat but ignored; all writes
         # now go through the shared SQLAlchemy engine in models.py.
         self.prediction_buffer = deque(maxlen=100)
-    
-    def log_prediction(self, predicted_intent: str, confidence: float, context: str = "",
-                       features=None):
+
+    def log_prediction(self, predicted_intent: str, confidence: float, context: str = "", features=None):
         """Log an intent prediction to the shared ORM database.
 
         context is the active window title (kept for display context).
@@ -68,13 +67,9 @@ class IntentValidator:
                 TrackingRepository.log_intent_prediction(db, pred)
         except Exception as e:
             logger.error(f"Failed to log intent prediction: {e}")
-        
-        self.prediction_buffer.append({
-            'intent': predicted_intent,
-            'confidence': confidence,
-            'timestamp': _utcnow()
-        })
-    
+
+        self.prediction_buffer.append({"intent": predicted_intent, "confidence": confidence, "timestamp": _utcnow()})
+
     def get_accuracy_stats(self) -> Dict[str, Any]:
         """Get overall intent prediction accuracy"""
         try:
@@ -82,22 +77,23 @@ class IntentValidator:
                 return TrackingRepository.get_accuracy_stats(db)
         except Exception as e:
             logger.error(f"Failed to get accuracy stats: {e}")
-            return {'average_accuracy': 0.5, 'intents_tracked': 0, 'best_accuracy': 0, 'worst_accuracy': 0}
+            return {"average_accuracy": 0.5, "intents_tracked": 0, "best_accuracy": 0, "worst_accuracy": 0}
 
 
 class TrackingAnalytics:
     """Analytics on tracked concepts and sessions.
-    
+
     Writes directly to the shared ORM database (sessions.db) so that
     the web API reads the same data the tracker writes.
     """
-    
+
     def __init__(self, db_path: str = None):
         # db_path parameter kept for backward-compat; all writes go through ORM.
         pass
-    
-    def log_session(self, start_time: datetime, end_time: datetime,
-                   concepts_count: int, avg_attention: float, primary_activity: str):
+
+    def log_session(
+        self, start_time: datetime, end_time: datetime, concepts_count: int, avg_attention: float, primary_activity: str
+    ):
         """Log a tracking session to the shared ORM database"""
         try:
             with SessionLocal() as db:
@@ -108,12 +104,12 @@ class TrackingAnalytics:
                     duration_minutes=duration,
                     concepts_encountered=concepts_count,
                     avg_attention=avg_attention,
-                    primary_activity=primary_activity
+                    primary_activity=primary_activity,
                 )
                 TrackingRepository.log_session(db, session)
         except Exception as e:
             logger.error(f"Failed to log tracking session: {e}")
-    
+
     def get_daily_summary(self, date: Optional[datetime] = None) -> Dict[str, Any]:
         """Get daily tracking summary"""
         try:
@@ -122,8 +118,8 @@ class TrackingAnalytics:
         except Exception as e:
             logger.error(f"Failed to get daily summary: {e}")
             date_str = date.strftime("%Y-%m-%d") if date else _utcnow().strftime("%Y-%m-%d")
-            return {'date': date_str, 'total_minutes': 0, 'concepts': 0, 'avg_attention': 0}
-    
+            return {"date": date_str, "total_minutes": 0, "concepts": 0, "avg_attention": 0}
+
     def get_trend_analysis(self, days: int = 7) -> Dict[str, Any]:
         """Analyze tracking trends"""
         try:
@@ -131,29 +127,34 @@ class TrackingAnalytics:
                 return TrackingRepository.get_trend_analysis(db, days)
         except Exception as e:
             logger.error(f"Failed to get trend analysis: {e}")
-            return {'tracking_days': 0, 'avg_session_minutes': 0, 'total_concepts_encountered': 0, 'avg_attention_score': 0}
+            return {
+                "tracking_days": 0,
+                "avg_session_minutes": 0,
+                "total_concepts_encountered": 0,
+                "avg_attention_score": 0,
+            }
 
 
 class ActivityMonitor:
     """Main enhanced tracker combining all improvements (formerly EnhancedActivityTracker)"""
-    
+
     def __init__(self):
         self.scheduler = ConceptScheduler()
         self.validator = IntentValidator()
         self.analytics = TrackingAnalytics()
-        
+
         self.keyboard_counter = ThreadSafeCounter()
         self.mouse_counter = ThreadSafeCounter()
-        
+
         self.session_start = None
         self.session_concepts = []
         self._attention_sum = 0.0
         self._attention_count = 0
-        
+
         # State tracking
         self.is_running = False
         self._lock = Lock()
-    
+
     def start_session(self):
         """Start a tracking session"""
         with self._lock:
@@ -163,39 +164,34 @@ class ActivityMonitor:
             self._attention_count = 0
             self.is_running = True
         logger.info(f"Tracking session started at {self.session_start}")
-    
+
     def end_session(self):
         """End tracking session and save analytics"""
         with self._lock:
             if not self.is_running:
                 return
-            
+
             session_end = _utcnow()
-            
+
             # Calculate session stats
             concepts_count = len(set(self.session_concepts))
             avg_attention = self._attention_sum / self._attention_count if self._attention_count else 0
-            
+
             # Determine primary activity
             primary_activity = "general_browsing"
             if self.session_concepts:
                 from collections import Counter
+
                 activity_counts = Counter(self.session_concepts)
                 primary_activity = activity_counts.most_common(1)[0][0]
-            
+
             # Log to analytics
-            self.analytics.log_session(
-                self.session_start,
-                session_end,
-                concepts_count,
-                avg_attention,
-                primary_activity
-            )
-            
+            self.analytics.log_session(self.session_start, session_end, concepts_count, avg_attention, primary_activity)
+
             self.is_running = False
             # Log inside the lock while variables are guaranteed to be defined
             logger.info(f"Tracking session ended. Concepts: {concepts_count}, Avg Attention: {avg_attention:.2f}")
-    
+
     def process_concepts(
         self,
         ocr_keywords: Dict[str, Any],
@@ -209,10 +205,7 @@ class ActivityMonitor:
             if not concept or len(concept) < 2:
                 continue
             try:
-                concept_conf = float(
-                    info.get('score', confidence)
-                    if isinstance(info, dict) else confidence
-                )
+                concept_conf = float(info.get("score", confidence) if isinstance(info, dict) else confidence)
                 saved = self.scheduler.add_concept(
                     concept,
                     concept_conf,
@@ -223,42 +216,43 @@ class ActivityMonitor:
                     self.session_concepts.append(concept)
             except Exception as e:
                 logger.error(f"Error processing concept {concept}: {e}")
-    
+
     def process_intent(self, intent_result: Dict[str, Any], context: str = ""):
         """Process intent prediction with validation.
         context is the window title; intent_result['features'] is the exact
         feature vector used at prediction time (stored for retraining).
         """
-        intent = intent_result.get('intent_label', 'unknown')
-        confidence = intent_result.get('confidence', 0.5)
+        intent = intent_result.get("intent_label", "unknown")
+        confidence = intent_result.get("confidence", 0.5)
 
         # Log for validation â€” persists the real feature vector, not the title
         self.validator.log_prediction(
-            intent, confidence,
+            intent,
+            confidence,
             context=context,
-            features=intent_result.get('features'),
+            features=intent_result.get("features"),
         )
-    
+
     def update_attention(self, attention_score: float):
         """Track attention/focus levels"""
         self._attention_sum += attention_score
         self._attention_count += 1
-    
+
     def get_session_stats(self) -> Dict[str, Any]:
         """Get current session statistics"""
         with self._lock:
             if not self.is_running or not self.session_start:
                 return {}
-            
+
             elapsed = (_utcnow() - self.session_start).total_seconds() / 60
-            
+
             return {
-                'session_duration_minutes': elapsed,
-                'concepts_encountered': len(set(self.session_concepts)),
-                'avg_attention': self._attention_sum / self._attention_count if self._attention_count else 0,
-                'is_active': self.is_running
+                "session_duration_minutes": elapsed,
+                "concepts_encountered": len(set(self.session_concepts)),
+                "avg_attention": self._attention_sum / self._attention_count if self._attention_count else 0,
+                "is_active": self.is_running,
             }
-    
+
     def export_tracking_data(self, output_file: str = None):
         """Export all tracking data to DATA_DIR (or a provided absolute path)."""
         if output_file is None:
@@ -270,20 +264,19 @@ class ActivityMonitor:
         trend_stats = self.analytics.get_trend_analysis(30)
 
         export_data = {
-            'timestamp': _utcnow().isoformat(),
-            'session_stats': self.get_session_stats(),
-            'due_concepts': due_concepts,
-            'intent_accuracy': intent_stats,
-            'daily_summary': daily_stats,
-            'trend_analysis': trend_stats
+            "timestamp": _utcnow().isoformat(),
+            "session_stats": self.get_session_stats(),
+            "due_concepts": due_concepts,
+            "intent_accuracy": intent_stats,
+            "daily_summary": daily_stats,
+            "trend_analysis": trend_stats,
         }
 
         parent = os.path.dirname(output_file)
         if parent:
             os.makedirs(parent, exist_ok=True)
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(export_data, f, indent=2)
 
         logger.info(f"Tracking data exported to {output_file}")
         return export_data
-

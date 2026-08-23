@@ -32,7 +32,7 @@ def clean_graph():
 @pytest.fixture
 def db(monkeypatch):
     """Point SessionLocal (as imported by knowledge_graph) at an in-memory DB."""
-    engine = create_engine('sqlite:///:memory:')
+    engine = create_engine("sqlite:///:memory:")
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base.metadata.create_all(bind=engine)
     monkeypatch.setattr(models, "engine", engine)
@@ -54,9 +54,7 @@ def _add_encounter(db, concept, ts):
 
 def test_get_session_concepts_returns_recent_encounters(db, monkeypatch):
     """No active session -> fall back to the last 15 minutes (UTC)."""
-    monkeypatch.setattr(
-        "tracker_app.tracking.session_state.get_status",
-        lambda: {"active": False, "started_at": None})
+    monkeypatch.setattr("tracker_app.tracking.session_state.get_status", lambda: {"active": False, "started_at": None})
     now = datetime.utcnow()
     _add_encounter(db, "recent concept", now)
     _add_encounter(db, "stale concept", now - timedelta(hours=2))
@@ -70,8 +68,8 @@ def test_get_session_concepts_uses_active_session_start(db, monkeypatch):
     """Active session -> only encounters since session start are returned."""
     started = datetime.utcnow() - timedelta(minutes=30)
     monkeypatch.setattr(
-        "tracker_app.tracking.session_state.get_status",
-        lambda: {"active": True, "started_at": started.isoformat()})
+        "tracker_app.tracking.session_state.get_status", lambda: {"active": True, "started_at": started.isoformat()}
+    )
     _add_encounter(db, "in-session", datetime.utcnow() - timedelta(minutes=10))
     _add_encounter(db, "before-session", started - timedelta(minutes=5))
 
@@ -162,6 +160,7 @@ def test_find_knowledge_gaps_empty_without_embeddings(clean_graph, no_graph_relo
     assert kg.find_knowledge_gaps() == []
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys
-    sys.exit(pytest.main([__file__, '-v']))
+
+    sys.exit(pytest.main([__file__, "-v"]))

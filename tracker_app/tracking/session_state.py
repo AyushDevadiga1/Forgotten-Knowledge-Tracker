@@ -15,7 +15,6 @@ import json
 import logging
 import threading
 from datetime import datetime
-from pathlib import Path
 
 from filelock import FileLock, Timeout as LockTimeout
 from tracker_app.config import DATA_DIR
@@ -38,7 +37,7 @@ def _load() -> dict:
         if isinstance(data, dict):
             return data
     except Exception as exc:
-        _log.warning('Session state operation failed: %s', exc)
+        _log.warning("Session state operation failed: %s", exc)
     return dict(_DEFAULT)
 
 
@@ -56,10 +55,7 @@ def _acquire_file_lock():
         _file_lock.acquire()
         return True
     except (LockTimeout, OSError) as exc:
-        _log.warning(
-            "Could not acquire session_state file lock: %s; "
-            "proceeding without cross-process safety", exc
-        )
+        _log.warning("Could not acquire session_state file lock: %s; proceeding without cross-process safety", exc)
         return False
 
 
@@ -68,7 +64,7 @@ def _release_file_lock(acquired: bool) -> None:
         try:
             _file_lock.release()
         except Exception as exc:
-            _log.warning('Session state operation failed: %s', exc)
+            _log.warning("Session state operation failed: %s", exc)
 
 
 def is_active() -> bool:
@@ -116,7 +112,6 @@ def stop() -> dict:
             return state
         finally:
             _release_file_lock(acquired)
-
 
 
 def set_calibration(data: dict) -> None:

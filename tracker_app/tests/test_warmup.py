@@ -31,25 +31,27 @@ def loop_with_fakes(monkeypatch):
     def tracked(name):
         def _inner(*args, **kwargs):
             calls.append(name)
+
         return _inner
 
     fakes = {
         "tracker_app.tracking.keyword_extractor": _fake_module(
-            "tracker_app.tracking.keyword_extractor",
-            get_keyword_extractor=tracked("keyword_extractor")),
+            "tracker_app.tracking.keyword_extractor", get_keyword_extractor=tracked("keyword_extractor")
+        ),
         "tracker_app.tracking.intent_module": _fake_module(
             "tracker_app.tracking.intent_module",
             predict_intent=lambda *a, **k: {"intent_label": "studying"},
-            _load_model=tracked("intent_module")),
+            _load_model=tracked("intent_module"),
+        ),
         "tracker_app.tracking.audio_module": _fake_module(
-            "tracker_app.tracking.audio_module",
-            _load_classifier=tracked("audio_module")),
+            "tracker_app.tracking.audio_module", _load_classifier=tracked("audio_module")
+        ),
         "tracker_app.tracking.webcam_module": _fake_module(
-            "tracker_app.tracking.webcam_module",
-            _get_face_mesh=tracked("webcam_module")),
+            "tracker_app.tracking.webcam_module", _get_face_mesh=tracked("webcam_module")
+        ),
         "tracker_app.tracking.knowledge_graph": _fake_module(
-            "tracker_app.tracking.knowledge_graph",
-            get_graph=tracked("knowledge_graph")),
+            "tracker_app.tracking.knowledge_graph", get_graph=tracked("knowledge_graph")
+        ),
     }
 
     saved = {}
@@ -58,6 +60,7 @@ def loop_with_fakes(monkeypatch):
         sys.modules[name] = mod
 
     from tracker_app.tracking import loop
+
     yield loop, calls
 
     for name in fakes:
@@ -87,6 +90,7 @@ def test_warm_up_loads_face_mesh_when_webcam_enabled(loop_with_fakes):
     assert "knowledge_graph" in calls
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import sys as _sys
-    _sys.exit(pytest.main([__file__, '-v']))
+
+    _sys.exit(pytest.main([__file__, "-v"]))

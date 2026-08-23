@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests: Concept Filtering Gaps (TDD — must FAIL before fixes)
 =============================================================
 
@@ -15,8 +15,6 @@ through:
 
 Run: python -m pytest tracker_app/tests/test_concept_filtering_gaps.py -v
 """
-
-import pytest
 
 from tracker_app.tracking.keyword_extractor import YAKEKeywordExtractor
 from tracker_app.learning.text_quality_validator import is_plausible_concept
@@ -38,8 +36,7 @@ class TestKeywordExtractorExcludesEntityTypes:
         keyword_names = set(keywords.keys())
 
         assert "john smith" not in keyword_names, (
-            "PERSON entity 'john smith' should not be a keyword — it is PII, "
-            f"but was found in: {keyword_names}"
+            f"PERSON entity 'john smith' should not be a keyword — it is PII, but was found in: {keyword_names}"
         )
 
     def test_keyword_extractor_allows_org_entities(self):
@@ -50,8 +47,7 @@ class TestKeywordExtractorExcludesEntityTypes:
         keyword_names = set(keywords.keys())
 
         assert "stanford university" in keyword_names or "stanford" in keyword_names, (
-            "ORG entity 'stanford university' should be a keyword— "
-            f"but was not found in: {keyword_names}"
+            f"ORG entity 'stanford university' should be a keyword— but was not found in: {keyword_names}"
         )
 
     def test_keyword_extractor_allows_gpe_entities(self):
@@ -62,8 +58,7 @@ class TestKeywordExtractorExcludesEntityTypes:
         keyword_names = set(keywords.keys())
 
         assert "mountain view" in keyword_names or "mountain" in keyword_names, (
-            "GPE entity 'mountain view' should be a keyword— "
-            f"but was not found in: {keyword_names}"
+            f"GPE entity 'mountain view' should be a keyword— but was not found in: {keyword_names}"
         )
 
 
@@ -84,9 +79,7 @@ class TestPlausibleConceptRejectsGibberish:
 
     def test_plausible_concept_rejects_other_trigram_gibberish(self):
         """'netion' has 'tion' = 4/6 = 67% but is not a real word."""
-        assert is_plausible_concept("netion") is False, (
-            "'netion' is gibberish and should be rejected"
-        )
+        assert is_plausible_concept("netion") is False, "'netion' is gibberish and should be rejected"
 
 
 # ── Bug 3: filter_sensitive_keywords misses common names ────────
@@ -102,12 +95,6 @@ class TestFilterSensitiveKeywordsRemovesNames:
         keywords = {"john": 0.9, "smith": 0.8, "biology": 0.5}
         cleaned = filter_sensitive_keywords(keywords)
 
-        assert "john" not in cleaned, (
-            "Personal name 'john' should be filtered out as PII"
-        )
-        assert "smith" not in cleaned, (
-            "Personal name 'smith' should be filtered out as PII"
-        )
-        assert "biology" in cleaned, (
-            "Non-PII keyword 'biology' should be kept"
-        )
+        assert "john" not in cleaned, "Personal name 'john' should be filtered out as PII"
+        assert "smith" not in cleaned, "Personal name 'smith' should be filtered out as PII"
+        assert "biology" in cleaned, "Non-PII keyword 'biology' should be kept"

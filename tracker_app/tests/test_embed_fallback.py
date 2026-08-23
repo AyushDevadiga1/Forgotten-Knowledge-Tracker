@@ -29,20 +29,18 @@ def _reset_state():
 def test_embed_load_failure_is_not_retried(monkeypatch):
     monkeypatch.setitem(sys.modules, "sentence_transformers", None)
     warnings = []
-    monkeypatch.setattr(kg.logger, "warning",
-                        lambda msg, *a, **k: warnings.append(str(msg)))
+    monkeypatch.setattr(kg.logger, "warning", lambda msg, *a, **k: warnings.append(str(msg)))
 
     assert kg._get_embed_model() is None
     assert kg._get_embed_model() is None
-    assert len(warnings) == 1          # logged once, not once per call
+    assert len(warnings) == 1  # logged once, not once per call
     assert kg._embed_model is kg._EMBED_FAILED
 
 
 def test_spacy_fallback_failure_is_not_retried(monkeypatch):
     monkeypatch.setitem(sys.modules, "spacy", None)
     warnings = []
-    monkeypatch.setattr(kg.logger, "warning",
-                        lambda msg, *a, **k: warnings.append(str(msg)))
+    monkeypatch.setattr(kg.logger, "warning", lambda msg, *a, **k: warnings.append(str(msg)))
 
     assert kg._get_spacy_vectors(["alpha"]) is None
     assert kg._get_spacy_vectors(["beta"]) is None
@@ -53,8 +51,7 @@ def test_spacy_fallback_failure_is_not_retried(monkeypatch):
 def test_keyword_extractor_nlp_failure_is_not_retried(monkeypatch):
     monkeypatch.setitem(sys.modules, "spacy", None)
     warnings = []
-    monkeypatch.setattr(ke.logger, "warning",
-                        lambda msg, *a, **k: warnings.append(str(msg)))
+    monkeypatch.setattr(ke.logger, "warning", lambda msg, *a, **k: warnings.append(str(msg)))
 
     assert ke._get_nlp() is None
     assert ke._get_nlp() is None
