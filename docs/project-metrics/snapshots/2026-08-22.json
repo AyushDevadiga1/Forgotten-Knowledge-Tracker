@@ -1,0 +1,51 @@
+{
+  "date": "2026-08-22",
+  "session": "CI fixes + test hardening",
+  "totals": {
+    "python_loc": 14768,
+    "python_files": 91,
+    "kloc": 14.8,
+    "test_loc": 4910,
+    "test_files": 43,
+    "frontend_loc": 3410,
+    "frontend_files": 42,
+    "git_commits": 303
+  },
+  "modules": {
+    "tracking": { "loc": 3361, "files": 13 },
+    "learning": { "loc": 2053, "files": 7 },
+    "web": { "loc": 959, "files": 5 },
+    "db": { "loc": 897, "files": 5 },
+    "tools": { "loc": 288, "files": 5 },
+    "scripts": { "loc": 229, "files": 3 },
+    "tests": { "loc": 4910, "files": 43 }
+  },
+  "hotspots": [
+    { "file": "learning/text_quality_validator.py", "loc": 868 },
+    { "file": "web/api.py", "loc": 748 },
+    { "file": "tracking/knowledge_graph.py", "loc": 687 },
+    { "file": "tracking/loop.py", "loc": 399 },
+    { "file": "tracking/keyword_extractor.py", "loc": 357 },
+    { "file": "db/repository.py", "loc": 310 },
+    { "file": "tracking/ocr_module.py", "loc": 307 },
+    { "file": "learning/learning_tracker.py", "loc": 302 },
+    { "file": "learning/concept_scheduler.py", "loc": 287 },
+    { "file": "db/models.py", "loc": 279 }
+  ],
+  "api_endpoints": 27,
+  "dependencies": {
+    "python": 26,
+    "npm": 10,
+    "npm_dev": 8
+  },
+  "test_ratio": {
+    "test_to_code": "0.33",
+    "description": "4910 test LOC / 14768 total LOC"
+  },
+  "health_signals": {
+    "largest_file_loc": 868,
+    "files_over_300_loc": 8,
+    "files_over_500_loc": 3,
+    "avg_module_size": "varies widely (229-4910)"
+  }
+}
