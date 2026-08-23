@@ -23,7 +23,7 @@ from tracker_app.tracking.privacy_filter import is_sensitive_window
 
 logger = logging.getLogger("TrackerLoop")
 
-# ─── Lazy pipeline loaders ────────────────────────────────────────────────────
+# â”€â”€â”€ Lazy pipeline loaders â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 _ocr_pipeline    = None
 _audio_pipeline  = None
@@ -56,7 +56,7 @@ def get_webcam_pipeline():
     return _webcam_pipeline
 
 
-# ─── Input listener factory ───────────────────────────────────────────────────
+# â”€â”€â”€ Input listener factory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Callbacks are closures over the loop-local monitor/cle so that importing
 # this module does NOT instantiate any live resources at module load time.
 
@@ -94,7 +94,7 @@ def start_listeners(monitor, cle):
         return None, None
 
 
-# ─── Window / interaction ─────────────────────────────────────────────────────
+# â”€â”€â”€ Window / interaction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def get_active_window(monitor) -> Tuple[str, float]:
     """Return (window_title, interaction_rate_per_second)."""
@@ -115,7 +115,7 @@ def get_active_window(monitor) -> Tuple[str, float]:
         return "Unknown", 0
 
 
-# ─── Attention blending ───────────────────────────────────────────────────────
+# â”€â”€â”€ Attention blending â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _get_attention_score(
     webcam_enabled: bool,
@@ -144,12 +144,12 @@ def _get_attention_score(
     return round(cle_score, 1)
 
 
-# ─── Adaptive interval throttling ─────────────────────────────────────────────
+# â”€â”€â”€ Adaptive interval throttling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _get_effective_intervals() -> dict:
     """
     Scale OCR and audio intervals based on current CPU load.
-    High CPU → back off sampling to avoid competing with user's work.
+    High CPU â†’ back off sampling to avoid competing with user's work.
     """
     cpu = psutil.cpu_percent(interval=None)
     if cpu > 70:
@@ -161,11 +161,11 @@ def _get_effective_intervals() -> dict:
     return {
         'ocr':    SCREENSHOT_INTERVAL * mult,
         'audio':  AUDIO_INTERVAL      * mult,
-        'webcam': WEBCAM_INTERVAL,           # already infrequent — don't throttle
+        'webcam': WEBCAM_INTERVAL,           # already infrequent â€” don't throttle
     }
 
 
-# ─── Pipeline warm-up ─────────────────────────────────────────────────────────
+# â”€â”€â”€ Pipeline warm-up â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def warm_up_all_pipelines(webcam_enabled: bool = True):
     """
@@ -216,7 +216,7 @@ def warm_up_all_pipelines(webcam_enabled: bool = True):
     log.info("Warm-up complete.")
 
 
-# ─── Safe pipeline runner ─────────────────────────────────────────────────────
+# â”€â”€â”€ Safe pipeline runner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def _safe_run(fn):
     """Wrap a pipeline call to catch all exceptions gracefully."""
@@ -227,7 +227,7 @@ def _safe_run(fn):
         return None
 
 
-# ─── Idle tracking for quiz trigger ───────────────────────────────────────────
+# â”€â”€â”€ Idle tracking for quiz trigger â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 _idle_cycles = 0
 
@@ -239,7 +239,7 @@ def _maybe_trigger_quiz(
 ):
     """Check idle state and broadcast a micro-quiz if conditions are met."""
     global _idle_cycles
-    # Never interrupt outside a study session — nobody is present to answer.
+    # Never interrupt outside a study session â€” nobody is present to answer.
     if not session_is_active():
         _idle_cycles = 0
         return
@@ -273,7 +273,7 @@ def _maybe_trigger_quiz(
         logger.debug(f"Quiz engine skipped: {e}")
 
 
-# ─── Main tracking loop ───────────────────────────────────────────────────────
+# â”€â”€â”€ Main tracking loop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def track_loop(
     stop_event: Optional[Event] = None,
@@ -298,13 +298,13 @@ def track_loop(
     from tracker_app.tracking.quiz_engine import reset_quiz_state
     reset_quiz_state()
 
-    # ── Create session-scoped singletons here, not at module import ───────────
+    # â”€â”€ Create session-scoped singletons here, not at module import â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     monitor = ActivityMonitor()
     cle     = get_cle()
 
     kb_listener, ms_listener = start_listeners(monitor, cle)
     if not kb_listener or not ms_listener:
-        logger.error("Failed to start input listeners — aborting.")
+        logger.error("Failed to start input listeners â€” aborting.")
         return
 
     cle.reset()
@@ -317,14 +317,14 @@ def track_loop(
     # Compute attention BEFORE first cycle so the variable always exists
     attention_score: float = 50.0
 
-    # ── Thread pool for parallel pipelines ───────────────────────────────────
+    # â”€â”€ Thread pool for parallel pipelines â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="fkt-pipeline")
 
     try:
         while not stop_event.is_set():
             cycle_start = time.time()
 
-            # ── Study-session gate ────────────────────────────────────────────
+            # â”€â”€ Study-session gate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             # Concept capture only runs while the user has toggled a study
             # session on (via the dashboard). While inactive the loop idles
             # (no OCR/audio/webcam capture) but keeps watching for the toggle.
@@ -363,20 +363,20 @@ def track_loop(
 
             window_title, interaction_rate = get_active_window(monitor)
 
-            # Privacy: a sensitive window title (bank, login, medical…) is
-            # never persisted — the OCR capture was already skipped for it, so
+            # Privacy: a sensitive window title (bank, login, medicalâ€¦) is
+            # never persisted â€” the OCR capture was already skipped for it, so
             # storing the title would leak exactly the info we refused to read.
             context = "" if is_sensitive_window(window_title) else window_title
 
             # Adaptive intervals based on current CPU
             intervals = _get_effective_intervals()
 
-            # ── Kick off async audio (non-blocking) ──────────────────────────
+            # â”€â”€ Kick off async audio (non-blocking) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             audio_counter += TRACK_INTERVAL
             if audio_counter >= intervals['audio']:
                 try:
                     audio_async, _ = get_audio_pipeline()
-                    audio_async()   # background thread — returns immediately
+                    audio_async()   # background thread â€” returns immediately
                 except Exception as e:
                     logger.warning(f"Audio launch error: {e}")
                 audio_counter = 0
@@ -385,10 +385,10 @@ def track_loop(
             try:
                 _, get_cached = get_audio_pipeline()
                 audio_result = get_cached()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug('audio pipeline cache failed: %s', exc)
 
-            # ── OCR + Webcam in parallel via thread pool ──────────────────────
+            # â”€â”€ OCR + Webcam in parallel via thread pool â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             ocr_counter    += TRACK_INTERVAL
             webcam_counter += TRACK_INTERVAL
 
@@ -403,7 +403,7 @@ def track_loop(
                 webcam_counter = 0
 
             # Collect results (with timeout to prevent stalling the loop).
-            # Concepts are NOT persisted here — intent gating happens below.
+            # Concepts are NOT persisted here â€” intent gating happens below.
             for name, future in futures.items():
                 try:
                     result = future.result(timeout=8)
@@ -416,11 +416,11 @@ def track_loop(
                 except Exception as e:
                     logger.warning(f"{name} pipeline future error: {e}")
 
-            # ── Unified attention score ───────────────────────────────────────
+            # â”€â”€ Unified attention score â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             attention_score = _get_attention_score(webcam_enabled, webcam_result, cle, ear_calibration)
             monitor.update_attention(attention_score)
 
-            # ── Intent prediction ─────────────────────────────────────────────
+            # â”€â”€ Intent prediction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             intent_result = {'intent_label': 'unknown', 'confidence': 0.0}
             try:
                 intent_result = predict_intent(
@@ -435,7 +435,7 @@ def track_loop(
             except Exception as e:
                 logger.warning(f"Intent prediction error: {e}")
 
-            # ── Intent-gated concept capture ──────────────────────────────────
+            # â”€â”€ Intent-gated concept capture â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             # Even inside a study session, only persist concepts on cycles the
             # intent classifier labels as active studying, so a mid-session
             # distraction (YouTube tab, chat message) is not captured.
@@ -446,14 +446,14 @@ def track_loop(
                     attention_score=attention_score,  # AWFC
                 )
 
-            # ── Micro-quiz interrupt ──────────────────────────────────────────
+            # â”€â”€ Micro-quiz interrupt â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             _maybe_trigger_quiz(
                 intent_label,
                 webcam_enabled,
                 attention_score,
             )
 
-            # ── Periodic export (every 5 min) ─────────────────────────────────
+            # â”€â”€ Periodic export (every 5 min) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             save_counter += TRACK_INTERVAL
             if save_counter >= 300:
                 try:
@@ -462,7 +462,7 @@ def track_loop(
                     logger.warning(f"Export error: {e}")
                 save_counter = 0
 
-            # ── Sleep for remainder of cycle ──────────────────────────────────
+            # â”€â”€ Sleep for remainder of cycle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             elapsed = time.time() - cycle_start
             time.sleep(max(0.05, TRACK_INTERVAL - elapsed))
 

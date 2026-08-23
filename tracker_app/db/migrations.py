@@ -1,4 +1,4 @@
-﻿"""SQLite migration runner â€” no Alembic. Applies idempotent MIGRATIONS in order."""
+"""SQLite migration runner â€” no Alembic. Applies idempotent MIGRATIONS in order."""
 
 import sqlite3
 import logging
@@ -10,6 +10,13 @@ from tracker_app.config import DB_PATH
 
 
 from tracker_app.utils import utcnow as _utcnow
+# Table name allowlist for SQL introspection (prevents injection via f-strings)
+_KNOWN_TABLES = frozenset({
+    "schema_migrations", "tracked_concepts", "learning_items",
+    "review_history", "feedback_training_samples", "intent_predictions",
+    "sessions", "multi_modal_logs", "memory_decay", "metrics",
+    "system_sessions", "concept_encounters",
+})
 
 logger = logging.getLogger("Migrations")
 
@@ -194,6 +201,8 @@ def _mark_applied(cursor, migration_id: str, description: str):
 
 
 def _column_exists(cursor, table: str, column: str) -> bool:
+    if table not in _KNOWN_TABLES:
+        raise ValueError(f"Unknown table for introspection: {table!r}")
     cursor.execute(f"PRAGMA table_info({table})")
     return any(row[1] == column for row in cursor.fetchall())
 

@@ -37,8 +37,8 @@ def _load() -> dict:
             data = json.load(f)
         if isinstance(data, dict):
             return data
-    except Exception:
-        pass
+    except Exception as exc:
+        _log.warning('Session state operation failed: %s', exc)
     return dict(_DEFAULT)
 
 
@@ -67,8 +67,8 @@ def _release_file_lock(acquired: bool) -> None:
     if acquired:
         try:
             _file_lock.release()
-        except Exception:
-            pass
+        except Exception as exc:
+            _log.warning('Session state operation failed: %s', exc)
 
 
 def is_active() -> bool:

@@ -223,6 +223,10 @@ def test_populate_writes_space_format_datetimes(tmp_path):
     try:
         for table, columns in date_columns.items():
             for col in columns:
+                allowed_cols = {"next_review", "first_seen", "last_seen", "start_ts", "end_ts", "timestamp", "last_seen_ts", "updated_at"}
+                allowed_tables = {"tracked_concepts", "sessions", "multi_modal_logs", "memory_decay"}
+                assert col in allowed_cols, f"Unexpected col: {col}"
+                assert table in allowed_tables, f"Unexpected table: {table}"
                 rows = conn.execute(f"SELECT {col} FROM {table}").fetchall()
                 assert rows, f"{table}.{col} has no seeded rows"
                 for (value,) in rows:

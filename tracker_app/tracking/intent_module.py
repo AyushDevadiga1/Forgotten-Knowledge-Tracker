@@ -1,4 +1,4 @@
-"""Intent classification — trained RandomForest with rule-based fallback.
+"""Intent classification â€” trained RandomForest with rule-based fallback.
 
 Feature vector: [ocr_keyword_count, audio_val, attention_score,
                  interaction_rate, keyword_avg_score, audio_confidence]
@@ -13,10 +13,10 @@ from typing import Union, List, Dict
 
 logger = logging.getLogger("IntentModule")
 
-# ── Model path ────────────────────────────────────────────
+# â”€â”€ Model path â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 MODEL_PATH = Path(__file__).parent.parent / "models" / "intent_classifier.pkl"
 
-# ── Lazy-loaded model ──────────────────────────────────────
+# â”€â”€ Lazy-loaded model â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _model_data = None
 _model_loaded = False
 
@@ -44,7 +44,7 @@ def _load_model():
     return _model_data
 
 
-# ── Feature engineering ───────────────────────────────────
+# â”€â”€ Feature engineering â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def _safe_float(v, default=0.0):
     try: return float(v)
     except: return default
@@ -60,12 +60,12 @@ def extract_features(
     Build the 6-feature vector consumed by the classifier.
 
     Features:
-      0  ocr_keyword_count   — number of unique keywords on screen
-      1  audio_val           — 0=silence, 1=music, 2=speech
-      2  attention_score     — 0–100 (CLE or webcam blend)
-      3  interaction_rate    — input events / second in this cycle
-      4  keyword_avg_score   — mean relevance of OCR keywords (0–1)
-      5  audio_confidence    — audio classifier confidence (0–1)
+      0  ocr_keyword_count   â€” number of unique keywords on screen
+      1  audio_val           â€” 0=silence, 1=music, 2=speech
+      2  attention_score     â€” 0â€“100 (CLE or webcam blend)
+      3  interaction_rate    â€” input events / second in this cycle
+      4  keyword_avg_score   â€” mean relevance of OCR keywords (0â€“1)
+      5  audio_confidence    â€” audio classifier confidence (0â€“1)
     """
     # Feature 0: keyword count
     if isinstance(ocr_keywords, dict):
@@ -102,9 +102,9 @@ def extract_features(
                     dtype=np.float32)
 
 
-# ── Rule-based fallback (v1 logic, kept as safety net) ───
+# â”€â”€ Rule-based fallback (v1 logic, kept as safety net) â”€â”€â”€
 _RULE_MAP = [
-    # (condition_fn)  →  (label, confidence)
+    # (condition_fn)  â†’  (label, confidence)
     (lambda kw, au, at, ir: au == "speech" and ir > 5 and at > 55,
      "studying", 0.72),
     (lambda kw, au, at, ir: len(kw) >= 6 and ir > 6 and at > 50,
@@ -123,12 +123,12 @@ def _rule_predict(ocr_keywords, audio_label, attention_score, interaction_rate
             if cond(kw, audio_label, attention_score, interaction_rate):
                 return {"intent_label": label, "confidence": conf,
                         "source": "rules"}
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug('rule condition failed: %s', exc)
     return {"intent_label": "passive", "confidence": 0.58, "source": "rules"}
 
 
-# ── Public API ────────────────────────────────────────
+# â”€â”€ Public API â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def predict_intent(
     ocr_keywords:     Union[List, Dict],
     audio_label:      str   = "silence",

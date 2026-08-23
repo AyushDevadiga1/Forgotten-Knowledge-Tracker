@@ -1,10 +1,12 @@
-﻿"""Seed the database with real academic concept names across multiple domains."""
+"""Seed the database with real academic concept names across multiple domains."""
 
 import random
 from datetime import datetime, timedelta
 from tracker_app.db.db_module import init_all_databases
 from tracker_app.config import DB_PATH
 import sqlite3
+import logging
+logger = logging.getLogger(__name__)
 
 
 
@@ -20,8 +22,8 @@ def main():
     for table in ("sessions", "multi_modal_logs", "memory_decay", "metrics", "tracked_concepts", "concept_encounters"):
         try:
             cursor.execute(f"DELETE FROM {table}")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug('DELETE old data failed: %s', exc)
     conn.commit()
     print("Old data cleared.")
 
