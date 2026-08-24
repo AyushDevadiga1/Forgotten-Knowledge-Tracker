@@ -50,3 +50,22 @@ ignore = [
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+
+[tool.coverage.run]
+source = ["tracker_app"]
+omit = [
+    "tracker_app/tests/*",
+    "tracker_app/web/frontend/*",
+    "tracker_app/tracking/webcam_module.py",
+    "tracker_app/tracking/audio_module.py",
+]
+
+[tool.coverage.report]
+fail_under = 60
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.",
+    "if TYPE_CHECKING:",
+    "pass",
+]
