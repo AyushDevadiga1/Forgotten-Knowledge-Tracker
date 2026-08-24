@@ -9,6 +9,20 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify
 
 from tracker_app.utils import utcnow as _utcnow
+from tracker_app.constants import (
+    QUESTION_MAX_LENGTH,
+    RETRAIN_EVERY_N,
+    RETRAIN_TIMEOUT,
+    GRAPH_GAPS_MAX_LIMIT,
+    GRAPH_GAPS_MAX_DAYS,
+    BROWSER_INGEST_MAX_TEXT,
+    BROWSER_INGEST_MIN_TEXT,
+    TITLE_MAX_LENGTH,
+    CONTEXT_MAX_LENGTH,
+    TEXT_TOP_KEYWORDS,
+    SM2_MIN_QUALITY,
+    SM2_MAX_QUALITY,
+)
 
 from tracker_app.learning.learning_tracker import LearningTracker, DifficultyLevel, LearningItemType
 
@@ -155,7 +169,7 @@ class FeedbackService:
 
             with SessionLocal() as db:
                 count = FeedbackRepository.get_total_count(db)
-            if count > 0 and count % 50 == 0:
+            if count > 0 and count % RETRAIN_EVERY_N == 0:
                 if not _retrain_lock.acquire(blocking=False):
                     logger.info("Auto-retrain skipped: a retraining run is already active.")
                     return
@@ -185,7 +199,7 @@ class FeedbackService:
                 cwd=str(root),
                 capture_output=True,
                 text=True,
-                timeout=180,
+                timeout=RETRAIN_TIMEOUT,
             )
             if result.returncode == 0:
                 log.info("Background retraining complete Ã¢â‚¬â€ model updated.")
@@ -243,7 +257,7 @@ def create_item():
         return jsonify({"success": False, "error": "question is required"}), 400
     if not answer:
         return jsonify({"success": False, "error": "answer is required"}), 400
-    if len(question) > 1000:
+    if len(question) > QUESTION_MAX_LENGTH:
         return jsonify({"success": False, "error": "question must be under 1000 chars"}), 400
 
     difficulty = data.get("difficulty", "medium")
@@ -445,7 +459,7 @@ def record_review():
     except (ValueError, TypeError):
         return jsonify({"success": False, "error": "quality must be an integer"}), 400
 
-    if not (0 <= quality <= 5):
+    if not (SM2_MIN_QUALITY <= quality <= SM2_MAX_QUALITY):
         return jsonify({"success": False, "error": "quality must be 0Ã¢â‚¬â€œ5"}), 400
 
     try:
@@ -475,7 +489,7 @@ def get_stats_trend():
     """
     try:
         days = int(request.args.get("days", 7))
-        if not (1 <= days <= 90):
+        if not (1 <= days <= GRAPH_GAPS_MAX_DAYS):
             return jsonify({"success": False, "error": "days must be 1Ã¢â‚¬â€œ90"}), 400
     except (ValueError, TypeError):
         return jsonify({"success": False, "error": "days must be an integer"}), 400
@@ -647,7 +661,7 @@ def get_knowledge_gaps():
             limit = int(request.args.get("limit", 5))
         except (ValueError, TypeError):
             return jsonify({"success": False, "error": "limit must be an integer"}), 400
-        if not (1 <= limit <= 50):
+        if not (1 <= limit <= GRAPH_GAPS_MAX_LIMIT):
             return jsonify({"success": False, "error": "limit must be 1\u201350"}), 400
         gaps = find_knowledge_gaps(top_k=limit)
         if gaps:
@@ -759,11 +773,11 @@ def browser_ingest():
     if "text" not in data:
         return jsonify({"success": False, "error": "text field required"}), 400
 
-    text = str(data.get("text", ""))[:10000]
-    text_truncated = len(str(data.get("text", ""))) > 10000
-    title = _sanitize_title(data.get("title", ""))[:200]
+    text = str(data.get("text", ""))[:BROWSER_INGEST_MAX_TEXT]
+    text_truncated = len(str(data.get("text", ""))) > BROWSER_INGEST_MAX_TEXT
+    title = _sanitize_title(data.get("title", ""))[:TITLE_MAX_LENGTH]
 
-    if len(text.strip()) < 20:
+    if len(text.strip()) < BROWSER_INGEST_MIN_TEXT:
         return jsonify({"success": True, "message": "Text too short Ã¢â‚¬â€ skipped"})
 
     try:
@@ -793,7 +807,7 @@ def browser_ingest():
         if not validation.get("is_useful", False):
             return jsonify({"success": True, "message": "Text filtered as low quality"})
 
-        keywords = filter_sensitive_keywords(extract_concepts(validation["cleaned_text"], top_n=15))
+        keywords = filter_sensitive_keywords(extract_concepts(validation["cleaned_text"], top_n=TEXT_TOP_KEYWORDS))
 
         if not keywords:
             return jsonify({"success": True, "message": "No keywords extracted"})
@@ -805,7 +819,7 @@ def browser_ingest():
                 result = scheduler.add_concept(
                     concept=concept,
                     confidence=float(score),
-                    context=f"browser:{title[:80]}",
+                    context=f"browser:{title[:CONTEXT_MAX_LENGTH]}",
                     attention_at_encoding=60.0,  # assume moderate engagement
                     source="browser_extension",
                 )

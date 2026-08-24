@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from tracker_app.utils import utcnow as _utcnow
+from tracker_app.constants import MASTERY_MIN_REPETITIONS, MASTERY_SUCCESS_RATE
 
 from tracker_app.db.models import (
     LearningItem,
@@ -154,7 +155,7 @@ class LearningRepository:
                     total += 1
                     if quality is not None and quality >= 3:
                         correct += 1
-                    if total > 5 and (correct / total) > 0.95:
+                    if total > MASTERY_MIN_REPETITIONS and (correct / total) > MASTERY_SUCCESS_RATE:
                         day = ts.date()
                         break
                 if day is None:

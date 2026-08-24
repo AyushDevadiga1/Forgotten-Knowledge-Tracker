@@ -7,6 +7,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker, relationship, Session
 import logging
 
 from tracker_app.config import get_db_path
+from tracker_app.constants import NEUTRAL_ATTENTION
 
 
 Base = declarative_base()
@@ -263,7 +264,7 @@ class TrackedConcept(Base):
     correct_count = Column(Integer, default=0)  # total correct quiz reviews
 
     # AWFC fields â€” attention at time of first learning
-    attention_at_encoding = Column(Float, default=50.0)  # 0â€“100 scale
+    attention_at_encoding = Column(Float, default=NEUTRAL_ATTENTION)  # 0â€“100 scale
     lambda_personalised = Column(Float, default=0.1)  # personalised decay rate
 
     # Relationship

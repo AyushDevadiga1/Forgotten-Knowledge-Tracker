@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+from tracker_app.constants import DEFAULT_PORT
 from tracker_app.config import setup_directories
 
 setup_directories()  # Ensure data/ and models/ dirs exist before app starts
@@ -100,7 +101,7 @@ def serve_frontend(path):
         return send_from_directory(app.static_folder, "index.html")
 
 
-def run_dashboard(debug=None, port=5000):
+def run_dashboard(debug=None, port=DEFAULT_PORT):
     """Run the Flask dashboard with Socket.IO support"""
     # Use environment variable if debug not explicitly set
     if debug is None:

@@ -6,6 +6,8 @@ import argparse
 import subprocess
 from pathlib import Path
 
+from tracker_app.constants import DEFAULT_PORT
+
 ROOT = Path(__file__).parent.parent.parent  # project root
 
 
@@ -15,7 +17,7 @@ class Launcher:
         subprocess.run([sys.executable, "-m", "tracker_app.main"], cwd=str(ROOT))
 
     def launch_web(self, args):
-        port = getattr(args, "port", None) or 5000
+        port = getattr(args, "port", None) or DEFAULT_PORT
         print(f"\n  Starting dashboard at http://localhost:{port}")
         env = os.environ.copy()
         env["PORT"] = str(port)
@@ -67,7 +69,7 @@ Commands:
         sub.add_parser("tracker")
 
         web_p = sub.add_parser("web")
-        web_p.add_argument("--port", type=int, default=5000)
+        web_p.add_argument("--port", type=int, default=DEFAULT_PORT)
 
         sub.add_parser("both")
 

@@ -9,6 +9,7 @@ from tracker_app.utils import utcnow as _utcnow
 from tracker_app.config import DEFAULT_LAMBDA
 from tracker_app.db import models
 from tracker_app.db.models import TrackedConcept, ConceptEncounter, SessionLocal
+from tracker_app.constants import NEUTRAL_ATTENTION
 
 logger = logging.getLogger("ConceptScheduler")
 
@@ -26,7 +27,7 @@ class ConceptScheduler:
         concept: str,
         confidence: float = 0.5,
         context: str = "",
-        attention_at_encoding: float = 50.0,
+        attention_at_encoding: float = NEUTRAL_ATTENTION,
         source: str = "ocr",
     ) -> str:
         """
@@ -62,7 +63,7 @@ class ConceptScheduler:
             if existing:
                 # Rolling average of attention at encoding (EMA 80/20)
                 existing.attention_at_encoding = (
-                    0.8 * (existing.attention_at_encoding or 50.0) + 0.2 * attention_at_encoding
+                    0.8 * (existing.attention_at_encoding or NEUTRAL_ATTENTION) + 0.2 * attention_at_encoding
                 )
                 # Once schedule_next_review() has recalibrated lambda from real
                 # recall performance (repetitions > 0), a passive re-encounter
@@ -257,7 +258,7 @@ class ConceptScheduler:
                     "encounter_count": c.frequency_count,
                     "interval": getattr(c, "interval", 1),
                     "relevance": c.relevance_score,
-                    "attention_at_encoding": getattr(c, "attention_at_encoding", 50.0),
+                    "attention_at_encoding": getattr(c, "attention_at_encoding", NEUTRAL_ATTENTION),
                     "lambda_personalised": getattr(c, "lambda_personalised", DEFAULT_LAMBDA),
                 }
                 for c in concepts

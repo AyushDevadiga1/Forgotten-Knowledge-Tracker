@@ -13,6 +13,7 @@ from typing import Optional
 from tracker_app.utils import utcnow as _utcnow
 
 from tracker_app.config import DEFAULT_LAMBDA, MEMORY_THRESHOLD
+from tracker_app.constants import NEUTRAL_ATTENTION
 
 
 logger = logging.getLogger("MemoryModel")
@@ -76,7 +77,7 @@ def compute_awfc_lambda(
 def compute_memory_score_awfc(
     last_review: datetime,
     base_lambda: float = DEFAULT_LAMBDA,
-    attention_at_encoding: float = 50.0,
+    attention_at_encoding: float = NEUTRAL_ATTENTION,
     modality_boost: float = 1.0,
 ) -> float:
     """
@@ -107,7 +108,7 @@ def schedule_next_review(
     last_review_time,
     memory_score: float,
     lambda_val: float,
-    attention_at_encoding: float = 50.0,
+    attention_at_encoding: float = NEUTRAL_ATTENTION,
     hours_min: float = 1.0,
 ) -> datetime:
     """

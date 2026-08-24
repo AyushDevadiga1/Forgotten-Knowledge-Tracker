@@ -18,6 +18,7 @@ from tracker_app.tracking.privacy_filter import (
     strip_redaction_markers,
     filter_sensitive_keywords,
 )
+from tracker_app.constants import TEXT_TOP_KEYWORDS
 
 logger = logging.getLogger("OCRModule")
 
@@ -234,7 +235,7 @@ def extract_text(img, min_confidence: int = None):
         return ""
 
 
-def extract_keywords(text, top_n=15, boost_repeats=True, graph=None):
+def extract_keywords(text, top_n=TEXT_TOP_KEYWORDS, boost_repeats=True, graph=None):
     """Extract keywords with quality validation and privacy filtering.
 
     graph: optional preloaded knowledge graph. When provided the node-boost
@@ -318,7 +319,7 @@ def ocr_pipeline():
 
         # Extract keywords with scores (graph loaded once per pipeline, M-4)
         G = get_graph()
-        keywords_with_scores = extract_keywords(text, top_n=15, graph=G)
+        keywords_with_scores = extract_keywords(text, top_n=TEXT_TOP_KEYWORDS, graph=G)
 
         # Convert to proper format with counts
         text_lower = text.lower()

@@ -22,6 +22,19 @@ from tracker_app.tracking.intent_module import predict_intent
 from tracker_app.tracking.cle_module import get_cle
 from tracker_app.tracking.session_state import is_active as session_is_active
 from tracker_app.tracking.privacy_filter import is_sensitive_window
+from tracker_app.constants import (
+    NEUTRAL_ATTENTION,
+    ATTENTION_WEIGHT_WEBCAM,
+    ATTENTION_WEIGHT_CLE,
+    PIPELINE_MAX_WORKERS,
+    PIPELINE_FUTURE_TIMEOUT,
+    PERIODIC_EXPORT_INTERVAL,
+    CPU_HIGH_THRESHOLD,
+    CPU_MID_THRESHOLD,
+    CPU_THROTTLE_HIGH,
+    CPU_THROTTLE_MID,
+    CPU_THROTTLE_LOW,
+)
 
 logger = logging.getLogger("TrackerLoop")
 
@@ -149,8 +162,8 @@ def _get_attention_score(
                 ear_high=ear_calibration["personal_ear_high"],
             )
         else:
-            webcam_score = webcam_result.get("attentiveness_score", 50.0)
-        return round(0.70 * webcam_score + 0.30 * cle_score, 1)
+            webcam_score = webcam_result.get("attentiveness_score", NEUTRAL_ATTENTION)
+        return round(ATTENTION_WEIGHT_WEBCAM * webcam_score + ATTENTION_WEIGHT_CLE * cle_score, 1)
     return round(cle_score, 1)
 
 
@@ -163,12 +176,12 @@ def _get_effective_intervals() -> dict:
     High CPU â†’ back off sampling to avoid competing with user's work.
     """
     cpu = psutil.cpu_percent(interval=None)
-    if cpu > 70:
-        mult = 2.5
-    elif cpu > 50:
-        mult = 1.5
+    if cpu > CPU_HIGH_THRESHOLD:
+        mult = CPU_THROTTLE_HIGH
+    elif cpu > CPU_MID_THRESHOLD:
+        mult = CPU_THROTTLE_MID
     else:
-        mult = 1.0
+        mult = CPU_THROTTLE_LOW
     return {
         "ocr": SCREENSHOT_INTERVAL * mult,
         "audio": AUDIO_INTERVAL * mult,
@@ -333,10 +346,10 @@ def track_loop(
     webcam_result: Optional[dict] = None
 
     # Compute attention BEFORE first cycle so the variable always exists
-    attention_score: float = 50.0
+    attention_score: float = NEUTRAL_ATTENTION
 
     # â”€â”€ Thread pool for parallel pipelines â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    executor = ThreadPoolExecutor(max_workers=3, thread_name_prefix="fkt-pipeline")
+    executor = ThreadPoolExecutor(max_workers=PIPELINE_MAX_WORKERS, thread_name_prefix="fkt-pipeline")
 
     try:
         while not stop_event.is_set():
@@ -426,7 +439,7 @@ def track_loop(
             # Concepts are NOT persisted here â€” intent gating happens below.
             for name, future in futures.items():
                 try:
-                    result = future.result(timeout=8)
+                    result = future.result(timeout=PIPELINE_FUTURE_TIMEOUT)
                     if result is None:
                         continue
                     if name == "ocr":
@@ -475,7 +488,7 @@ def track_loop(
 
             # â”€â”€ Periodic export (every 5 min) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             save_counter += TRACK_INTERVAL
-            if save_counter >= 300:
+            if save_counter >= PERIODIC_EXPORT_INTERVAL:
                 try:
                     monitor.export_tracking_data()
                 except Exception as e:

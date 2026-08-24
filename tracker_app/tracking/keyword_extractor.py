@@ -22,6 +22,7 @@ Fallback: if YAKE! is not installed, falls back to spaCy noun extraction.
 import logging
 import re
 from typing import List, Tuple, Optional
+from tracker_app.constants import TEXT_TOP_KEYWORDS
 
 logger = logging.getLogger("KeywordExtractor")
 
@@ -474,7 +475,7 @@ class YAKEKeywordExtractor:
                     return True
         return False
 
-    def extract_keywords(self, text: str, top_n: int = 15) -> List[Tuple[str, float]]:
+    def extract_keywords(self, text: str, top_n: int = TEXT_TOP_KEYWORDS) -> List[Tuple[str, float]]:
         """
         Extract and rank keywords from a single text.
 
@@ -595,7 +596,7 @@ class YAKEKeywordExtractor:
         total = max(sum(counts.values()), 1)
         return {w: round(c / total, 4) for w, c in counts.most_common(top_n)}
 
-    def get_keyword_scores_dict(self, text: str, top_n: int = 15) -> dict:
+    def get_keyword_scores_dict(self, text: str, top_n: int = TEXT_TOP_KEYWORDS) -> dict:
         """Return {keyword: score} dict for easy downstream use."""
         return {kw: sc for kw, sc in self.extract_keywords(text, top_n)}
 
@@ -612,7 +613,7 @@ def get_keyword_extractor() -> YAKEKeywordExtractor:
     return _extractor_instance
 
 
-def extract_concepts(text: str, top_n: int = 15) -> dict:
+def extract_concepts(text: str, top_n: int = TEXT_TOP_KEYWORDS) -> dict:
     """Unified concept extraction: spaCy-first, YAKE-supplementary.
 
     spaCy noun chunks (0.7) and entities (0.8) are primary.

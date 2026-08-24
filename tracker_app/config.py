@@ -132,7 +132,6 @@ TOAST_COOLDOWN_MINUTES = int(os.environ.get("INTENT_TOAST_COOLDOWN_MINUTES", 5))
 # ----------------------------
 # OCR
 # ----------------------------
-OCR_TOP_KEYWORDS = 15
 # Per-word Tesseract confidence floor (0-100). Words below this are dropped
 # before keyword extraction: OCR misreads of UI chrome / overlapping windows
 # typically score ~0 while readable study content scores 50-95, so this keeps

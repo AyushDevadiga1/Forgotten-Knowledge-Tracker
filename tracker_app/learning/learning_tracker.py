@@ -10,6 +10,7 @@ from tracker_app.learning.sm2_memory_model import SM2Item, SM2Scheduler
 from tracker_app.db import models
 from tracker_app.db.models import LearningItem, ReviewHistory
 from tracker_app.db.repository import LearningRepository
+from tracker_app.constants import MASTERY_MIN_REPETITIONS, MASTERY_SUCCESS_RATE, QUESTION_MAX_LENGTH
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -58,7 +59,7 @@ class LearningTracker:
             raise ValueError("question cannot be empty")
         if not answer or not str(answer).strip():
             raise ValueError("answer cannot be empty")
-        if len(str(question)) > 1000:
+        if len(str(question)) > QUESTION_MAX_LENGTH:
             raise ValueError("question must be under 1000 characters")
         if difficulty not in {"easy", "medium", "hard"}:
             raise ValueError("difficulty must be easy, medium, or hard")
@@ -124,7 +125,7 @@ class LearningTracker:
             )
 
             success_rate = item.correct_count / item.total_reviews if item.total_reviews > 0 else 0
-            status = "mastered" if (success_rate > 0.95 and item.repetitions > 5) else "active"
+            status = "mastered" if (success_rate > MASTERY_SUCCESS_RATE and item.repetitions > MASTERY_MIN_REPETITIONS) else "active"
 
             # Update item record with new SM-2 state
             item_record.interval = item.interval
