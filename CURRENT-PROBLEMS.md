@@ -213,13 +213,13 @@ Version history only in git log.
 
 ### L4: Only 2 frontend test files
 
-**Status:** OPEN: frontend tests (requires .tsx write access)
+**Status:** FIXED (166b21e): vitest + testing-library, 12 component tests, CI runs frontend tests
 
 TypeScript type-checking is the only CI gate for the React app. No component or integration tests.
 
 ### L5: Node 20 approaching EOL
 
-**Status:** OPEN: Node 20 -> 22 upgrade (requires frontend write access)
+**Status:** FIXED (166b21e): CI upgraded to Node 22, frontend builds verified
 
 EOL April 2026. Should upgrade to Node 22.
 
@@ -254,7 +254,7 @@ EOL April 2026. Should upgrade to Node 22.
 | L5 | Node 20 EOL | Low | Medium |
 
 **Totals:** 3 critical, 7 high, 8 moderate, 5 low = **23 issues**
-**Fixed:** 16 issues | **Open (frontend):** 4 issues | **Open (backend):** 0 issues | **Deferred:** 2 issues | **Cancelled:** 1 issue
+**Fixed:** 18 issues | **Open (frontend):** 2 issues (M1, M2 — richer quiz types, telemetry dashboards) | **Open (backend):** 0 issues | **Deferred:** 2 issues | **Cancelled:** 1 issue
 
 ---
 
