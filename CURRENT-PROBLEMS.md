@@ -254,7 +254,7 @@ EOL April 2026. Should upgrade to Node 22.
 | L5 | Node 20 EOL | Low | Medium |
 
 **Totals:** 3 critical, 7 high, 8 moderate, 5 low = **23 issues**
-**Fixed:** 18 issues | **Open (frontend):** 2 issues (M1, M2 — richer quiz types, telemetry dashboards) | **Open (backend):** 0 issues | **Deferred:** 2 issues | **Cancelled:** 1 issue
+**Fixed:** 19 issues | **Open (frontend):** 1 issue (M2 — telemetry dashboards) | **Open (backend):** 0 issues | **Deferred:** 2 issues | **Cancelled:** 1 issue
 
 ---
 
