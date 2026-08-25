@@ -60,13 +60,17 @@ limiter = Limiter(
 )
 limiter.init_app(app)
 
-# Register API blueprint (exempt from CSRF for API endpoints)
-from tracker_app.web.api import api_bp
+# Register API blueprints (each owns url_prefix="/api/v1"; exempt from CSRF)
+from tracker_app.web.routes import ALL_BLUEPRINTS
 from tracker_app.web.auth import apply_auth_to_blueprint
 
-apply_auth_to_blueprint(api_bp)  # API key check (disabled in dev by default)
-csrf.exempt(api_bp)
-app.register_blueprint(api_bp)
+for bp in ALL_BLUEPRINTS:
+    if bp.name != "health":
+        # API key check (disabled in dev by default). The health blueprint is
+        # deliberately excluded so the health probe stays unauthenticated.
+        apply_auth_to_blueprint(bp)
+    csrf.exempt(bp)
+    app.register_blueprint(bp)
 
 # Allow only local origins (any localhost/loopback port, e.g. the Vite dev
 # server on 5173) to reach the API from JavaScript in a browser.
@@ -87,7 +91,7 @@ from tracker_app.web.realtime import init_socketio
 
 socketio = init_socketio(app)
 
-# LearningTracker singleton is managed in api.py get_tracker()
+# LearningTracker singleton is managed in web/shared.py get_tracker()
 
 
 # Routes
