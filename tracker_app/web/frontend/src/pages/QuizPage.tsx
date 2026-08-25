@@ -4,6 +4,8 @@ import { m } from 'motion/react'
 import { api, QuizQuestion } from '../api'
 import PageHeader from '../components/PageHeader'
 import QuizOptionList from '../components/QuizOptionList'
+import FlashcardView from '../components/FlashcardView'
+import FillBlankView from '../components/FillBlankView'
 import DifficultyBadge from '../components/DifficultyBadge'
 import EmptyState from '../components/EmptyState'
 import { QuizSkeleton } from '../components/PageSkeleton'
@@ -100,26 +102,70 @@ export default function QuizPage() {
                             {quiz.question}
                         </m.p>
 
-                        <QuizOptionList
-                            quiz={quiz}
-                            onAnswer={(correct) => {
-                                setAsked((a) => a + 1)
-                                setScore((s) =>
-                                    correct ? { ...s, correct: s.correct + 1 } : { ...s, wrong: s.wrong + 1 }
-                                )
-                            }}
-                            action={
-                                <button
-                                    id="quiz-next-btn"
-                                    onClick={handleNext}
-                                    disabled={refreshing}
-                                    className="flex items-center gap-1 border border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-                                >
-                                    <RefreshCw size={10} className={refreshing ? 'animate-spin' : ''} />
-                                    Next
-                                </button>
-                            }
-                        />
+                        {(!quiz.quiz_type || quiz.quiz_type === 'multiple_choice') ? (
+                            <QuizOptionList
+                                quiz={quiz}
+                                onAnswer={(correct) => {
+                                    setAsked((a) => a + 1)
+                                    setScore((s) =>
+                                        correct ? { ...s, correct: s.correct + 1 } : { ...s, wrong: s.wrong + 1 }
+                                    )
+                                }}
+                                action={
+                                    <button
+                                        id="quiz-next-btn"
+                                        onClick={handleNext}
+                                        disabled={refreshing}
+                                        className="flex items-center gap-1 border border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                                    >
+                                        <RefreshCw size={10} className={refreshing ? 'animate-spin' : ''} />
+                                        Next
+                                    </button>
+                                }
+                            />
+                        ) : quiz.quiz_type === 'flashcard' ? (
+                            <FlashcardView
+                                quiz={quiz}
+                                onAnswer={(correct) => {
+                                    setAsked((a) => a + 1)
+                                    setScore((s) =>
+                                        correct ? { ...s, correct: s.correct + 1 } : { ...s, wrong: s.wrong + 1 }
+                                    )
+                                }}
+                                action={
+                                    <button
+                                        id="quiz-next-btn"
+                                        onClick={handleNext}
+                                        disabled={refreshing}
+                                        className="flex items-center gap-1 border border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                                    >
+                                        <RefreshCw size={10} className={refreshing ? 'animate-spin' : ''} />
+                                        Next
+                                    </button>
+                                }
+                            />
+                        ) : (
+                            <FillBlankView
+                                quiz={quiz}
+                                onAnswer={(correct) => {
+                                    setAsked((a) => a + 1)
+                                    setScore((s) =>
+                                        correct ? { ...s, correct: s.correct + 1 } : { ...s, wrong: s.wrong + 1 }
+                                    )
+                                }}
+                                action={
+                                    <button
+                                        id="quiz-next-btn"
+                                        onClick={handleNext}
+                                        disabled={refreshing}
+                                        className="flex items-center gap-1 border border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+                                    >
+                                        <RefreshCw size={10} className={refreshing ? 'animate-spin' : ''} />
+                                        Next
+                                    </button>
+                                }
+                            />
+                        )}
                     </div>
                 </m.div>
             )}

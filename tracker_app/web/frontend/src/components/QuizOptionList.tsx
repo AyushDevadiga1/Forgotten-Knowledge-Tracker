@@ -27,7 +27,7 @@ export default function QuizOptionList({ quiz, onAnswer, action }: QuizOptionLis
     return (
         <>
             <div id="quiz-options" className="space-y-2">
-                {quiz.options.map((opt, i) => (
+                {(quiz.options ?? []).map((opt, i) => (
                     <QuizOption
                         key={i}
                         index={i}

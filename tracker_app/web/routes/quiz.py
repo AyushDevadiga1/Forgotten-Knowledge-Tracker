@@ -15,10 +15,11 @@ quiz_bp.before_request(check_api_key)
 @quiz_bp.route("/quiz/current", methods=["GET"])
 def get_current_quiz():
     try:
-        from tracker_app.tracking.quiz_engine import generate_micro_quiz
+        from tracker_app.tracking.quiz_engine import generate_quiz
         from tracker_app.tracking.knowledge_graph import get_graph
 
-        quiz = generate_micro_quiz(get_graph())
+        quiz_type = request.args.get("type")
+        quiz = generate_quiz(get_graph(), quiz_type=quiz_type)
         return jsonify({"success": True, "data": quiz})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500

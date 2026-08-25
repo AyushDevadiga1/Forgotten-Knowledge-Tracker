@@ -174,6 +174,7 @@ def generate_micro_quiz(graph) -> Optional[dict]:
             if concept_data.get("memory_score", 0.5) >= 0.4
             else "hard"
         ),
+        "quiz_type": "multiple_choice",
     }
 
 

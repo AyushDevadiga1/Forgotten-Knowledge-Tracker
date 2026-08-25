@@ -185,7 +185,7 @@ export const api = {
         apiFetch<{ success: boolean; data: ConceptDetail }>(`/graph/concept/${encodeURIComponent(concept)}`),
 
     /** GET /api/v1/quiz/current */
-    getQuiz: () => apiFetch<{ success: boolean; data: QuizQuestion | null }>('/quiz/current'),
+    getQuiz: (type?: string) => apiFetch<{ success: boolean; data: QuizQuestion | null }>(type ? "/quiz/current?type=" + type : '/quiz/current'),
 
     /** POST /api/v1/quiz/answer */
     submitQuizAnswer: (concept: string, was_correct: boolean) =>
@@ -249,7 +249,9 @@ export interface ConceptDetail {
 export interface QuizQuestion {
     concept: string
     question: string
-    options: string[]
+    options?: string[]
     correct_answer: string
     difficulty: string
+    quiz_type?: 'multiple_choice' | 'flashcard' | 'fill_blank'
+    answer?: string | null
 }
