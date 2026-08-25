@@ -1,158 +1,145 @@
-"""Shared Study Session state — the single source of truth for the Start/Stop toggle.
-
-The dashboard (web process) writes this state; the tracking loop (tracker
-process) reads it once per cycle. A small JSON file in DATA_DIR is used so the
-two processes share one value without any IPC plumbing. The file is written
-atomically (tmp + replace) and tolerates missing/corrupt contents by falling
-back to "inactive", so a stale file never blocks tracking.
-
-Cross-process safety is provided by a filelock.FileLock sidecar file
-(session_state.json.lock). If the lock cannot be created or acquired,
-the module falls back to unlocked access with a warning.
-"""
-
-import json
+﻿import json
 import logging
-import threading
 from datetime import datetime
 
-from filelock import FileLock, Timeout as LockTimeout
-from tracker_app.config import DATA_DIR
+from tracker_app.db.models import SessionLocal, SessionToggle, EarCalibration
 from tracker_app.utils import utcnow as _utcnow
 
 _log = logging.getLogger(__name__)
 
-_STATE_PATH = DATA_DIR / "session_state.json"
-_LOCK_PATH = DATA_DIR / "session_state.json.lock"
-_lock = threading.Lock()
-_file_lock = FileLock(_LOCK_PATH, timeout=5)
 
-_DEFAULT = {"active": False, "started_at": None, "stopped_at": None, "ear_calibration": None}
+def _get_toggle_db():
+    db = SessionLocal()
+    toggle = db.query(SessionToggle).filter(SessionToggle.id == 1).first()
+    if not toggle:
+        toggle = SessionToggle(id=1, active=False)
+        db.add(toggle)
+        db.commit()
+        db.refresh(toggle)
+    return db, toggle
 
 
-def _load() -> dict:
+def is_active():
     try:
-        with open(_STATE_PATH, encoding="utf-8") as f:
-            data = json.load(f)
-        if isinstance(data, dict):
-            return data
+        db, toggle = _get_toggle_db()
+        try:
+            return bool(toggle.active)
+        finally:
+            db.close()
     except Exception as exc:
         _log.warning("Session state operation failed: %s", exc)
-    return dict(_DEFAULT)
-
-
-def _save(state: dict) -> None:
-    _STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    tmp = _STATE_PATH.with_suffix(".json.tmp")
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(state, f, indent=2)
-    tmp.replace(_STATE_PATH)
-
-
-def _acquire_file_lock():
-    """Acquire the cross-process file lock, falling back on failure."""
-    try:
-        _file_lock.acquire()
-        return True
-    except (LockTimeout, OSError) as exc:
-        _log.warning("Could not acquire session_state file lock: %s; proceeding without cross-process safety", exc)
         return False
 
 
-def _release_file_lock(acquired: bool) -> None:
-    if acquired:
+def start():
+    try:
+        db, toggle = _get_toggle_db()
         try:
-            _file_lock.release()
-        except Exception as exc:
-            _log.warning("Session state operation failed: %s", exc)
-
-
-def is_active() -> bool:
-    """Return True when a study session is currently toggled on."""
-    with _lock:
-        acquired = _acquire_file_lock()
-        try:
-            return bool(_load().get("active"))
+            now = _utcnow()
+            toggle.active = True
+            toggle.started_at = now
+            toggle.stopped_at = None
+            db.commit()
+            return {
+                "active": True,
+                "started_at": now.isoformat(),
+                "stopped_at": None,
+                "ear_calibration": get_calibration(),
+            }
         finally:
-            _release_file_lock(acquired)
+            db.close()
+    except Exception as exc:
+        _log.warning("Session state operation failed: %s", exc)
+        return {"active": False, "started_at": None, "stopped_at": None, "ear_calibration": None}
 
 
-def start() -> dict:
-    """Toggle a study session on (idempotent). Returns the new state.
-
-    started_at is always stamped with the current time, so a session
-    restarted after stop() (or after a crash that left active=true in the
-    file) starts a fresh clock rather than counting elapsed time from the
-    previous session's start.
-    """
-    with _lock:
-        acquired = _acquire_file_lock()
+def stop():
+    try:
+        db, toggle = _get_toggle_db()
         try:
-            state = _load()
-            now = _utcnow().isoformat()
-            state["active"] = True
-            state["started_at"] = now
-            state["stopped_at"] = None
-            _save(state)
-            return state
+            now = _utcnow()
+            toggle.active = False
+            toggle.stopped_at = now
+            db.commit()
+            cal = db.query(EarCalibration).filter(EarCalibration.id == 1).first()
+            if cal:
+                db.delete(cal)
+                db.commit()
+            return {
+                "active": False,
+                "started_at": toggle.started_at.isoformat() if toggle.started_at else None,
+                "stopped_at": now.isoformat(),
+                "ear_calibration": None,
+            }
         finally:
-            _release_file_lock(acquired)
+            db.close()
+    except Exception as exc:
+        _log.warning("Session state operation failed: %s", exc)
+        return {"active": False, "started_at": None, "stopped_at": None, "ear_calibration": None}
 
 
-def stop() -> dict:
-    """Toggle a study session off (idempotent). Returns the new state."""
-    with _lock:
-        acquired = _acquire_file_lock()
+def set_calibration(data):
+    try:
+        db = SessionLocal()
         try:
-            state = _load()
-            state["active"] = False
-            state["stopped_at"] = _utcnow().isoformat()
-            state["ear_calibration"] = None
-            _save(state)
-            return state
+            cal = db.query(EarCalibration).filter(EarCalibration.id == 1).first()
+            if not cal:
+                cal = EarCalibration(id=1)
+                db.add(cal)
+            cal.personal_ear_low = data.get("personal_ear_low")
+            cal.personal_ear_high = data.get("personal_ear_high")
+            cal.mean_ear = data.get("mean_ear")
+            cal.std_ear = data.get("std_ear")
+            cal.fallback = data.get("fallback", False)
+            cal.raw_data = json.dumps(data) if data else None
+            cal.updated_at = _utcnow()
+            db.commit()
         finally:
-            _release_file_lock(acquired)
+            db.close()
+    except Exception as exc:
+        _log.warning("Session state operation failed: %s", exc)
 
 
-def set_calibration(data: dict) -> None:
-    with _lock:
-        acquired = _acquire_file_lock()
+def get_calibration():
+    try:
+        db = SessionLocal()
         try:
-            state = _load()
-            state["ear_calibration"] = data
-            _save(state)
+            cal = db.query(EarCalibration).filter(EarCalibration.id == 1).first()
+            if cal and cal.raw_data:
+                return json.loads(cal.raw_data)
+            return None
         finally:
-            _release_file_lock(acquired)
+            db.close()
+    except Exception as exc:
+        _log.warning("Session state operation failed: %s", exc)
+        return None
 
 
-def get_calibration() -> dict | None:
-    with _lock:
-        acquired = _acquire_file_lock()
+def get_status():
+    try:
+        db, toggle = _get_toggle_db()
         try:
-            return _load().get("ear_calibration")
-        finally:
-            _release_file_lock(acquired)
-
-
-def get_status() -> dict:
-    """Return the current state plus a live elapsed-seconds figure."""
-    with _lock:
-        acquired = _acquire_file_lock()
-        try:
-            state = _load()
-        finally:
-            _release_file_lock(acquired)
-    elapsed = None
-    if state.get("active") and state.get("started_at"):
-        try:
-            started = datetime.fromisoformat(state["started_at"])
-            elapsed = int((_utcnow() - started).total_seconds())
-        except Exception:
             elapsed = None
-    return {
-        "active": bool(state.get("active")),
-        "started_at": state.get("started_at"),
-        "stopped_at": state.get("stopped_at"),
-        "elapsed_seconds": elapsed,
-        "ear_calibration": state.get("ear_calibration"),
-    }
+            if toggle.active and toggle.started_at:
+                try:
+                    elapsed = int((_utcnow() - toggle.started_at).total_seconds())
+                except Exception:
+                    elapsed = None
+            return {
+                "active": bool(toggle.active),
+                "started_at": toggle.started_at.isoformat() if toggle.started_at else None,
+                "stopped_at": toggle.stopped_at.isoformat() if toggle.stopped_at else None,
+                "elapsed_seconds": elapsed,
+                "ear_calibration": get_calibration(),
+            }
+        finally:
+            db.close()
+    except Exception as exc:
+        _log.warning("Session state operation failed: %s", exc)
+        return {
+            "active": False,
+            "started_at": None,
+            "stopped_at": None,
+            "elapsed_seconds": None,
+            "ear_calibration": None,
+        }

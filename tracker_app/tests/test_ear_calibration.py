@@ -5,16 +5,33 @@ import numpy as np
 
 
 @pytest.fixture
-def isolated_state(tmp_path, monkeypatch):
+def isolated_state():
     from tracker_app.tracking import session_state as ss
+    from tracker_app.db.models import Base, SessionLocal, SessionToggle, EarCalibration
+    from sqlalchemy import inspect
 
-    state_file = tmp_path / "session_state.json"
-    monkeypatch.setattr(ss, "_STATE_PATH", state_file)
-    monkeypatch.setattr(ss, "_LOCK_PATH", state_file.with_suffix(".json.lock"))
-    from filelock import FileLock
-
-    monkeypatch.setattr(ss, "_file_lock", FileLock(state_file.with_suffix(".json.lock"), timeout=5))
-    return state_file
+    db = SessionLocal()
+    try:
+        engine = db.get_bind()
+        insp = inspect(engine)
+        existing = insp.get_table_names()
+        needed = ["session_toggle", "ear_calibration"]
+        to_create = [t for t in needed if t not in existing]
+        if to_create:
+            Base.metadata.create_all(engine)
+        db.query(SessionToggle).delete()
+        db.query(EarCalibration).delete()
+        db.commit()
+    finally:
+        db.close()
+    yield
+    db = SessionLocal()
+    try:
+        db.query(SessionToggle).delete()
+        db.query(EarCalibration).delete()
+        db.commit()
+    finally:
+        db.close()
 
 
 @pytest.fixture

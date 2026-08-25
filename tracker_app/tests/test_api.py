@@ -47,20 +47,8 @@ class TestAPIBase(unittest.TestCase):
         app.config["WTF_CSRF_ENABLED"] = False  # Disable CSRF for tests
         self.client = app.test_client()
 
-        # Isolate the shared study-session state file
-        from tracker_app.tracking import session_state as ss
-
-        self._state_dir = tempfile.mkdtemp()
-        self._orig_state_path = ss._STATE_PATH
-        ss._STATE_PATH = Path(self._state_dir) / "session_state.json"
 
     def tearDown(self):
-        from tracker_app.tracking import session_state as ss
-
-        ss._STATE_PATH = self._orig_state_path
-        import shutil
-
-        shutil.rmtree(self._state_dir, ignore_errors=True)
         Base.metadata.drop_all(bind=self.test_engine)
         models.engine = self.orig_engine
         models.SessionLocal = self.orig_session

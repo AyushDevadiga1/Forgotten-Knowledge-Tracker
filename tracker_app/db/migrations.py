@@ -24,6 +24,8 @@ _KNOWN_TABLES = frozenset(
         "metrics",
         "system_sessions",
         "concept_encounters",
+        "session_toggle",
+        "ear_calibration",
     }
 )
 

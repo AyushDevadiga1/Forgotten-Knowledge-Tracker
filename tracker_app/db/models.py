@@ -2,7 +2,7 @@
 
 from tracker_app.utils import utcnow as _utcnow
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, event, create_engine
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, event, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship, Session
 import logging
 
@@ -362,3 +362,31 @@ class FeedbackTrainingSample(Base):
     confidence = Column(Float, default=0.0)
     window_title = Column(String, default="")
     used_in_training = Column(Integer, default=0, nullable=False)
+
+
+# --- C3: DB-backed session toggle state ---
+
+
+class SessionToggle(Base):
+    """Stores the start/stop toggle state. Single row (id=1)."""
+    __tablename__ = "session_toggle"
+
+    id = Column(Integer, primary_key=True, default=1)
+    active = Column(Boolean, default=False, nullable=False)
+    started_at = Column(DateTime, nullable=True)
+    stopped_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
+class EarCalibration(Base):
+    """Stores the latest EAR calibration data. Single row (id=1)."""
+    __tablename__ = "ear_calibration"
+
+    id = Column(Integer, primary_key=True, default=1)
+    personal_ear_low = Column(Float, nullable=True)
+    personal_ear_high = Column(Float, nullable=True)
+    mean_ear = Column(Float, nullable=True)
+    std_ear = Column(Float, nullable=True)
+    fallback = Column(Boolean, default=False)
+    raw_data = Column(String, nullable=True)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
