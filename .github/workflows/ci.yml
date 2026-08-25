@@ -94,7 +94,7 @@ jobs:
       - name: Set up Node 20
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: tracker_app/web/frontend/package-lock.json
 
@@ -105,6 +105,10 @@ jobs:
       - name: TypeScript type check
         working-directory: tracker_app/web/frontend
         run: npx tsc --noEmit
+
+      - name: Frontend tests
+        working-directory: tracker_app/web/frontend
+        run: npx vitest run
 
       - name: Production build
         working-directory: tracker_app/web/frontend
