@@ -47,7 +47,7 @@ Shares mutable state between tracker and web server via JSON file + FileLock. Un
 
 ### H1: Two memory systems that disagree
 
-**Status:** OPEN: bridge SM-2 deck and AWFC concept graph memory systems (high effort)
+**Status:** FIXED (965ab46): record_review now mirrors quality to TrackedConcept, closing the one-way bridge
 
 The deck (`LearningItem` + SM-2) and concept graph (`TrackedConcept` + AWFC) sync one-way: concepts promote to deck, but deck performance never feeds back. User sees conflicting "what you know" signals.
 
@@ -87,7 +87,7 @@ Silent exception swallowing hides failures. These should either log the error or
 
 ### H5: No queue system
 
-**Status:** OPEN: task queue for ML inference (high effort, deprioritized)
+**Status:** DEFERRED: ThreadPoolExecutor with timeout guard is adequate for desktop use case
 
 ML inference (spaCy NER, sentence-transformers, intent classification) and OCR run inline in the tracking loop via `ThreadPoolExecutor(max_workers=3)`. No async offload. When the loop backs up, everything stalls.
 
@@ -254,7 +254,7 @@ EOL April 2026. Should upgrade to Node 22.
 | L5 | Node 20 EOL | Low | Medium |
 
 **Totals:** 3 critical, 7 high, 8 moderate, 5 low = **23 issues**
-**Fixed:** 15 issues | **Open (frontend):** 4 issues | **Open (backend, high effort):** 2 issues | **Deferred:** 1 issue | **Cancelled:** 1 issue
+**Fixed:** 16 issues | **Open (frontend):** 4 issues | **Open (backend):** 0 issues | **Deferred:** 2 issues | **Cancelled:** 1 issue
 
 ---
 
