@@ -390,3 +390,19 @@ class EarCalibration(Base):
     fallback = Column(Boolean, default=False)
     raw_data = Column(String, nullable=True)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+
+# --- H3: Concept promotion triage queue ---
+
+
+class TriageQueue(Base):
+    __tablename__ = "triage_queue"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    concept = Column(String, nullable=False, unique=True, index=True)
+    answer = Column(String, default="")
+    difficulty = Column(String, default="medium")
+    status = Column(String, default="pending")  # pending, approved, rejected
+    frequency_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=_utcnow)
+    reviewed_at = Column(DateTime, nullable=True)

@@ -11,9 +11,10 @@ Two entry points:
 """
 
 import logging
+from tracker_app.utils import utcnow as _utcnow
 from typing import Dict, List, Optional
 
-from tracker_app.db.models import SessionLocal, TrackedConcept, ConceptEncounter
+from tracker_app.db.models import SessionLocal, TrackedConcept, ConceptEncounter, TriageQueue
 from tracker_app.learning.text_quality_validator import is_plausible_concept
 from tracker_app.config import DATA_DIR
 
@@ -168,13 +169,11 @@ def _is_subsumed_single_word(concept: str, subsuming_phrases: Optional[frozenset
 
 
 def promote_concept_to_deck(concept: str, subsuming_phrases: Optional[frozenset] = None) -> Optional[str]:
-    """Create a learning item for an extracted concept (idempotent).
+    """Route a concept to the triage queue (idempotent).
 
-    Returns the new item id, or None if the concept already has a deck item
-    (matched by exact question) or fails the KB-worthiness gate.
+    Returns the triage entry id, or None if the concept is already queued
+    or promoted, or fails the KB-worthiness gate.
     """
-    from tracker_app.learning.learning_tracker import LearningTracker
-
     if not is_kb_worthy(concept):
         return None
     if _is_subsumed_single_word(concept, subsuming_phrases=subsuming_phrases):
@@ -182,25 +181,33 @@ def promote_concept_to_deck(concept: str, subsuming_phrases: Optional[frozenset]
         return None
 
     with SessionLocal() as db:
-        # Exact-match idempotency check against the deck.
         from tracker_app.db.models import LearningItem
 
         dup = db.query(LearningItem).filter(LearningItem.question == concept).first()
         if dup:
             logger.debug(f"Already in deck: {concept!r}")
             return None
+
+        existing_triage = db.query(TriageQueue).filter(TriageQueue.concept == concept).first()
+        if existing_triage:
+            logger.debug(f"Already in triage: {concept!r}")
+            return None
+
         tc = db.query(TrackedConcept).filter(TrackedConcept.concept == concept).first()
         answer = _answer_for(db, concept)
 
-    item_id = LearningTracker().add_learning_item(
-        question=concept,
-        answer=answer,
-        difficulty=_difficulty_for(tc.relevance_score if tc else None),
-        item_type="concept",
-        tags=["extracted"],
-    )
-    logger.info(f"Promoted extracted concept to deck: {concept!r} -> {item_id}")
-    return item_id
+        entry = TriageQueue(
+            concept=concept,
+            answer=answer,
+            difficulty=_difficulty_for(tc.relevance_score if tc else None),
+            status="pending",
+            frequency_count=tc.frequency_count if tc else 0,
+        )
+        db.add(entry)
+        db.commit()
+        db.refresh(entry)
+        logger.info(f"Queued concept for triage: {concept!r} -> triage#{entry.id}")
+        return entry.id
 
 
 def backfill_items(
@@ -243,3 +250,69 @@ def backfill_items(
         "skipped_count": len(skipped),
         "min_frequency": min_frequency,
     }
+
+
+def approve_triage(entry_id: int) -> Optional[str]:
+    """Approve a triage entry and promote it to the deck."""
+    from tracker_app.learning.learning_tracker import LearningTracker
+
+    with SessionLocal() as db:
+        entry = db.query(TriageQueue).filter(TriageQueue.id == entry_id).first()
+        if not entry or entry.status != "pending":
+            return None
+        from tracker_app.db.models import LearningItem
+        dup = db.query(LearningItem).filter(LearningItem.question == entry.concept).first()
+        if dup:
+            entry.status = "approved"
+            db.commit()
+            return None
+
+    item_id = LearningTracker().add_learning_item(
+        question=entry.concept,
+        answer=entry.answer,
+        difficulty=entry.difficulty,
+        item_type="concept",
+        tags=["extracted"],
+    )
+    with SessionLocal() as db:
+        e = db.query(TriageQueue).filter(TriageQueue.id == entry_id).first()
+        e.status = "approved"
+        e.reviewed_at = _utcnow()
+        entry.reviewed_at = _utcnow()
+        db.commit()
+    logger.info(f"Approved triage entry {entry_id}: {entry.concept!r} -> deck#{item_id}")
+    return item_id
+
+
+def reject_triage(entry_id: int) -> bool:
+    """Reject a triage entry."""
+    with SessionLocal() as db:
+        entry = db.query(TriageQueue).filter(TriageQueue.id == entry_id).first()
+        if not entry or entry.status != "pending":
+            return False
+        entry.status = "rejected"
+        entry.reviewed_at = _utcnow()
+        db.commit()
+        db.refresh(entry)
+    logger.info(f"Rejected triage entry {entry_id}: {entry.concept!r}")
+    return True
+
+
+def get_triage_entries(status: str = "pending") -> List[Dict]:
+    """Return triage entries filtered by status."""
+    with SessionLocal() as db:
+        rows = db.query(TriageQueue).filter(
+            TriageQueue.status == status
+        ).order_by(TriageQueue.created_at.desc()).all()
+    return [
+        {
+            "id": r.id,
+            "concept": r.concept,
+            "answer": r.answer,
+            "difficulty": r.difficulty,
+            "status": r.status,
+            "frequency_count": r.frequency_count,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in rows
+    ]

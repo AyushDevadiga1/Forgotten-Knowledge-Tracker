@@ -26,6 +26,7 @@ _KNOWN_TABLES = frozenset(
         "concept_encounters",
         "session_toggle",
         "ear_calibration",
+        "triage_queue",
     }
 )
 

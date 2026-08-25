@@ -88,22 +88,23 @@ def test_auth_skipped_when_no_auth_true(monkeypatch):
 def test_retrain_lock_allows_single_concurrent_run(monkeypatch):
     """C-2: two near-simultaneous triggers must start at most one retraining
     subprocess (the second skips while the first holds the lock)."""
-    import tracker_app.web.api as api_mod
+    import tracker_app.web.routes.intent as intent_mod
+    import tracker_app.web.shared as shared_mod
     from tracker_app.db import repository as repo_mod
 
     monkeypatch.setattr(repo_mod.FeedbackRepository, "get_total_count", lambda db: 50)
     starts = []
     monkeypatch.setattr(
-        api_mod.FeedbackService,
+        intent_mod.FeedbackService,
         "_retrain_from_feedback",
         staticmethod(lambda: starts.append(threading.current_thread().name)),
     )
 
     fresh_lock = threading.Lock()
-    monkeypatch.setattr(api_mod, "_retrain_lock", fresh_lock)
+    monkeypatch.setattr(shared_mod, "_retrain_lock", fresh_lock)
 
-    api_mod.FeedbackService.maybe_trigger_retrain()
-    api_mod.FeedbackService.maybe_trigger_retrain()
+    intent_mod.FeedbackService.maybe_trigger_retrain()
+    intent_mod.FeedbackService.maybe_trigger_retrain()
 
     assert len(starts) == 1
 

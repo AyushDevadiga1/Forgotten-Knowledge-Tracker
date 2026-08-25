@@ -200,3 +200,40 @@ def export_items():
     except Exception as e:
         logger.error("export_items: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+# --- H3: Triage queue ---
+
+
+@items_bp.route("/triage", methods=["GET"])
+def get_triage():
+    try:
+        from tracker_app.learning.concept_promotion import get_triage_entries
+        status = request.args.get("status", "pending")
+        entries = get_triage_entries(status=status)
+        return jsonify({"success": True, "data": entries, "count": len(entries)})
+    except Exception as e:
+        logger.error("get_triage: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@items_bp.route("/triage/<int:entry_id>/approve", methods=["POST"])
+def approve_triage(entry_id):
+    try:
+        from tracker_app.learning.concept_promotion import approve_triage as _approve
+        item_id = _approve(entry_id)
+        return jsonify({"success": True, "item_id": item_id})
+    except Exception as e:
+        logger.error("approve_triage: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@items_bp.route("/triage/<int:entry_id>/reject", methods=["POST"])
+def reject_triage(entry_id):
+    try:
+        from tracker_app.learning.concept_promotion import reject_triage as _reject
+        result = _reject(entry_id)
+        return jsonify({"success": True, "rejected": result})
+    except Exception as e:
+        logger.error("reject_triage: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
