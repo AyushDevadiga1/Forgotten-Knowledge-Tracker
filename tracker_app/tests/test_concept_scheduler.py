@@ -240,9 +240,9 @@ def test_recalibrate_lambda_decay_window_is_last_seen():
 
 def test_reexposure_auto_promotes_to_deck_at_threshold(db, monkeypatch, no_graph_sync):
     # Phase 12: a concept re-encountered enough times is auto-promoted into
-    # the learning deck (the KB surface). Uses the same in-memory SessionLocal
+    # the triage queue (H3). Uses the same in-memory SessionLocal
     # so the promotion write lands in the test DB, and only promotes once.
-    from tracker_app.db.models import LearningItem
+    from tracker_app.db.models import TriageQueue
     from tracker_app.learning.concept_promotion import PROMOTE_AFTER_ENCOUNTERS
     from tracker_app.learning import concept_promotion as cp
 
@@ -255,12 +255,12 @@ def test_reexposure_auto_promotes_to_deck_at_threshold(db, monkeypatch, no_graph
     with db() as session:
         tc = session.query(TrackedConcept).filter(TrackedConcept.concept == "hash table").first()
         assert tc.frequency_count == PROMOTE_AFTER_ENCOUNTERS
-        assert session.query(LearningItem).filter(LearningItem.question == "hash table").count() == 1
+        assert session.query(TriageQueue).filter(TriageQueue.concept == "hash table", TriageQueue.status == "pending").count() == 1
 
-    # A 4th encounter must not create a duplicate deck item.
+    # A 4th encounter must not create a duplicate triage entry.
     scheduler.add_concept("hash table", confidence=0.5, context="browser:Notes")
     with db() as session:
-        assert session.query(LearningItem).filter(LearningItem.question == "hash table").count() == 1
+        assert session.query(TriageQueue).filter(TriageQueue.concept == "hash table", TriageQueue.status == "pending").count() == 1
 
 
 def test_reexposure_does_not_promote_noise(db, monkeypatch, no_graph_sync):
