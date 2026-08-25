@@ -1,4 +1,7 @@
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 from enum import Enum
@@ -95,6 +98,30 @@ class LearningTracker:
             item = LearningRepository.get_item(db, item_id)
             return self._row_to_dict(item) if item else None
 
+    def _sync_concept_from_deck_review(self, question: str, quality: int) -> None:
+        """After a deck review, mirror the quality to the matching TrackedConcept.
+
+        This closes the feedback loop: acing a deck card now updates the
+        concept's SM-2 state and recalibrates its AWFC λ, so the concept
+        graph reflects actual mastery instead of decaying on stale data.
+        """
+        try:
+            from tracker_app.learning.concept_scheduler import get_scheduler
+            from tracker_app.db.models import TrackedConcept
+
+            scheduler = get_scheduler()
+            with models.SessionLocal() as db:
+                concept = db.query(TrackedConcept).filter(
+                    TrackedConcept.concept == question
+                ).first()
+                if concept is None:
+                    return
+
+            scheduler.schedule_next_review(question, quality)
+            logger.debug(f"Deck review synced to concept: {question!r} (quality={quality})")
+        except Exception as e:
+            logger.debug(f"Concept sync skipped for {question!r}: {e}")
+
     def record_review(
         self, item_id: str, quality_rating: int, time_spent_seconds: int = None, algorithm: str = "sm2"
     ) -> Dict[str, Any]:
@@ -140,6 +167,9 @@ class LearningTracker:
             item_record.updated_at = _utcnow()
 
             LearningRepository.record_review(db, history, item_record)
+
+            # H1: feedback loop — mirror deck review to concept graph
+            self._sync_concept_from_deck_review(item_record.question, quality_rating)
 
         updated_item = self.get_item(item_id)
         return {"item": updated_item, "result": result, "retention_estimate": SM2Scheduler.estimate_retention(item)}
