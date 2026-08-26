@@ -6,7 +6,7 @@ import IntentFeedbackToast from '../components/IntentFeedbackToast'
 import MicroQuizModal from '../components/MicroQuizModal'
 import SessionToggleButton from '../components/SessionToggleButton'
 import { useSession } from '../context/SessionContext'
-import { spring, pageVariants, pageTransition } from '../lib/animation'
+import { spring, easeOut, pageVariants, pageTransition } from '../lib/animation'
 import { cn } from '../lib/utils'
 
 const navItems = [
@@ -85,23 +85,30 @@ function Sidebar() {
                                         transition={reduced ? { duration: 0 } : spring}
                                     />
                                 )}
-                                <item.icon
-                                    size={18}
-                                    strokeWidth={1.5}
-                                    className={cn(
-                                        'relative min-w-[20px] transition-colors',
-                                        isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
-                                    )}
-                                />
-                                <span
+                                <m.span
+                                    className="relative flex min-w-[20px] items-center justify-center"
+                                    animate={{ width: wide ? 18 : 14 }}
+                                    transition={spring}
+                                >
+                                    <item.icon
+                                        size={wide ? 18 : 14}
+                                        strokeWidth={1.5}
+                                        className={cn(
+                                            'transition-colors',
+                                            isActive ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground'
+                                        )}
+                                    />
+                                </m.span>
+                                <m.span
                                     className={cn(
                                         'relative ml-4 whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.12em]',
-                                        isActive ? 'text-primary' : 'text-muted-foreground',
-                                        !wide && 'opacity-0'
+                                        isActive ? 'text-primary' : 'text-muted-foreground'
                                     )}
+                                    animate={wide ? { opacity: 1, x: 0 } : { opacity: 0, x: -8 }}
+                                    transition={{ duration: 0.15, ease: easeOut }}
                                 >
                                     {item.label}
-                                </span>
+                                </m.span>
                             </>
                         )}
                     </NavLink>
