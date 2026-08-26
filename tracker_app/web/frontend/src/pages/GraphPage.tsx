@@ -58,6 +58,7 @@ export default function GraphPage() {
     const [loading, setLoading] = useState(true)
     const [backendDown, setBackendDown] = useState(false)
     const [refreshing, setRefreshing] = useState(false)
+    const reduced = useReducedMotion()
 
     const load = useCallback(async (isRefresh = false) => {
         if (isRefresh) setRefreshing(true)
@@ -175,22 +176,28 @@ export default function GraphPage() {
                                 No gaps detected yet
                             </div>
                         ) : (
-                            <ul className="space-y-3">
-                                {gaps.map((g) => (
-                                    <li key={g.concept}>
-                                        <div className="mb-1 flex items-baseline justify-between">
+                            <div className="space-y-2.5">
+                                {gaps.map((g, i) => (
+                                    <m.div
+                                        key={g.concept}
+                                        className="backdrop-blur-sm bg-card/60 border border-border p-3 transition-colors duration-200 hover:border-primary/30 hover:shadow-fkt-glow-sm"
+                                        initial={reduced ? false : { opacity: 0, x: 10 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: i * 0.05, duration: 0.3, ease: easeOut }}
+                                    >
+                                        <div className="mb-1.5 flex items-baseline justify-between">
                                             <span className="max-w-[150px] truncate font-mono text-xs text-foreground">{g.concept}</span>
                                             <span className="ml-2 shrink-0 font-mono text-[10px] text-muted-foreground">
                                                 {(g.memory_strength * 100).toFixed(0)}%
                                             </span>
                                         </div>
                                         <MemBar v={g.memory_strength} />
-                                        <p className="mt-0.5 font-mono text-[9px] text-muted-foreground">
+                                        <p className="mt-1 font-mono text-[9px] text-muted-foreground">
                                             last seen: {g.last_seen ? new Date(g.last_seen).toLocaleDateString() : 'never'}
                                         </p>
-                                    </li>
+                                    </m.div>
                                 ))}
-                            </ul>
+                            </div>
                         )}
                     </div>
 
