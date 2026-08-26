@@ -16,8 +16,8 @@ from tracker_app.web.shared import (
 )
 
 __all__ = [
-    "LearningTracker",
     "FeedbackService",
+    "LearningTracker",
     "_parse_bool_flag",
     "_retrain_lock",
     "_sanitize_title",

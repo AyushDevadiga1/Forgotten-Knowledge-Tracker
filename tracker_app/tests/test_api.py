@@ -9,8 +9,6 @@ import unittest
 import json
 import os
 import sys
-import tempfile
-from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -342,15 +340,6 @@ class TestTrendAnalysisBoundary(TestAPIBase):
 
         fixed_now = datetime(2026, 8, 11, 12, 0, 0)  # midday → wide same-day window
         cutoff = fixed_now - timedelta(days=7)  # 2026-08-04 12:00
-
-        fake_dt = type(
-            "FakeDT",
-            (),
-            {
-                "utcnow": staticmethod(lambda: fixed_now),
-                "timedelta": timedelta,
-            },
-        )()
 
         with self.TestingSessionLocal() as db:
             for label, ts in (

@@ -94,7 +94,7 @@ class TestRedaction(unittest.TestCase):
 
     def test_email_redacted(self):
         text = "Email me at user@example.com"
-        redacted, count = redact_sensitive_data(text)
+        redacted, _count = redact_sensitive_data(text)
         self.assertNotIn("user@example.com", redacted)
         self.assertIn("[REDACTED", redacted)
 

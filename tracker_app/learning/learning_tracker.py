@@ -138,7 +138,6 @@ class LearningTracker:
             result = SM2Scheduler.calculate_next_interval(item, quality_rating)
 
             review_date = _utcnow()
-            was_correct = quality_rating >= 3
 
             # Create review history record
             history = ReviewHistory(

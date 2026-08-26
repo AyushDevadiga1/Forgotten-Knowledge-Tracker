@@ -74,7 +74,7 @@ def _music_slowam(t, rng, sr, dur):
 
 
 def test_tonal_signal_is_music():
-    label, conf = audio_module.classify_audio(_make(_tone))
+    label, _conf = audio_module.classify_audio(_make(_tone))
     assert label == "music"
 
 
@@ -86,7 +86,7 @@ def test_steady_broadband_is_not_speech():
 
 
 def test_syllabic_modulation_is_speech():
-    label, conf = audio_module.classify_audio(_make(_speech_am))
+    label, _conf = audio_module.classify_audio(_make(_speech_am))
     assert label == "speech"
 
 

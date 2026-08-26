@@ -117,7 +117,6 @@ def schedule_next_review(
     Weak memory â†’ review soon.
     Strong memory â†’ longer interval, scaled by personalised Î».
     """
-    last_review = safe_parse_datetime(last_review_time)
     lambda_p = compute_awfc_lambda(lambda_val, attention_at_encoding)
 
     if memory_score < MEMORY_THRESHOLD:

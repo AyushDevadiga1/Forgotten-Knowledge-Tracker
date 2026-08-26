@@ -6,7 +6,6 @@ import numpy as np
 
 @pytest.fixture
 def isolated_state():
-    from tracker_app.tracking import session_state as ss
     from tracker_app.db.models import Base, SessionLocal, SessionToggle, EarCalibration
     from sqlalchemy import inspect
 

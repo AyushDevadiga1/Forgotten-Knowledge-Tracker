@@ -22,13 +22,13 @@ def test_coherence_detection():
 
 
 def test_ocr_preprocessing():
-    clean, score = preprocess_ocr_text("  Python  Machine  Learning  ")
+    clean, _score = preprocess_ocr_text("  Python  Machine  Learning  ")
     assert "python machine learning" in clean.lower()
 
-    clean, score = preprocess_ocr_text("Dat@ Science")
+    clean, _score = preprocess_ocr_text("Dat@ Science")
     assert "dat@ science" in clean.lower()
 
-    clean, score = preprocess_ocr_text("  AI   is   cool  ")
+    clean, _score = preprocess_ocr_text("  AI   is   cool  ")
     assert "ai is cool" in clean.lower()
 
 

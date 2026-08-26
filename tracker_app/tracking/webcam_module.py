@@ -1,6 +1,7 @@
 """Webcam pipeline: MediaPipe FaceMesh-based attention tracking (lazy-loaded)."""
 
 import atexit
+import contextlib
 import cv2
 import numpy as np
 import time
@@ -175,10 +176,8 @@ def _release_cap():
     """Release the persistent camera handle (registered via atexit)."""
     global _cap
     if _cap is not None:
-        try:
+        with contextlib.suppress(Exception):
             _cap.release()
-        except Exception:
-            pass
         _cap = None
 
 

@@ -164,10 +164,7 @@ def preprocess_image(img):
 
     try:
         # Convert to grayscale
-        if len(img.shape) == 3:
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        else:
-            gray = img
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if len(img.shape) == 3 else img
 
         # Apply preprocessing for better OCR
         # 1. Noise reduction

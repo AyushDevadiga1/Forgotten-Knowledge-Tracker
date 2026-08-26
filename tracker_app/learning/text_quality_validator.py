@@ -978,10 +978,7 @@ def is_plausible_concept(text) -> bool:
         return False
 
     multiword = len(tokens) > 1
-    for token in tokens:
-        if not _is_plausible_token(token, multiword):
-            return False
-    return True
+    return all(_is_plausible_token(token, multiword) for token in tokens)
 
 
 def _is_plausible_token(token: str, multiword: bool) -> bool:
@@ -1509,7 +1506,6 @@ def is_coherent_text(text: str) -> bool:
             return False
 
     # Check if mostly common words or reasonable length
-    common_word_count = sum(1 for w in words if w.lower() in COMMON_WORDS)
     word_diversity = len(set(words)) / len(words) if words else 0
 
     # Should have some diversity (not just repetition) but not too much
@@ -1543,7 +1539,6 @@ def preprocess_ocr_text(text: str, confidence: float = 1.0) -> Tuple[str, float]
     if not text:
         return "", 0.0
 
-    original_text = text
     quality_score = 1.0
 
     # 1. Decode common OCR errors (be conservative)
@@ -1823,10 +1818,7 @@ def validate_and_clean_extraction(raw_extracted_text: str, ocr_confidence: float
 
     # Decision
     is_useful = quality_score >= 0.4 and len(keywords) > 0
-    if quality_score <= 0.1:
-        status = "REJECTED"
-    else:
-        status = "ACCEPTED" if is_useful else "QUESTIONABLE"
+    status = "REJECTED" if quality_score <= 0.1 else "ACCEPTED" if is_useful else "QUESTIONABLE"
 
     return {
         "status": status,

@@ -254,7 +254,7 @@ if __name__ == "__main__":
 
     print("Simulating 60 keypresses with realistic timing...")
     base = time.time()
-    for i in range(60):
+    for _i in range(60):
         is_bs = random.random() < 0.08  # 8% backspace rate
         cle.record_key(is_backspace=is_bs)
         time.sleep(random.uniform(0.05, 0.4))

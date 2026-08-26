@@ -156,8 +156,7 @@ def get_recent_intent():
                 .order_by(IntentPrediction.prompted_at.desc())
                 .first()
             )
-            if last_prompt and last_prompt[0] is not None:
-                if _utcnow() - last_prompt[0] < timedelta(minutes=TOAST_COOLDOWN_MINUTES):
+            if last_prompt and last_prompt[0] is not None and _utcnow() - last_prompt[0] < timedelta(minutes=TOAST_COOLDOWN_MINUTES):
                     return jsonify({"success": True, "data": None})
 
             now = _utcnow()

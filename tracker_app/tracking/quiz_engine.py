@@ -89,10 +89,7 @@ def should_show_quiz(
         if elapsed < QUIZ_COOLDOWN_MINUTES:
             return False
 
-    if webcam_enabled and attention_score < ATTENTION_PRESENT_MIN:
-        return False  # user stepped away / zoned out â€” won't see the modal
-
-    return True
+    return not (webcam_enabled and attention_score < ATTENTION_PRESENT_MIN)
 
 
 # â”€â”€â”€ Quiz generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -153,7 +150,7 @@ def generate_micro_quiz(graph) -> Optional[dict]:
         logger.debug("Not enough distractors for quiz")
         return None
 
-    all_options = [concept_name] + distractors[:3]
+    all_options = [concept_name, *distractors[:3]]
     random.shuffle(all_options)
     correct_index = all_options.index(concept_name)
 

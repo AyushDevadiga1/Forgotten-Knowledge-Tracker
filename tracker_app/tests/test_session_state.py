@@ -6,7 +6,6 @@ from sqlalchemy import inspect
 
 from tracker_app.tracking import session_state as ss
 from tracker_app.db.models import Base, SessionLocal, SessionToggle, EarCalibration
-from tracker_app.utils import utcnow as _utcnow
 
 
 @pytest.fixture(autouse=True)

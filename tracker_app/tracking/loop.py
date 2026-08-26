@@ -295,7 +295,7 @@ def _maybe_trigger_quiz(
 
                     broadcast_micro_quiz(quiz)
                 except Exception:
-                    pass  # dashboard may not be running
+                    logger.debug("dashboard may not be running")
                 else:
                     # M-6: cooldown starts only after a successful broadcast.
                     record_quiz_broadcast()

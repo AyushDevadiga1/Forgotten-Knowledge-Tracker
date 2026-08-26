@@ -142,7 +142,7 @@ def generate_synthetic_data(n_studying=900, n_passive=900, n_idle=700, seed=42) 
         ],
         "labels": ["studying", "passive", "idle"],
         "total_samples": len(samples),
-        "class_counts": {l: y.count(l) for l in ["studying", "passive", "idle"]},
+        "class_counts": {label: y.count(label) for label in ["studying", "passive", "idle"]},
         "X": X,
         "y": y,
     }
@@ -191,7 +191,7 @@ def train(data: dict) -> dict:
 
     importances = model.named_steps["clf"].feature_importances_
     print("Feature importances:")
-    for name, imp in sorted(zip(data["feature_names"], importances), key=lambda x: -x[1]):
+    for name, imp in sorted(zip(data["feature_names"], importances, strict=False), key=lambda x: -x[1]):
         print(f"  {name:<22} {imp:.4f}  {'#' * int(imp * 40)}")
 
     return {
@@ -281,7 +281,7 @@ def main():
         "feature_names": data["feature_names"],
         "labels": data["labels"],
         "total_samples": len(X),
-        "class_counts": {l: y.count(l) for l in ["studying", "passive", "idle"]},
+        "class_counts": {label: y.count(label) for label in ["studying", "passive", "idle"]},
         "X": X,
         "y": y,
     }

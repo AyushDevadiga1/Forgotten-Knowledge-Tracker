@@ -94,7 +94,7 @@ def main():
     audios = ["speech", "music", "silence", "unknown"]
 
     # Sessions
-    for i in range(100):
+    for _i in range(100):
         start = _utcnow() - timedelta(days=random.randint(0, 30), hours=random.randint(0, 23))
         end = start + timedelta(minutes=random.randint(5, 45))
         cursor.execute(
@@ -118,7 +118,7 @@ def main():
         )
 
     # Multi-modal logs
-    for i in range(200):
+    for _i in range(200):
         ts = _utcnow() - timedelta(days=random.randint(0, 30), hours=random.randint(0, 23))
         cursor.execute(
             """

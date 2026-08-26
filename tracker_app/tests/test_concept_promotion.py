@@ -127,7 +127,7 @@ def test_reject_triage_removes_from_queue(db):
 
 def test_promote_is_idempotent(db):
     _seed(db, "cellular respiration", freq=20)
-    first = cp.promote_concept_to_deck("cellular respiration")
+    cp.promote_concept_to_deck("cellular respiration")
     second = cp.promote_concept_to_deck("cellular respiration")
     assert second is None
     assert len(_triage_concepts(db)) == 1

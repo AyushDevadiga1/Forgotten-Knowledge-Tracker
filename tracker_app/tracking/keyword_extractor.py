@@ -677,9 +677,6 @@ def extract_concepts(text: str, top_n: int = TEXT_TOP_KEYWORDS) -> dict:
             try:
                 raw = yake.extract_keywords(text)
                 if raw:
-                    min_s = min(s for _, s in raw)
-                    max_s = max(s for _, s in raw)
-                    rng = max(max_s - min_s, 1e-9)
                     for kw, s in raw:
                         kw = kw.lower().strip()
                         if len(kw) < YAKEKeywordExtractor.MIN_KW_LEN:

@@ -12,9 +12,7 @@ import unittest
 import json
 import os
 import sys
-import tempfile
 from datetime import datetime, timedelta
-from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 

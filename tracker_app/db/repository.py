@@ -129,7 +129,7 @@ class LearningRepository:
             LearningItem.status,
             LearningItem.next_review_date,
         ).all()
-        for item_id, created, status, next_review in items:
+        for _item_id, created, status, next_review in items:
             if created is not None and created.date() in by_day:
                 by_day[created.date()]["added"] += 1
             if status == "active" and next_review is not None and next_review.date() in by_day:

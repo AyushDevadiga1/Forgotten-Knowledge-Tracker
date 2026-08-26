@@ -112,7 +112,7 @@ class TestTrainerMarkAndCleanup(FeedbackUsedBase):
         now = datetime.datetime.utcnow()
         recent_used = self._add_sample(now - datetime.timedelta(days=10), used=True)
 
-        X, y = load_feedback_samples()
+        X, _ = load_feedback_samples()
 
         self.assertEqual(len(X), 1)
         with self.Session() as db:

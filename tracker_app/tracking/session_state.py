@@ -1,6 +1,5 @@
 ﻿import json
 import logging
-from datetime import datetime
 
 from tracker_app.db.models import SessionLocal, SessionToggle, EarCalibration
 from tracker_app.utils import utcnow as _utcnow
