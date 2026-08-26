@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Share2, RefreshCw, Network, AlertTriangle, MousePointer2 } from 'lucide-react'
-import { m } from 'motion/react'
+import { m, useReducedMotion } from 'motion/react'
 import { api, GraphStats, KnowledgeGap, ConceptDrift, GraphNode } from '@/api'
 import PageHeader from '@/components/PageHeader'
 import ForceGraph from '@/components/ForceGraph'
@@ -8,17 +8,29 @@ import ConceptPanel from '@/components/ConceptPanel'
 import { GraphSkeleton } from '@/components/PageSkeleton'
 import BackendDown from '@/components/BackendDown'
 import DriftBadge, { type DriftStatus } from '@/components/DriftBadge'
+import AnimatedNumber from '@/components/AnimatedNumber'
+import { easeOut } from '@/lib/animation'
 import { cn } from '@/lib/utils'
 
-function StatChip({ label, value, icon: Icon }: { label: string; value: string | number; icon: typeof Network }) {
+function StatChip({ label, value, icon: Icon, delay = 0 }: { label: string; value: number | string; icon: typeof Network; delay?: number }) {
+    const reduced = useReducedMotion()
     return (
-        <div className="border border-border bg-card p-3.5">
+        <m.div
+            className="border border-border bg-card p-3.5 transition-colors duration-200 hover:border-primary/30 hover:shadow-fkt-glow-sm"
+            initial={reduced ? false : { opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay, duration: 0.35, ease: easeOut }}
+        >
             <div className="mb-2 flex items-center gap-1.5">
                 <Icon size={11} strokeWidth={1.5} className="text-muted-foreground" />
                 <span className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground">{label}</span>
             </div>
-            <span className="font-mono text-xl text-foreground">{value}</span>
-        </div>
+            {typeof value === 'number' ? (
+                <AnimatedNumber value={value} className="font-mono text-xl text-foreground" />
+            ) : (
+                <span className="font-mono text-xl text-foreground">{value}</span>
+            )}
+        </m.div>
     )
 }
 
@@ -99,12 +111,13 @@ export default function GraphPage() {
             </PageHeader>
 
             <div className="grid grid-cols-3 gap-3">
-                <StatChip label="Concepts" value={stats?.total_concepts ?? 0} icon={Network} />
-                <StatChip label="Connections" value={stats?.total_edges ?? 0} icon={Share2} />
+                <StatChip label="Concepts" value={stats?.total_concepts ?? 0} icon={Network} delay={0} />
+                <StatChip label="Connections" value={stats?.total_edges ?? 0} icon={Share2} delay={0.06} />
                 <StatChip
                     label="Avg Memory"
                     value={stats ? `${(stats.avg_memory_strength * 100).toFixed(0)}%` : '—'}
                     icon={AlertTriangle}
+                    delay={0.12}
                 />
             </div>
 
