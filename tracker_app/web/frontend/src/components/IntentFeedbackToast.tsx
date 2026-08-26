@@ -98,9 +98,9 @@ export default function IntentFeedbackToast() {
                 <m.div
                     key={prediction.id}
                     className="fixed bottom-6 right-6 z-50 w-80 border border-border bg-card shadow-2xl"
-                    initial={reduced ? false : { x: 32, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    exit={reduced ? undefined : { x: 32, opacity: 0 }}
+                    initial={reduced ? false : { x: 32, opacity: 0, scale: 0.95 }}
+                    animate={{ x: 0, opacity: 1, scale: 1 }}
+                    exit={reduced ? undefined : { x: 32, opacity: 0, scale: 0.95 }}
                     transition={spring}
                 >
                     <div className="flex items-center justify-between border-b border-border bg-background p-3">
