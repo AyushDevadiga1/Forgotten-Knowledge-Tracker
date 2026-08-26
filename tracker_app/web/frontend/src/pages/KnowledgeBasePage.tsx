@@ -80,50 +80,39 @@ export default function KnowledgeBasePage() {
                 </div>
             </PageHeader>
 
-            <div className="flex-1 overflow-auto border border-border bg-card">
+            <div className="flex-1 overflow-auto">
                 {filtered.length === 0 ? (
                     <EmptyState
                         label={items.length === 0 ? 'No concepts yet — add some' : 'No matches found'}
                         hint={items.length === 0 ? 'Use Add to ingest your first concept.' : 'Try a different search term.'}
                     />
                 ) : (
-                    <table className="w-full text-left">
-                        <thead className="sticky top-0 border-b border-border bg-background">
-                            <tr>
-                                {['Question', 'Type', 'Difficulty', 'Success', 'Reviews', 'Next Review'].map((h) => (
-                                    <th key={h} className="whitespace-nowrap p-3 text-[10px] font-normal uppercase tracking-[0.12em] text-muted-foreground">
-                                        {h}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.map((item, i) => (
-                                <m.tr
-                                    key={item.id}
-                                    initial={reduced ? false : { opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: Math.min(i * 0.015, 0.4), duration: 0.25, ease: easeOut }}
-                                    className="group cursor-pointer border-b border-border/40 transition-colors hover:bg-slate-800/40"
-                                >
-                                    <td className="max-w-[280px] p-3 text-sm text-foreground">
-                                        <span className="block truncate" title={item.question}>
-                                            {item.question}
-                                        </span>
-                                    </td>
-                                    <td className="p-3 font-mono text-[10px] uppercase text-muted-foreground">{item.item_type}</td>
-                                    <td className={cn('p-3 font-mono text-[10px] uppercase', diffColor[item.difficulty] ?? 'text-muted-foreground')}>
-                                        {item.difficulty}
-                                    </td>
-                                    <td className="p-3 font-mono text-[12px] text-primary">{Math.round(item.success_rate)}%</td>
-                                    <td className="p-3 font-mono text-[12px] text-muted-foreground">{item.total_reviews}</td>
-                                    <td className="p-3 font-mono text-[10px] text-muted-foreground">
-                                        {item.next_review_date ? new Date(item.next_review_date).toLocaleDateString() : '—'}
-                                    </td>
-                                </m.tr>
-                            ))}
-                        </tbody>
-                    </table>
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
+                        {filtered.map((item, i) => (
+                            <m.div
+                                key={item.id}
+                                initial={reduced ? false : { opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: Math.min(i * 0.02, 0.3), duration: 0.25, ease: easeOut }}
+                                className="border border-border bg-background p-4 transition-colors hover:border-primary/30 hover:shadow-fkt-glow-sm"
+                            >
+                                <div className="mb-2 flex items-start justify-between gap-2">
+                                    <span className="line-clamp-2 text-sm text-foreground">{item.question}</span>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="border border-border px-1.5 py-0.5 font-mono text-[9px] uppercase text-muted-foreground">{item.item_type}</span>
+                                    <span className={cn('font-mono text-[9px] uppercase', diffColor[item.difficulty] ?? 'text-muted-foreground')}>{item.difficulty}</span>
+                                    <span className="font-mono text-[10px] text-primary">{Math.round(item.success_rate)}%</span>
+                                    <span className="font-mono text-[10px] text-muted-foreground">{item.total_reviews} reviews</span>
+                                </div>
+                                {item.next_review_date && (
+                                    <p className="mt-2 font-mono text-[9px] text-muted-foreground">
+                                        next: {new Date(item.next_review_date).toLocaleDateString()}
+                                    </p>
+                                )}
+                            </m.div>
+                        ))}
+                    </div>
                 )}
             </div>
         </div>
