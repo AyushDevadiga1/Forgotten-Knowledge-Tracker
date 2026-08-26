@@ -20,7 +20,8 @@ export default function DifficultyBadge({ difficulty, className }: DifficultyBad
             className={cn('inline-flex items-center gap-1.5 border px-2 py-0.5 text-[9px] font-mono uppercase tracking-widest', c.cls, className)}
             initial={{ scale: 0.85, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.2 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+            whileHover={{ scale: 1.05, boxShadow: '0 0 8px rgba(var(--primary-rgb), 0.2)' }}
         >
             <m.span
                 className={cn('h-1 w-1', c.dot)}
