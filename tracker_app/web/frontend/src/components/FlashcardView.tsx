@@ -1,8 +1,9 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { m } from 'motion/react'
 import { Eye } from 'lucide-react'
 import type { QuizQuestion } from '@/api'
 import { easeOut } from '@/lib/animation'
+import { cn } from '@/lib/utils'
 
 interface FlashcardViewProps {
     quiz: QuizQuestion
@@ -12,11 +13,17 @@ interface FlashcardViewProps {
 
 export default function FlashcardView({ quiz, onAnswer, action }: FlashcardViewProps) {
     const [flipped, setFlipped] = useState(false)
+    const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null)
 
     return (
         <div className="space-y-4">
             <m.div
-                className="relative flex min-h-[200px] cursor-pointer items-center justify-center border border-border bg-background p-8 text-center"
+                className={cn(
+                    "relative flex min-h-[200px] cursor-pointer items-center justify-center border bg-background p-8 text-center transition-colors",
+                    feedback === 'correct' ? 'border-primary' : feedback === 'wrong' ? 'border-red-500' : 'border-border'
+                )}
+                animate={feedback === 'wrong' ? { x: [0, -6, 6, -4, 4, 0] } : {}}
+                transition={{ duration: 0.4, ease: easeOut }}
                 onClick={() => !flipped && setFlipped(true)}
                 whileHover={!flipped ? { scale: 1.01 } : undefined}
                 whileTap={!flipped ? { scale: 0.99 } : undefined}
@@ -57,13 +64,13 @@ export default function FlashcardView({ quiz, onAnswer, action }: FlashcardViewP
                 >
                     <div className="flex gap-2">
                         <button
-                            onClick={() => { onAnswer(true); setFlipped(false) }}
+                            onClick={() => { setFeedback('correct'); setTimeout(() => { onAnswer(true); setFlipped(false); setFeedback(null) }, 500) }}
                             className="border border-primary/40 bg-primary/10 px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-primary transition-colors hover:bg-primary/20"
                         >
                             Got it
                         </button>
                         <button
-                            onClick={() => { onAnswer(false); setFlipped(false) }}
+                            onClick={() => { setFeedback('wrong'); setTimeout(() => { onAnswer(false); setFlipped(false); setFeedback(null) }, 500) }}
                             className="border border-red-500/40 bg-red-500/10 px-4 py-2 font-mono text-[10px] uppercase tracking-widest text-red-500 transition-colors hover:bg-red-500/20"
                         >
                             Missed it
