@@ -1,11 +1,19 @@
+import { m, useReducedMotion } from 'motion/react'
 import { Skeleton } from '@/components/ui/skeleton'
 
 function SkeletonCard({ delay = '0ms' }: { delay?: string }) {
+    const reduced = useReducedMotion()
     return (
-        <div className="border border-border bg-card p-4" style={{ animationDelay: delay }}>
+        <m.div
+            className="border border-border bg-card p-4"
+            style={{ animationDelay: delay }}
+            initial={reduced ? false : { opacity: 0.6 }}
+            animate={reduced ? {} : { opacity: [0.6, 1, 0.6] }}
+            transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+        >
             <Skeleton className="mb-4 h-2.5 w-24" />
             <Skeleton className="h-8 w-16" />
-        </div>
+        </m.div>
     )
 }
 
@@ -83,3 +91,4 @@ export function QuizSkeleton() {
         </div>
     )
 }
+
