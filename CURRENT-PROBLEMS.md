@@ -119,11 +119,11 @@ No `.flake8`, `ruff.toml`, `mypy.ini`, `.eslintrc`, or `.prettierrc`. Code style
 
 ### M1: Single quiz question type
 
-**Status:** OPEN: richer quiz types (frontend, requires .tsx write access)
+**Status:** FIXED (0389745): flashcard + fill-in-the-blank quiz types, quiz_type dispatcher, FlashcardView.tsx, FillBlankView.tsx, QuizPage.tsx switches on quiz_type
 
-`quiz_engine.py` generates exactly one shape: "Which of these concepts have you been studying?" No cloze, no typed recall, no fill-in-the-blank.
 
-**Status:** Identified in HEALTH.md Problem 3. No fix started.
+
+**Fix:** Added generate_flashcard(), generate_fill_blank(), generate_quiz() dispatcher with type query param. Frontend: FlashcardView.tsx, FillBlankView.tsx, QuizPage.tsx switches on quiz_type.
 
 ---
 
