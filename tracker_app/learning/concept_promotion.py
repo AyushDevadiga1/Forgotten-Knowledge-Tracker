@@ -261,6 +261,7 @@ def approve_triage(entry_id: int) -> Optional[str]:
         if not entry or entry.status != "pending":
             return None
         from tracker_app.db.models import LearningItem
+
         dup = db.query(LearningItem).filter(LearningItem.question == entry.concept).first()
         if dup:
             entry.status = "approved"
@@ -301,9 +302,7 @@ def reject_triage(entry_id: int) -> bool:
 def get_triage_entries(status: str = "pending") -> List[Dict]:
     """Return triage entries filtered by status."""
     with SessionLocal() as db:
-        rows = db.query(TriageQueue).filter(
-            TriageQueue.status == status
-        ).order_by(TriageQueue.created_at.desc()).all()
+        rows = db.query(TriageQueue).filter(TriageQueue.status == status).order_by(TriageQueue.created_at.desc()).all()
     return [
         {
             "id": r.id,

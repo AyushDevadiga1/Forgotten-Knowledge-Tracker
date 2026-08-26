@@ -111,9 +111,7 @@ class LearningTracker:
 
             scheduler = get_scheduler()
             with models.SessionLocal() as db:
-                concept = db.query(TrackedConcept).filter(
-                    TrackedConcept.concept == question
-                ).first()
+                concept = db.query(TrackedConcept).filter(TrackedConcept.concept == question).first()
                 if concept is None:
                     return
 
@@ -151,7 +149,11 @@ class LearningTracker:
             )
 
             success_rate = item.correct_count / item.total_reviews if item.total_reviews > 0 else 0
-            status = "mastered" if (success_rate > MASTERY_SUCCESS_RATE and item.repetitions > MASTERY_MIN_REPETITIONS) else "active"
+            status = (
+                "mastered"
+                if (success_rate > MASTERY_SUCCESS_RATE and item.repetitions > MASTERY_MIN_REPETITIONS)
+                else "active"
+            )
 
             # Update item record with new SM-2 state
             item_record.interval = item.interval

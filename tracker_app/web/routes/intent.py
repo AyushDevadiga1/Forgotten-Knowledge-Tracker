@@ -156,8 +156,12 @@ def get_recent_intent():
                 .order_by(IntentPrediction.prompted_at.desc())
                 .first()
             )
-            if last_prompt and last_prompt[0] is not None and _utcnow() - last_prompt[0] < timedelta(minutes=TOAST_COOLDOWN_MINUTES):
-                    return jsonify({"success": True, "data": None})
+            if (
+                last_prompt
+                and last_prompt[0] is not None
+                and _utcnow() - last_prompt[0] < timedelta(minutes=TOAST_COOLDOWN_MINUTES)
+            ):
+                return jsonify({"success": True, "data": None})
 
             now = _utcnow()
             # Atomic claim: the conditional UPDATE flips prompted_at from NULL,
@@ -271,6 +275,7 @@ def intent_stats():
     """Return aggregated intent accuracy statistics."""
     try:
         from tracker_app.tracking.activity_monitor import IntentValidator
+
         stats = IntentValidator().get_accuracy_stats()
         return jsonify({"success": True, "data": stats})
     except Exception as e:

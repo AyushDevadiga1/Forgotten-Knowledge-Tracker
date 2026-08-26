@@ -1,4 +1,4 @@
-﻿import json
+import json
 import logging
 
 from tracker_app.db.models import SessionLocal, SessionToggle, EarCalibration

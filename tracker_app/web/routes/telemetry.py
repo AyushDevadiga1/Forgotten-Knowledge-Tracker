@@ -41,32 +41,31 @@ def get_telemetry_summary():
             for log in logs:
                 if log.timestamp >= current_bucket + bucket_size:
                     if bucket_vals:
-                        attention_series.append({
-                            "t": current_bucket.isoformat(),
-                            "v": round(sum(bucket_vals) / len(bucket_vals), 1),
-                        })
+                        attention_series.append(
+                            {
+                                "t": current_bucket.isoformat(),
+                                "v": round(sum(bucket_vals) / len(bucket_vals), 1),
+                            }
+                        )
                     bucket_vals = []
                     current_bucket = log.timestamp.replace(second=0, microsecond=0)
-                    current_bucket = current_bucket.replace(
-                        minute=(current_bucket.minute // 10) * 10
-                    )
+                    current_bucket = current_bucket.replace(minute=(current_bucket.minute // 10) * 10)
                 if log.attention_score is not None:
                     bucket_vals.append(log.attention_score)
             if bucket_vals:
-                attention_series.append({
-                    "t": current_bucket.isoformat(),
-                    "v": round(sum(bucket_vals) / len(bucket_vals), 1),
-                })
+                attention_series.append(
+                    {
+                        "t": current_bucket.isoformat(),
+                        "v": round(sum(bucket_vals) / len(bucket_vals), 1),
+                    }
+                )
 
             # Intent distribution
             intent_counter = Counter()
             for log in logs:
                 if log.intent_label:
                     intent_counter[log.intent_label] += 1
-            intent_distribution = [
-                {"label": k, "count": v}
-                for k, v in intent_counter.most_common(10)
-            ]
+            intent_distribution = [{"label": k, "count": v} for k, v in intent_counter.most_common(10)]
 
             # Top OCR keywords
             keyword_counter = Counter()
@@ -80,30 +79,21 @@ def get_telemetry_summary():
                             keyword_counter.update(kw)
                     except (json.JSONDecodeError, TypeError):
                         pass
-            top_keywords = [
-                {"keyword": k, "count": v}
-                for k, v in keyword_counter.most_common(15)
-            ]
+            top_keywords = [{"keyword": k, "count": v} for k, v in keyword_counter.most_common(15)]
 
             # Audio label distribution
             audio_counter = Counter()
             for log in logs:
                 if log.audio_label:
                     audio_counter[log.audio_label] += 1
-            audio_distribution = [
-                {"label": k, "count": v}
-                for k, v in audio_counter.most_common(10)
-            ]
+            audio_distribution = [{"label": k, "count": v} for k, v in audio_counter.most_common(10)]
 
             # Window time breakdown
             window_counter = Counter()
             for log in logs:
                 if log.window_title and log.window_title != "Unknown":
                     window_counter[log.window_title] += 1
-            top_windows = [
-                {"window": k, "count": v}
-                for k, v in window_counter.most_common(10)
-            ]
+            top_windows = [{"window": k, "count": v} for k, v in window_counter.most_common(10)]
 
             # Intent accuracy
             accuracies = db.query(IntentAccuracy).all()
@@ -116,18 +106,20 @@ def get_telemetry_summary():
                 for a in accuracies
             ]
 
-            return jsonify({
-                "success": True,
-                "data": {
-                    "attention_series": attention_series,
-                    "intent_distribution": intent_distribution,
-                    "top_keywords": top_keywords,
-                    "audio_distribution": audio_distribution,
-                    "top_windows": top_windows,
-                    "intent_accuracy": intent_accuracy,
-                    "total_logs": len(logs),
-                },
-            })
+            return jsonify(
+                {
+                    "success": True,
+                    "data": {
+                        "attention_series": attention_series,
+                        "intent_distribution": intent_distribution,
+                        "top_keywords": top_keywords,
+                        "audio_distribution": audio_distribution,
+                        "top_windows": top_windows,
+                        "intent_accuracy": intent_accuracy,
+                        "total_logs": len(logs),
+                    },
+                }
+            )
     except Exception as e:
         logger.error(f"telemetry_summary: {e}")
         return jsonify({"success": False, "error": str(e)}), 500

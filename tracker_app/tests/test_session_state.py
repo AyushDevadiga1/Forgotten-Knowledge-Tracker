@@ -1,4 +1,4 @@
-﻿"""Tests for the shared study-session state (DB-backed)."""
+"""Tests for the shared study-session state (DB-backed)."""
 
 import pytest
 from datetime import datetime
@@ -116,6 +116,7 @@ def test_externally_written_state_is_read():
 
 def test_intent_gate_default_allows_studying_only():
     from tracker_app.config import SESSION_ALLOWED_INTENTS
+
     assert "studying" in SESSION_ALLOWED_INTENTS
 
 

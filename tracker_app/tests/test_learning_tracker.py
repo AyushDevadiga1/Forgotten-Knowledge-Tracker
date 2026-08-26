@@ -1,4 +1,4 @@
-﻿"""
+"""
 Unit Tests: LearningTracker
 ============================
 Tests core CRUD and review logic with isolated SQLAlchemy in-memory DB.
@@ -104,6 +104,7 @@ def test_review_sm2_persists_last_review_date(tracker):
 def _setup_concept_feedback(db, monkeypatch):
     """Helper: seed a tracked concept and patch ConceptScheduler."""
     from tracker_app.learning.concept_scheduler import ConceptScheduler
+
     scheduler = ConceptScheduler()
     monkeypatch.setattr(cs, "SessionLocal", db)
     monkeypatch.setattr(cs, "get_scheduler", lambda: scheduler)

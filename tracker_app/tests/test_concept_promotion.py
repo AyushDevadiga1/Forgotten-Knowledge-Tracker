@@ -1,4 +1,4 @@
-﻿"""Tests: tracked-concept -> triage queue -> learning deck promotion.
+"""Tests: tracked-concept -> triage queue -> learning deck promotion.
 
 Concepts now route through a triage queue before being promoted to the deck.
 backfill_items() and promote_concept_to_deck() add to the queue.

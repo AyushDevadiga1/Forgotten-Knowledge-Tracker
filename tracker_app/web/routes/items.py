@@ -171,6 +171,7 @@ def unarchive_item(item_id):
 
 # --- M4: Orphaned feature endpoints ---
 
+
 @items_bp.route("/search", methods=["GET"])
 def search_items():
     """Search learning items by query string."""
@@ -194,8 +195,14 @@ def export_items():
             return jsonify({"success": False, "error": "format must be 'json' or 'anki'"}), 400
         exported = get_tracker().export_items(format=fmt)
         if fmt == "anki":
-            return exported, 200, {"Content-Type": "text/tab-separated-values; charset=utf-8",
-                                    "Content-Disposition": "attachment; filename=fkt_export.tsv"}
+            return (
+                exported,
+                200,
+                {
+                    "Content-Type": "text/tab-separated-values; charset=utf-8",
+                    "Content-Disposition": "attachment; filename=fkt_export.tsv",
+                },
+            )
         return jsonify({"success": True, "data": json.loads(exported)})
     except Exception as e:
         logger.error("export_items: %s", e)
@@ -209,6 +216,7 @@ def export_items():
 def get_triage():
     try:
         from tracker_app.learning.concept_promotion import get_triage_entries
+
         status = request.args.get("status", "pending")
         entries = get_triage_entries(status=status)
         return jsonify({"success": True, "data": entries, "count": len(entries)})
@@ -221,6 +229,7 @@ def get_triage():
 def approve_triage(entry_id):
     try:
         from tracker_app.learning.concept_promotion import approve_triage as _approve
+
         item_id = _approve(entry_id)
         return jsonify({"success": True, "item_id": item_id})
     except Exception as e:
@@ -232,6 +241,7 @@ def approve_triage(entry_id):
 def reject_triage(entry_id):
     try:
         from tracker_app.learning.concept_promotion import reject_triage as _reject
+
         result = _reject(entry_id)
         return jsonify({"success": True, "rejected": result})
     except Exception as e:

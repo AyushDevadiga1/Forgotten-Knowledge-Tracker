@@ -255,12 +255,22 @@ def test_reexposure_auto_promotes_to_deck_at_threshold(db, monkeypatch, no_graph
     with db() as session:
         tc = session.query(TrackedConcept).filter(TrackedConcept.concept == "hash table").first()
         assert tc.frequency_count == PROMOTE_AFTER_ENCOUNTERS
-        assert session.query(TriageQueue).filter(TriageQueue.concept == "hash table", TriageQueue.status == "pending").count() == 1
+        assert (
+            session.query(TriageQueue)
+            .filter(TriageQueue.concept == "hash table", TriageQueue.status == "pending")
+            .count()
+            == 1
+        )
 
     # A 4th encounter must not create a duplicate triage entry.
     scheduler.add_concept("hash table", confidence=0.5, context="browser:Notes")
     with db() as session:
-        assert session.query(TriageQueue).filter(TriageQueue.concept == "hash table", TriageQueue.status == "pending").count() == 1
+        assert (
+            session.query(TriageQueue)
+            .filter(TriageQueue.concept == "hash table", TriageQueue.status == "pending")
+            .count()
+            == 1
+        )
 
 
 def test_reexposure_does_not_promote_noise(db, monkeypatch, no_graph_sync):

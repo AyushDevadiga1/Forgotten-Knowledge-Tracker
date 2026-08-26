@@ -99,6 +99,7 @@ def daily_summary():
     """Return daily summary for a given date (default: today)."""
     try:
         from tracker_app.tracking.activity_monitor import TrackingAnalytics
+
         date_str = request.args.get("date")
         date = None
         if date_str:
@@ -118,6 +119,7 @@ def trend_analysis():
     """Return N-day tracking trend analysis."""
     try:
         from tracker_app.tracking.activity_monitor import TrackingAnalytics
+
         days = request.args.get("days", 7, type=int)
         if days < 1 or days > 365:
             return jsonify({"success": False, "error": "days must be 1-365"}), 400

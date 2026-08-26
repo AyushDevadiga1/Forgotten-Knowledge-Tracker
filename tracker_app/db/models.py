@@ -369,6 +369,7 @@ class FeedbackTrainingSample(Base):
 
 class SessionToggle(Base):
     """Stores the start/stop toggle state. Single row (id=1)."""
+
     __tablename__ = "session_toggle"
 
     id = Column(Integer, primary_key=True, default=1)
@@ -380,6 +381,7 @@ class SessionToggle(Base):
 
 class EarCalibration(Base):
     """Stores the latest EAR calibration data. Single row (id=1)."""
+
     __tablename__ = "ear_calibration"
 
     id = Column(Integer, primary_key=True, default=1)

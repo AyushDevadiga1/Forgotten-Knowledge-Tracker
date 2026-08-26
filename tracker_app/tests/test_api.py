@@ -45,7 +45,6 @@ class TestAPIBase(unittest.TestCase):
         app.config["WTF_CSRF_ENABLED"] = False  # Disable CSRF for tests
         self.client = app.test_client()
 
-
     def tearDown(self):
         Base.metadata.drop_all(bind=self.test_engine)
         models.engine = self.orig_engine
