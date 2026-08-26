@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+﻿import { useEffect, useState, useCallback } from 'react'
 import { m, AnimatePresence, useReducedMotion } from 'motion/react'
 import { Search, AlertTriangle, Activity, Database } from 'lucide-react'
 import { api, Stats, LearningItem, TrendDay } from '../api'
@@ -228,19 +228,20 @@ export default function OverviewPage() {
                     {panelTitle(`Due Today · ${dueItems.length}`)}
                     <div className="flex flex-1 flex-col overflow-auto">
                         {dueItems.length === 0 && (
-                            <span className="py-4 text-center font-mono text-xs text-muted-foreground">
-                                No items due — memory up to date
-                            </span>
+                            <div className="flex flex-1 flex-col items-center justify-center gap-2 py-4 text-muted-foreground">
+                                <Activity size={18} strokeWidth={1.5} />
+                                <span className="font-mono text-xs">No items due — memory up to date</span>
+                            </div>
                         )}
                         <AnimatePresence initial={false}>
-                            {dueItems.map((item) => (
+                            {dueItems.map((item, i) => (
                                 <m.div
                                     key={item.id}
                                     layout
                                     initial={reduced ? false : { opacity: 0, y: 8 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={reduced ? undefined : { opacity: 0, x: -14 }}
-                                    transition={{ duration: 0.2, ease: easeOut }}
+                                    transition={{ delay: i * 0.03, duration: 0.2, ease: easeOut }}
                                     className="flex items-center justify-between border-b border-border/40 py-2.5 last:border-0"
                                 >
                                     <span className="truncate text-[12px] text-foreground" title={item.question}>
