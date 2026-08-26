@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { m, AnimatePresence, useReducedMotion } from 'motion/react'
-import { Home, Activity, Database, PlusCircle, Search, Share2, Zap, ChevronLeft } from 'lucide-react'
+import { Home, Activity, Database, PlusCircle, Search, Share2, Zap, ChevronLeft, BarChart3 } from 'lucide-react'
 import IntentFeedbackToast from '../components/IntentFeedbackToast'
 import MicroQuizModal from '../components/MicroQuizModal'
 import SessionToggleButton from '../components/SessionToggleButton'
@@ -16,6 +16,7 @@ const navItems = [
     { id: 'graph', icon: Share2, label: 'Knowledge Graph' },
     { id: 'quiz', icon: Zap, label: 'Micro-Quiz' },
     { id: 'add', icon: PlusCircle, label: 'Add Concept' },
+    { id: 'telemetry', icon: BarChart3, label: 'Telemetry' },
 ]
 
 function SessionIndicator() {

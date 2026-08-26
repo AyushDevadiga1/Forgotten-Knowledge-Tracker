@@ -12,6 +12,7 @@ from tracker_app.web.routes.items import items_bp
 from tracker_app.web.routes.quiz import quiz_bp
 from tracker_app.web.routes.session import session_bp
 from tracker_app.web.routes.stats import stats_bp
+from tracker_app.web.routes.telemetry import telemetry_bp
 
 ALL_BLUEPRINTS = (
     health_bp,
@@ -22,6 +23,7 @@ ALL_BLUEPRINTS = (
     session_bp,
     intent_bp,
     ingest_bp,
+    telemetry_bp,
 )
 
 __all__ = [
@@ -34,4 +36,5 @@ __all__ = [
     "quiz_bp",
     "session_bp",
     "stats_bp",
+    "telemetry_bp",
 ]

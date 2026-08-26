@@ -1,6 +1,6 @@
 # Current Problems - FKT
 
-> Last updated: 2026-08-25
+> Last updated: 2026-08-26
 > Sources: `docs/project-metrics/HEALTH.md`, `docs/diagnosis-2026-08-24.md` (9-phase repo scan)
 
 ---
@@ -129,11 +129,11 @@ No `.flake8`, `ruff.toml`, `mypy.ini`, `.eslintrc`, or `.prettierrc`. Code style
 
 ### M2: Rich telemetry, zero dashboards
 
-**Status:** OPEN: telemetry dashboards (frontend, requires .tsx write access)
+**Status:** FIXED (M2): telemetry dashboard backend endpoint + frontend page
 
 6 signals collected (OCR, audio, webcam attention, CLE, intent, window titles). All persisted. None shown to user. 6 DB tables with zero UI surfaces.
 
-**Status:** Identified in HEALTH.md Problem 4. No fix started.
+**Fix:** Added GET /api/v1/telemetry/summary endpoint aggregating 24h of attention, intent, audio, keyword, and window data. Frontend TelemetryPage.tsx renders 6 panels with TrendChart, BarRow bars, and intent accuracy badges. Wired into App.tsx routes and MainLayout nav.
 
 ---
 

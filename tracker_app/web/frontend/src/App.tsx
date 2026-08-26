@@ -7,6 +7,7 @@ import ReviewPage from './pages/ReviewPage'
 import KnowledgeBasePage from './pages/KnowledgeBasePage'
 import AddConceptPage from './pages/AddConceptPage'
 import QuizPage from './pages/QuizPage'
+import TelemetryPage from './pages/TelemetryPage'
 import { GraphSkeleton } from './components/PageSkeleton'
 import { SessionProvider } from './context/SessionContext'
 
@@ -32,6 +33,7 @@ function App() {
                 <Route path="add" element={<AddConceptPage />} />
                 <Route path="graph" element={<GraphPage />} />
                 <Route path="quiz" element={<QuizPage />} />
+                <Route path="telemetry" element={<TelemetryPage />} />
               </Route>
             </Routes>
           </Suspense>

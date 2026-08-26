@@ -194,6 +194,9 @@ export const api = {
             body: JSON.stringify({ concept, was_correct }),
         }),
 
+    /** GET /api/v1/telemetry/summary */
+    getTelemetrySummary: () => apiFetch<{ success: boolean; data: TelemetrySummary }>('/telemetry/summary'),
+
     /** GET /api/v1/health */
     health: () => apiFetch<{ status: string }>('/health'),
 }
@@ -244,6 +247,16 @@ export interface ConceptDetail {
     concept: string
     memory_score: number
     history: ConceptHistoryEntry[]
+}
+
+export interface TelemetrySummary {
+    attention_series: { t: string; v: number }[]
+    intent_distribution: { label: string; count: number }[]
+    top_keywords: { keyword: string; count: number }[]
+    audio_distribution: { label: string; count: number }[]
+    top_windows: { window: string; count: number }[]
+    intent_accuracy: { intent: string; accuracy: number; total: number }[]
+    total_logs: number
 }
 
 export interface QuizQuestion {
