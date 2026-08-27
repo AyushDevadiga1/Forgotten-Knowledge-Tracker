@@ -4,6 +4,7 @@ import { Search, AlertTriangle, Activity, Database } from 'lucide-react'
 import { api, Stats, LearningItem, TrendDay } from '../api'
 import { useSession } from '../context/SessionContext'
 import StatCard from '../components/StatCard'
+import AnimatedNumber from '../components/AnimatedNumber'
 import TrendChart from '../components/TrendChart'
 import StreakFlame from '../components/StreakFlame'
 import SessionToggleButton from '../components/SessionToggleButton'
@@ -225,7 +226,7 @@ export default function OverviewPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.24, duration: 0.35, ease: easeOut }}
                 >
-                    {panelTitle(`Due Today · ${dueItems.length}`)}
+                    <span className="mb-4 flex items-baseline gap-2 text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Due Today · <AnimatedNumber value={dueItems.length} className="font-mono text-primary" /></span>
                     <div className="flex flex-1 flex-col overflow-auto">
                         {dueItems.length === 0 && (
                             <div className="flex flex-1 flex-col items-center justify-center gap-2 py-4 text-muted-foreground">
