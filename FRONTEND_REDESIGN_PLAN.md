@@ -87,4 +87,4 @@ Phase A is not optional and blocks everything else. After that, prioritize by wh
 - **No swapping the visual identity.** FKT's dark/monospace/terminal look stays; Bklit and Kokonut are sources of *components and motion patterns*, not a new color palette or typeface direction.
 - **No animating anything during the actual OCR/audio/webcam capture indicators in a way that could be distracting while the user is trying to concentrate.** The session toggle's glow (Phase B) is the one deliberate exception, and it's a slow, ambient pulse, not attention-grabbing motion.
 
-**Status: Phase A complete** (shadcn/ui, motion, animejs installed and configured). Phases B–H not started.
+**Status: Complete** — Phase A foundation + Phases B–H all implemented (see docs/superpowers/plans/2026-08-27-frontend-redesign.md).
