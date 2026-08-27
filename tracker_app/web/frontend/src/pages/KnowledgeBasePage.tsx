@@ -5,7 +5,7 @@ import { api, LearningItem } from '../api'
 import PageHeader from '../components/PageHeader'
 import EmptyState from '../components/EmptyState'
 import { Skeleton } from '../components/ui/skeleton'
-import { easeOut } from '../lib/animation'
+import { spring, easeOut } from '../lib/animation'
 import { cn } from '@/lib/utils'
 
 const diffColor: Record<string, string> = {
@@ -17,6 +17,7 @@ const diffColor: Record<string, string> = {
 export default function KnowledgeBasePage() {
     const [items, setItems] = useState<LearningItem[]>([])
     const [query, setQuery] = useState('')
+    const [focused, setFocused] = useState(false)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const reduced = useReducedMotion()
@@ -67,7 +68,13 @@ export default function KnowledgeBasePage() {
                     <span className="border border-border px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
                         {filtered.length} ITEMS
                     </span>
-                    <div className="flex w-64 items-center border border-border bg-card px-3 py-1.5 transition-colors focus-within:border-primary">
+                    <m.div
+                        className="flex items-center border border-border bg-card px-3 py-1.5 transition-colors focus-within:border-primary"
+                        animate={{ width: focused ? 'min(20rem, 40vw)' : '10rem' }}
+                        transition={spring}
+                        onFocus={() => setFocused(true)}
+                        onBlur={() => setFocused(false)}
+                    >
                         <Search size={13} strokeWidth={1.5} className="mr-2 shrink-0 text-muted-foreground" />
                         <input
                             type="text"
@@ -76,7 +83,7 @@ export default function KnowledgeBasePage() {
                             placeholder="Search questions, tags…"
                             className="w-full bg-transparent font-mono text-[12px] text-foreground outline-none placeholder:text-muted-foreground"
                         />
-                    </div>
+                    </m.div>
                 </div>
             </PageHeader>
 
