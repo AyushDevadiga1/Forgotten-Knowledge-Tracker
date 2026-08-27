@@ -49,6 +49,19 @@ export default function TrendChart({ data, color = 'var(--primary)', height = 32
                     <stop offset="100%" stopColor={color} stopOpacity={0} />
                 </linearGradient>
             </defs>
+            {[0.25, 0.5, 0.75].map((f) => (
+                <line
+                    key={f}
+                    x1={0}
+                    y1={H * f}
+                    x2={W}
+                    y2={H * f}
+                    stroke="currentColor"
+                    strokeOpacity={0.08}
+                    strokeWidth={0.5}
+                    strokeDasharray="2 3"
+                />
+            ))}
             <m.path
                 d={area}
                 fill={`url(#${gradientId})`}
