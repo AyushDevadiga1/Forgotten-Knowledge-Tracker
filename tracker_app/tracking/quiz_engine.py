@@ -7,7 +7,7 @@ When idle for consecutive cycles, FKT quizzes the user via the dashboard
 import random
 import logging
 from datetime import datetime
-from typing import Optional
+from typing import Dict, Optional
 from tracker_app.learning.text_quality_validator import is_plausible_concept
 
 
@@ -95,6 +95,38 @@ def should_show_quiz(
 # â”€â”€â”€ Quiz generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
+def _content_backed_pool() -> Dict[str, str]:
+    """{concept: latest real excerpt} for concepts with persisted content.
+
+    Only concepts whose most recent encounter has a real, non-trivial excerpt
+    (shared _real_excerpt gate in concept_promotion) qualify for micro-quiz
+    selection (D3).
+    """
+    try:
+        from tracker_app.db.models import ConceptEncounter, SessionLocal
+        from tracker_app.learning.concept_promotion import _real_excerpt
+    except Exception:
+        return {}
+    pool: Dict[str, str] = {}
+    try:
+        with SessionLocal() as db:
+            rows = (
+                db.query(ConceptEncounter.concept, ConceptEncounter.context_snippet)
+                .order_by(ConceptEncounter.timestamp.desc())
+                .all()
+            )
+        for concept, snippet in rows:
+            if concept in pool:
+                continue
+            excerpt = _real_excerpt(snippet)
+            if excerpt:
+                pool[concept] = excerpt
+        return pool
+    except Exception as e:
+        logger.warning(f"Failed to load content-backed quiz pool: {e}")
+        return {}
+
+
 def generate_micro_quiz(graph) -> Optional[dict]:
     """
     Build a 4-option multiple-choice quiz from the weakest graph concept.
@@ -117,16 +149,27 @@ def generate_micro_quiz(graph) -> Optional[dict]:
         }
         or None if graph is too small.
     """
+    content_backed = _content_backed_pool()
+    if not content_backed:
+        logger.info("No content-backed concepts available; no micro-quiz this cycle")
+        return None
+
     nodes = [(n, d) for n, d in graph.nodes(data=True) if isinstance(n, str) and len(n) > 2 and is_plausible_concept(n)]
     if len(nodes) < MIN_GRAPH_SIZE:
         logger.debug(f"Graph too small for quiz ({len(nodes)} < {MIN_GRAPH_SIZE})")
         return None
 
-    # Pick weakest concept
-    weak = [x for x in nodes if x[1].get("memory_score", 0.5) < 0.65]
-    pool = weak if weak else nodes
-    pool.sort(key=lambda x: x[1].get("memory_score", 0.5))
-    concept_name, concept_data = pool[0]
+    # Pick weakest concept among those with persisted capture content.
+    content_nodes = [(n, d) for n, d in nodes if n in content_backed]
+    if not content_nodes:
+        logger.debug("No graph node has persisted capture content; no quiz")
+        return None
+
+    weak = [x for x in content_nodes if x[1].get("memory_score", 0.5) < 0.65]
+    select_from = weak if weak else content_nodes
+    select_from.sort(key=lambda x: x[1].get("memory_score", 0.5))
+    concept_name, concept_data = select_from[0]
+    excerpt = content_backed[concept_name]
 
     # Build distractor list from neighbours
     neighbours = [
@@ -156,7 +199,7 @@ def generate_micro_quiz(graph) -> Optional[dict]:
 
     return {
         "concept": concept_name,
-        "question": "Which of these concepts have you been studying?",
+        "question": (f'Captured material: "{excerpt}"\n\nWhich of these concepts does this captured material cover?'),
         "correct_answer": concept_name,
         "distractors": distractors[:3],
         "all_options": all_options,

@@ -28,7 +28,12 @@ def _graph():
     return G
 
 
-def test_generate_micro_quiz_has_no_cooldown_side_effect():
+def test_generate_micro_quiz_has_no_cooldown_side_effect(monkeypatch):
+    monkeypatch.setattr(
+        quiz_engine,
+        "_content_backed_pool",
+        lambda: {n: f"{n} is covered in the captured study notes" for n in ["alpha", "beta", "gamma", "delta"]},
+    )
     quiz = quiz_engine.generate_micro_quiz(_graph())
     assert quiz is not None
     assert quiz_engine._last_quiz_time is None
