@@ -20,11 +20,10 @@ if not os.environ.get("SECRET_KEY") or len(os.environ.get("SECRET_KEY", "")) < 3
     _new_key = secrets.token_hex(32)
     os.environ["SECRET_KEY"] = _new_key
 
-# Auto-generate API_KEY if not set
-if not os.environ.get("API_KEY"):
+# Auto-generate API_KEY if not set. Never persisted to .env: writing a fresh
+# key here on every missing-key boot used to accumulate API_KEY lines.
+if not os.environ.get("API_KEY") and os.environ.get("NO_AUTH", "false").lower() != "true":
     _new_key = secrets.token_hex(24)
-    with open(_ENV_FILE, "a") as f:
-        f.write(f"\nAPI_KEY={_new_key}\n")
     os.environ["API_KEY"] = _new_key
 
 # ----------------------------

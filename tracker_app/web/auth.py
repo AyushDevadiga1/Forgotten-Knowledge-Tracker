@@ -34,6 +34,8 @@ def require_api_key(f):
 
     @functools.wraps(f)
     def decorated(*args, **kwargs):
+        if request.method == "OPTIONS":
+            return f(*args, **kwargs)
         if _NO_AUTH or not _API_KEY:
             return f(*args, **kwargs)
 
@@ -63,6 +65,8 @@ def apply_auth_to_blueprint(bp):
 
     @bp.before_request
     def check_key():
+        if request.method == "OPTIONS":
+            return None  # Allow CORS preflight
         if request.endpoint == "api.health_check":
             return None  # health probe stays unauthenticated
         if _NO_AUTH or not _API_KEY:

@@ -32,8 +32,9 @@ def check_api_key():
     """Require API key on all endpoints except health and static."""
     if request.endpoint and request.endpoint.endswith("health_check"):
         return None
+    no_auth = os.environ.get("NO_AUTH", "false").lower() == "true"
     api_key = os.environ.get("API_KEY", "")
-    if not api_key:
+    if no_auth or not api_key:
         return None  # auth disabled (dev mode)
     provided = request.headers.get("X-API-Key", "")
     if not provided or provided != api_key:
