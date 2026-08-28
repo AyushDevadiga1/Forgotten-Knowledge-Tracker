@@ -323,3 +323,70 @@ def test_sync_db_to_graph_skips_save_when_score_unchanged(clean_graph, monkeypat
     kg._graph_dirty = False
     kg.sync_db_to_graph(force=True)
     assert saves == [], "_save_graph() called when score was unchanged"
+
+
+def test_record_capture_window_adds_cooccur_edges(clean_graph, monkeypatch):
+    monkeypatch.setattr(kg, "_cooccur_counts", {})
+    saves = []
+    monkeypatch.setattr(kg, "_save_graph", lambda: saves.append(1))
+    with kg._graph_lock:
+        kg.knowledge_graph.clear()
+        for n in ("neural network", "backpropagation", "dropout"):
+            kg.knowledge_graph.add_node(n)
+
+    kg.record_capture_window(["neural network", "backpropagation", "dropout"])
+    assert len(saves) == 1
+    for u, v in [
+        ("neural network", "backpropagation"),
+        ("neural network", "dropout"),
+        ("backpropagation", "dropout"),
+    ]:
+        assert kg.knowledge_graph.has_edge(u, v)
+        assert kg.knowledge_graph[u][v]["reason"] == "cooccur"
+        assert kg.knowledge_graph[u][v]["cooccur_count"] == 1
+        assert kg.knowledge_graph[u][v]["weight"] == pytest.approx(0.1)
+
+
+def test_record_capture_window_reinforces_existing_pair_weight(clean_graph, monkeypatch):
+    monkeypatch.setattr(kg, "_cooccur_counts", {})
+    monkeypatch.setattr(kg, "_save_graph", lambda: None)
+    with kg._graph_lock:
+        kg.knowledge_graph.clear()
+        kg.knowledge_graph.add_node("neural network")
+        kg.knowledge_graph.add_node("backpropagation")
+
+    kg.record_capture_window(["neural network", "backpropagation"])
+    kg.record_capture_window(["neural network", "backpropagation"])
+    edge = kg.knowledge_graph["neural network"]["backpropagation"]
+    assert edge["cooccur_count"] == 2
+    assert edge["weight"] == pytest.approx(0.2)
+    assert kg.knowledge_graph.nodes["neural network"].get("count") is None
+
+
+def test_record_capture_window_caps_pairs_per_window(clean_graph, monkeypatch):
+    monkeypatch.setattr(kg, "_cooccur_counts", {})
+    monkeypatch.setattr(kg, "_save_graph", lambda: None)
+    with kg._graph_lock:
+        kg.knowledge_graph.clear()
+        for i in range(12):
+            kg.knowledge_graph.add_node(f"concept_{i}")
+
+    kg.record_capture_window([f"concept_{i}" for i in range(12)])
+    assert kg.knowledge_graph.number_of_edges() == kg.MAX_COOCCUR_PAIRS_PER_WINDOW
+
+
+def test_record_capture_window_preserves_existing_edge_and_skips_missing(clean_graph, monkeypatch):
+    monkeypatch.setattr(kg, "_cooccur_counts", {})
+    monkeypatch.setattr(kg, "_save_graph", lambda: None)
+    with kg._graph_lock:
+        kg.knowledge_graph.clear()
+        kg.knowledge_graph.add_node("neural network")
+        kg.knowledge_graph.add_node("backpropagation")
+        kg.knowledge_graph.add_edge("neural network", "backpropagation", weight=0.95)
+        kg.knowledge_graph.add_node("lonely")
+
+    kg.record_capture_window(["neural network", "backpropagation", "not-a-node"])
+    edge = kg.knowledge_graph["neural network"]["backpropagation"]
+    assert edge["weight"] == pytest.approx(0.95)
+    assert "reason" not in edge
+    assert not kg.knowledge_graph.has_edge("backpropagation", "not-a-node")

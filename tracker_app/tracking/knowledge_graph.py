@@ -33,6 +33,14 @@ _graph_dirty = False
 # JSON file small and _load_graph() fast after months of use.
 MAX_GRAPH_NODES = 5000
 
+# Co-occurrence capture-window settings (D4): max concept pairs recorded per
+# window, and the pair count at which a co-occurrence edge weight saturates.
+MAX_COOCCUR_PAIRS_PER_WINDOW = 30
+COOCCUR_SATURATION_COUNT = 10
+
+# In-memory co-occurrence counters: (concept_a, concept_b) -> count (D4).
+_cooccur_counts: dict = {}
+
 # ----------------------------
 # Lazy embedding model
 # ----------------------------
@@ -361,6 +369,65 @@ def add_concepts(concepts):
                                 knowledge_graph.add_edge(valid_concepts[i], valid_concepts[j], weight=cosine_sim)
                     except Exception as e:
                         logger.warning(f"Error adding edge between concepts: {e}")
+
+
+def record_capture_window(concepts):
+    """Add co-occurrence edges for concepts captured together in one window.
+
+    For each unordered concept pair in the window, increment a counter and,
+    when both concepts are present in the graph, create an edge with weight
+    scaled by how often the pair has co-occurred (reason='cooccur'). Existing
+    edges (e.g. semantic embedding edges) keep their weight and reason. A
+    window is capped at MAX_COOCCUR_PAIRS_PER_WINDOW pairs so broad windows
+    cannot flood the graph.
+
+    `concepts` is an iterable of concept strings (the capture window's
+    keyword set).
+    """
+    if not concepts:
+        return
+    names = sorted({str(c).strip() for c in concepts if c and str(c).strip()})
+    if len(names) < 2:
+        return
+
+    from itertools import combinations
+
+    pairs = list(combinations(names, 2))
+    if len(pairs) > MAX_COOCCUR_PAIRS_PER_WINDOW:
+        # Prefer pairs already reinforcing an existing co-occurrence
+        # relationship; ties stay deterministic on the sorted names.
+        pairs.sort(key=lambda p: -_cooccur_counts.get(p, 0))
+        pairs = pairs[:MAX_COOCCUR_PAIRS_PER_WINDOW]
+
+    changed = False
+    with _graph_lock:
+        for a, b in pairs:
+            key = (a, b)
+            _cooccur_counts[key] = _cooccur_counts.get(key, 0) + 1
+            count = _cooccur_counts[key]
+            if a not in knowledge_graph or b not in knowledge_graph:
+                # The graph is a cache of tracked_concepts; nodes are synced
+                # on encounter, so a missing node means no real capture to
+                # edge against.
+                continue
+            if knowledge_graph.has_edge(a, b):
+                if "cooccur_count" in knowledge_graph[a][b]:
+                    knowledge_graph[a][b]["cooccur_count"] += 1
+                    knowledge_graph[a][b]["weight"] = min(1.0, count / COOCCUR_SATURATION_COUNT)
+                    changed = True
+                # Existing edges (semantic embeddings) keep weight/reason.
+                continue
+            knowledge_graph.add_edge(
+                a,
+                b,
+                weight=min(1.0, count / COOCCUR_SATURATION_COUNT),
+                reason="cooccur",
+                cooccur_count=count,
+            )
+            changed = True
+
+    if changed:
+        _save_graph()
 
 
 def sync_concept_to_graph(concept):
