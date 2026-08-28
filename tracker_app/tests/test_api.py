@@ -121,6 +121,22 @@ class TestAPICreateItem(TestAPIBase):
 
 
 class TestAPIBrowserIngest(TestAPIBase):
+    def setUp(self):
+        super().setUp()
+        # The ingest route records co-occurrence edges via record_capture_window,
+        # which writes to the real knowledge graph file. No-op it so the API
+        # tests stay hermetic (same rationale as the cs_mod.SessionLocal rebind).
+        from tracker_app.tracking import knowledge_graph as kg_mod
+
+        self._orig_record_capture_window = kg_mod.record_capture_window
+        kg_mod.record_capture_window = lambda concepts: None
+
+    def tearDown(self):
+        from tracker_app.tracking import knowledge_graph as kg_mod
+
+        kg_mod.record_capture_window = self._orig_record_capture_window
+        super().tearDown()
+
     def test_ingest_saves_concepts(self):
         resp = self.client.post(
             "/api/v1/ingest",

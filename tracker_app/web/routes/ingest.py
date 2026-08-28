@@ -73,6 +73,11 @@ def browser_ingest():
         if not keywords:
             return jsonify({"success": True, "message": "No keywords extracted"})
 
+        # Persist a sanitized excerpt of the actual selected text, never just
+        # the window title. cleaned_text already passed the privacy + quality
+        # gates above; sensitive windows dropped the title entirely.
+        context = validation["cleaned_text"][:CONTEXT_MAX_LENGTH]
+
         scheduler = ConceptScheduler()
         saved = 0
         for concept, score in keywords.items():
@@ -80,12 +85,21 @@ def browser_ingest():
                 result = scheduler.add_concept(
                     concept=concept,
                     confidence=float(score),
-                    context=f"browser:{title[:CONTEXT_MAX_LENGTH]}",
+                    context=context,
                     attention_at_encoding=60.0,  # assume moderate engagement
                     source="browser_extension",
                 )
                 if result:
                     saved += 1
+
+        # Co-occurrence edges: concepts captured in this same browser window
+        # were studied together.
+        try:
+            from tracker_app.tracking.knowledge_graph import record_capture_window
+
+            record_capture_window(list(keywords.keys()))
+        except Exception as e:
+            logger.debug(f"record_capture_window skipped: {e}")
 
         return jsonify(
             {

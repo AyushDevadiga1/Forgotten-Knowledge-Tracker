@@ -314,6 +314,19 @@ def ocr_pipeline():
         if not text.strip():
             return {"keywords": {}, "raw_text": ""}
 
+        # Privacy gate before anything is persisted: OCR text is stored
+        # (sanitized) as encounter context, so it must pass the same
+        # sanitize/strip checks as every other captured body text. Sensitive
+        # windows are already skipped by capture_screenshot(); text-level
+        # leaks (PII, secrets) are caught here and persist nothing.
+        sanitized = sanitize_text_for_storage(text)
+        if not sanitized["safe_to_store"]:
+            logger.warning("[PRIVACY] OCR text rejected as sensitive; nothing persisted")
+            return {"keywords": {}, "raw_text": ""}
+        text = strip_redaction_markers(sanitized["text"])
+        if not text.strip():
+            return {"keywords": {}, "raw_text": ""}
+
         # Extract keywords with scores (graph loaded once per pipeline, M-4)
         G = get_graph()
         keywords_with_scores = extract_keywords(text, top_n=TEXT_TOP_KEYWORDS, graph=G)

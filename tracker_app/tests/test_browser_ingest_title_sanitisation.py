@@ -1,9 +1,9 @@
 # -*- coding: ascii -*-
-"""F-2 regression tests: browser_ingest title sanitisation.
+"""F-2 regression tests for the browser-ingest context contract.
 
-A title field with control characters (escapes, null bytes, newlines) must be
-stripped of those characters and whitespace-collapsed before it reaches
-ConceptEncounter.context_snippet.
+The context persisted next to extracted concepts is the sanitized capture BODY
+text (validation cleaned_text) - never the literal 'ocr' token or the window
+title (which used to be stored as 'browser:<title>').
 """
 
 import json
@@ -59,6 +59,7 @@ class TestBrowserIngestTitleSanitised(unittest.TestCase):
         self._patch_ke = None
         self._patch_tq = None
         self._patch_cs = None
+        self._patch_kg = None
 
     def _patch_heavy_deps(self):
         from unittest import mock
@@ -70,12 +71,19 @@ class TestBrowserIngestTitleSanitised(unittest.TestCase):
             return_value={"is_useful": True, "cleaned_text": "python decorators"},
         )
         self._patch_cs = mock.patch.object(cs_mod, "ConceptScheduler", return_value=self.scheduler)
+        # The ingest route records co-occurrence edges via record_capture_window;
+        # keep this test hermetic (no real knowledge graph file involved).
+        self._patch_kg = mock.patch(
+            "tracker_app.tracking.knowledge_graph.record_capture_window",
+            lambda concepts: None,
+        )
         self._patch_ke.start()
         self._patch_tq.start()
         self._patch_cs.start()
+        self._patch_kg.start()
 
     def tearDown(self):
-        for p in (self._patch_ke, self._patch_tq, self._patch_cs):
+        for p in (self._patch_ke, self._patch_tq, self._patch_cs, self._patch_kg):
             if p is not None:
                 p.stop()
 
@@ -86,7 +94,7 @@ class TestBrowserIngestTitleSanitised(unittest.TestCase):
             content_type="application/json",
         )
 
-    def test_control_chars_stripped_before_context(self):
+    def test_control_chars_in_title_never_reach_context(self):
         self._patch_heavy_deps()
         title = "ChatGPT\x1b[31m answer\n\t guide"
         resp = self._ingest(title)
@@ -94,28 +102,28 @@ class TestBrowserIngestTitleSanitised(unittest.TestCase):
         self.assertEqual(len(self.scheduler.added), 2)
         for call in self.scheduler.added:
             ctx = call["context"]
-            self.assertTrue(ctx.startswith("browser:"))
+            self.assertEqual(ctx, "python decorators")
             self.assertNotIn("\x1b", ctx)
             self.assertNotIn("\n", ctx)
             self.assertNotIn("\t", ctx)
-            self.assertNotIn("\x00", ctx)
+            self.assertNotIn("browser:", ctx)
 
-    def test_sanitised_title_reaches_context(self):
+    def test_body_text_reaches_context_not_title(self):
         self._patch_heavy_deps()
         resp = self._ingest("Clean\x00 Title")
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(self.scheduler.added[0]["context"], "browser:Clean Title")
+        self.assertEqual(self.scheduler.added[0]["context"], "python decorators")
 
-    def test_title_truncated_to_80_chars(self):
+    def test_context_truncated_to_80_chars(self):
         self._patch_heavy_deps()
         long_title = "word-" * 40
         self._ingest(long_title)
         ctx = self.scheduler.added[0]["context"]
-        self.assertTrue(ctx.startswith("browser:"))
-        self.assertLessEqual(len(ctx) - len("browser:"), 80)
+        self.assertEqual(ctx, "python decorators")
+        self.assertLessEqual(len(ctx), 80)
 
-    def test_missing_title_is_empty_not_crash(self):
+    def test_missing_title_keeps_body_context(self):
         self._patch_heavy_deps()
         resp = self._ingest(None)
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(self.scheduler.added[0]["context"], "browser:")
+        self.assertEqual(self.scheduler.added[0]["context"], "python decorators")

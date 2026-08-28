@@ -135,3 +135,45 @@ def test_runtime_code_uses_logger_not_print():
     main_idx = src.find('if __name__ == "__main__":')
     body = src if main_idx == -1 else src[:main_idx]
     assert "print(" not in body  # M-7: runtime messages must reach the log
+
+
+def test_ocr_pipeline_returns_empty_on_blank_screen(monkeypatch):
+    monkeypatch.setattr(ocr_module, "capture_screenshot", lambda: object())
+    monkeypatch.setattr(ocr_module, "preprocess_image", lambda img: img)
+    monkeypatch.setattr(ocr_module, "extract_text", lambda img, min_confidence=None: "")
+    assert ocr_module.ocr_pipeline() == {"keywords": {}, "raw_text": ""}
+
+
+def test_ocr_pipeline_drops_sensitive_text_entirely(monkeypatch, caplog):
+    monkeypatch.setattr(ocr_module, "capture_screenshot", lambda: object())
+    monkeypatch.setattr(ocr_module, "preprocess_image", lambda img: img)
+    monkeypatch.setattr(
+        ocr_module,
+        "extract_text",
+        lambda img, min_confidence=None: (
+            "ssn 123-45-6789 card 4111-1111-1111-1111 phone 555-867-5309 "
+            "email a@b.com account 1000000002 born 03/14/1990"
+        ),
+    )
+    result = ocr_module.ocr_pipeline()
+    assert result == {"keywords": {}, "raw_text": ""}, "a sensitive capture must persist nothing"
+
+
+def test_ocr_pipeline_returns_sanitized_raw_text(monkeypatch):
+    monkeypatch.setattr(ocr_module, "capture_screenshot", lambda: object())
+    monkeypatch.setattr(ocr_module, "preprocess_image", lambda img: img)
+    monkeypatch.setattr(
+        ocr_module,
+        "extract_text",
+        lambda img, min_confidence=None: "Mitochondria generate energy through oxidative phosphorylation",
+    )
+    monkeypatch.setattr(
+        ocr_module,
+        "extract_keywords",
+        lambda text, top_n=15, graph=None: {"mitochondria": 0.8},
+    )
+    monkeypatch.setattr(ocr_module, "get_graph", lambda: nx.Graph())
+
+    result = ocr_module.ocr_pipeline()
+    assert result["raw_text"].startswith("Mitochondria generate")
+    assert result["keywords"] == {"mitochondria": {"score": 0.8, "count": 1}}
