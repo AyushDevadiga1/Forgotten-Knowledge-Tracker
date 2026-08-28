@@ -1,9 +1,10 @@
 """Seed the database with real academic concept names across multiple domains."""
 
+import os
 import random
 from datetime import timedelta
 from tracker_app.db.db_module import init_all_databases
-from tracker_app.config import DB_PATH
+from tracker_app.config import get_db_path
 import sqlite3
 import logging
 
@@ -14,8 +15,18 @@ from tracker_app.utils import utcnow as _utcnow
 
 
 def main():
+    # Seed isolation (D6): never write demo rows into the default DB by
+    # accident. The tool refuses to touch any DB unless explicitly enabled
+    # with FKT_SEED=1; when it runs it is still redirected by FKT_TEST_DB.
+    if os.environ.get("FKT_SEED") != "1":
+        print(
+            "Seeding refused: set FKT_SEED=1 to explicitly enable writing demo"
+            " rows (FKT_SEED is unset or not '1'). No rows were written."
+        )
+        return
+
     init_all_databases()
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(get_db_path())
     cursor = conn.cursor()
 
     # Clear old data
@@ -186,10 +197,18 @@ def main():
             ),
         )
 
+    # Seed marker (D6): one Metric row identifies this DB as seeded so
+    # dashboards and audits can distinguish demo data from real captures.
+    cursor.execute(
+        "INSERT INTO metrics (concept, memory_score, last_updated) VALUES (?,?,?)",
+        ("__seed__", 0.0, str(now)),
+    )
+
     conn.commit()
     conn.close()
     print(f"Database seeded with {len(CONCEPTS)} real academic concepts.")
     print("Sessions: 100 | Logs: 200 | Concepts: tracked + memory decay")
+    print("Seed marker written: metrics.row(concept='__seed__').")
 
 
 if __name__ == "__main__":

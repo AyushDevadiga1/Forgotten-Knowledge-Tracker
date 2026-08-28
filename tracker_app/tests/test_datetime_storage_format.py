@@ -200,6 +200,7 @@ def test_populate_writes_space_format_datetimes(tmp_path):
 
     env = dict(os.environ)
     env["FKT_TEST_DB"] = db_file
+    env["FKT_SEED"] = "1"  # explicit seeding into the throwaway test DB
     proc = subprocess.run(
         [sys.executable, "-m", "tracker_app.tools.populate"],
         capture_output=True,
