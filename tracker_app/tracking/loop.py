@@ -23,6 +23,7 @@ from tracker_app.tracking.cle_module import get_cle
 from tracker_app.tracking.session_state import is_active as session_is_active
 from tracker_app.tracking.privacy_filter import is_sensitive_window
 from tracker_app.constants import (
+    CONTEXT_MAX_LENGTH,
     NEUTRAL_ATTENTION,
     ATTENTION_WEIGHT_WEBCAM,
     ATTENTION_WEIGHT_CLE,
@@ -468,6 +469,22 @@ def track_loop(
             except Exception as e:
                 logger.warning(f"Intent prediction error: {e}")
 
+            # Runtime telemetry: persist one multi-modal log row per capture
+            # cycle (spec: telemetry is written by the runtime tracker, not
+            # only by seed tools).
+            try:
+                monitor.log_multimodal(
+                    window_title=context,
+                    keywords=ocr_result.get("keywords", {}),
+                    audio_label=audio_result.get("audio_label", "silence"),
+                    attention_score=attention_score,
+                    interaction_rate=interaction_rate,
+                    intent_label=intent_result.get("intent_label", "unknown"),
+                    intent_confidence=intent_result.get("confidence", 0.0),
+                )
+            except Exception as e:
+                logger.debug(f"log_multimodal skipped: {e}")
+
             # â”€â”€ Intent-gated concept capture â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             # Even inside a study session, only persist concepts on cycles the
             # intent classifier labels as active studying, so a mid-session
@@ -477,7 +494,20 @@ def track_loop(
                 monitor.process_concepts(
                     ocr_result.get("keywords", {}),
                     attention_score=attention_score,  # AWFC
+                    # Persist the sanitized excerpt as encounter context, never
+                    # the literal 'ocr' token (capture fidelity).
+                    context_text=ocr_result.get("raw_text", "")[:CONTEXT_MAX_LENGTH],
                 )
+
+                # Co-occurrence edges for concepts captured in this window.
+                try:
+                    from tracker_app.tracking.knowledge_graph import (
+                        record_capture_window,
+                    )
+
+                    record_capture_window(list(ocr_result.get("keywords", {}).keys()))
+                except Exception as e:
+                    logger.debug(f"record_capture_window skipped: {e}")
 
             # â”€â”€ Micro-quiz interrupt â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             _maybe_trigger_quiz(

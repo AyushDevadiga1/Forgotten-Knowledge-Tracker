@@ -19,6 +19,7 @@ from tracker_app.db.models import (
     IntentAccuracy,
     FeedbackTrainingSample,
     TrackedConcept,
+    MultiModalLog,
 )
 
 
@@ -204,6 +205,12 @@ class TrackingRepository:
         db.add(prediction)
         db.commit()
         db.refresh(prediction)
+
+    @staticmethod
+    def log_multimodal(db: Session, log_row: MultiModalLog) -> None:
+        """Persist a multi-modal log row for one capture cycle."""
+        db.add(log_row)
+        db.commit()
 
     @staticmethod
     def get_intent_prediction(db: Session, prediction_id: int) -> Optional[IntentPrediction]:

@@ -9,9 +9,10 @@ import logging
 from tracker_app.utils import utcnow as _utcnow
 
 from tracker_app.config import DATA_DIR
+from tracker_app.constants import CONTEXT_MAX_LENGTH, NEUTRAL_ATTENTION
 from tracker_app.learning.concept_scheduler import ConceptScheduler
 from tracker_app.db.repository import TrackingRepository
-from tracker_app.db.models import SessionLocal, IntentPrediction, TrackingSession
+from tracker_app.db.models import SessionLocal, IntentPrediction, TrackingSession, MultiModalLog
 
 
 logger = logging.getLogger("ActivityMonitor")
@@ -188,6 +189,10 @@ class ActivityMonitor:
             # Log to analytics
             self.analytics.log_session(self.session_start, session_end, concepts_count, avg_attention, primary_activity)
 
+            # Metrics must come from real sessions: persist one Metric row per
+            # distinct session concept with its live AWFC memory score (D5).
+            self._persist_session_metrics()
+
             self.is_running = False
             # Log inside the lock while variables are guaranteed to be defined
             logger.info(f"Tracking session ended. Concepts: {concepts_count}, Avg Attention: {avg_attention:.2f}")
@@ -197,6 +202,7 @@ class ActivityMonitor:
         ocr_keywords: Dict[str, Any],
         confidence: float = 0.6,
         attention_score: float = 50.0,
+        context_text: str = "",
     ):
         """Process and schedule encountered concepts.
         Passes attention_score to concept_scheduler for AWFC Î» personalisation.
@@ -209,7 +215,10 @@ class ActivityMonitor:
                 saved = self.scheduler.add_concept(
                     concept,
                     concept_conf,
-                    context="ocr",
+                    # Real sanitized capture text, never the literal 'ocr'
+                    # token (capture fidelity). Sensitive/redacted windows
+                    # left context_text empty, so nothing is persisted.
+                    context=context_text[:CONTEXT_MAX_LENGTH],
                     attention_at_encoding=attention_score,  # AWFC
                 )
                 if saved:
@@ -237,6 +246,90 @@ class ActivityMonitor:
         """Track attention/focus levels"""
         self._attention_sum += attention_score
         self._attention_count += 1
+
+    def log_multimodal(
+        self,
+        window_title: str = "",
+        keywords: Optional[Dict[str, Any]] = None,
+        audio_label: str = "silence",
+        attention_score: float = NEUTRAL_ATTENTION,
+        interaction_rate: float = 0.0,
+        intent_label: str = "unknown",
+        intent_confidence: float = 0.0,
+    ):
+        """Persist one multi-modal log row for a capture cycle (D5).
+
+        memory_score is derived from the knowledge graph's live score for the
+        window's concepts where available, so telemetry carries real retention
+        data instead of a constant placeholder.
+        """
+        try:
+            memory_score = self._avg_window_memory(keywords)
+            with SessionLocal() as db:
+                log_row = MultiModalLog(
+                    timestamp=_utcnow(),
+                    window_title=window_title,
+                    ocr_keywords=json.dumps(keywords or {}),
+                    audio_label=audio_label,
+                    attention_score=attention_score,
+                    interaction_rate=interaction_rate,
+                    intent_label=intent_label,
+                    intent_confidence=intent_confidence,
+                    memory_score=memory_score,
+                )
+                TrackingRepository.log_multimodal(db, log_row)
+        except Exception as e:
+            logger.error(f"Failed to log multimodal data: {e}")
+
+    def _avg_window_memory(self, keywords: Optional[Dict[str, Any]]) -> float:
+        """Average graph memory_score for the window's concepts (0.0 when none)."""
+        if not keywords:
+            return 0.0
+        try:
+            from tracker_app.tracking.knowledge_graph import knowledge_graph as _kg
+
+            scores = [
+                _kg.nodes[k].get("memory_score", 0.0)
+                for k in keywords
+                if k in _kg and isinstance(_kg.nodes[k].get("memory_score"), (int, float))
+            ]
+            return round(sum(scores) / len(scores), 4) if scores else 0.0
+        except Exception:
+            return 0.0
+
+    def _persist_session_metrics(self):
+        """Write one Metric row per distinct concept captured this session."""
+        concepts = set(self.session_concepts)
+        if not concepts:
+            return
+        try:
+            from tracker_app.config import DEFAULT_LAMBDA
+            from tracker_app.db.models import Metric, TrackedConcept
+            from tracker_app.learning.memory_model import compute_memory_score_awfc
+        except Exception:
+            return
+        for concept in concepts:
+            try:
+                with SessionLocal() as db:
+                    row = db.query(TrackedConcept).filter(TrackedConcept.concept == concept).first()
+                    if row is None:
+                        continue
+                    score = compute_memory_score_awfc(
+                        row.last_seen or row.first_seen,
+                        base_lambda=row.lambda_personalised or DEFAULT_LAMBDA,
+                        attention_at_encoding=row.attention_at_encoding or 50.0,
+                    )
+                    db.add(
+                        Metric(
+                            concept=concept,
+                            next_review_time=row.next_review,
+                            memory_score=round(score, 4),
+                            last_updated=_utcnow(),
+                        )
+                    )
+                    db.commit()
+            except Exception as e:
+                logger.error(f"Failed to persist metric for {concept}: {e}")
 
     def get_session_stats(self) -> Dict[str, Any]:
         """Get current session statistics"""

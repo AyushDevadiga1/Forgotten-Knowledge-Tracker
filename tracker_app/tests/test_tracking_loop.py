@@ -35,6 +35,7 @@ class _FakeMonitor:
         self.keyboard_counter = _FakeCounter()
         self.mouse_counter = _FakeCounter()
         self.concept_calls = []
+        self.context_calls = []
 
     def start_session(self):
         self.is_running = True
@@ -49,8 +50,9 @@ class _FakeMonitor:
     def process_intent(self, result, context=None):
         pass
 
-    def process_concepts(self, keywords, attention_score=0.0):
+    def process_concepts(self, keywords, attention_score=0.0, context_text=""):
         self.concept_calls.append(keywords)
+        self.context_calls.append(context_text)
 
     def export_tracking_data(self):
         pass
@@ -167,6 +169,7 @@ def test_track_loop_runs_two_cycles_with_mocked_pipelines(loop_env):
     assert len(loop_env["intent_calls"]) == 2
     assert len(loop_env["quiz_calls"]) == 2
     assert loop_env["monitor"].concept_calls, "concepts must be captured each cycle"
+    assert loop_env["monitor"].context_calls == ["", ""], "no raw_text in the fake OCR -> no context persisted"
     assert loop_env["monitor"].starts == 1
     assert not loop_env["monitor"].is_running, "session must end in finally"
 
