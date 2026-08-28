@@ -11,6 +11,7 @@ Two entry points:
 """
 
 import logging
+import re
 from tracker_app.utils import utcnow as _utcnow
 from typing import Dict, List, Optional
 
@@ -91,20 +92,41 @@ def is_kb_worthy(concept: str) -> bool:
     return is_plausible_concept(c)
 
 
-def _answer_for(db, concept: str) -> str:
-    """Build an answer from the most recent meaningful encounter context."""
+def _real_excerpt(snippet) -> Optional[str]:
+    """Return a usable content excerpt from an encounter snippet, or None.
+
+    Legacy 'browser:<title>' rows strip their prefix; the literal 'ocr'
+    token, empty strings, and excerpts too short to be real capture content
+    (<= 8 chars) are never treated as content. Shared by deck answer building
+    and the micro-quiz pool so both use the same rule.
+    """
+    s = (snippet or "").strip()
+    if not s:
+        return None
+    if s.startswith("browser:") and len(s) > len("browser:"):
+        s = s[len("browser:") :].strip()
+    if not s or s == "ocr" or len(s) <= 8:
+        return None
+    return s
+
+
+def _answer_for(db, concept: str) -> Optional[str]:
+    """The concept's most recent real content excerpt, or None if it has none."""
     enc = (
         db.query(ConceptEncounter)
         .filter(ConceptEncounter.concept == concept)
         .order_by(ConceptEncounter.timestamp.desc())
         .first()
     )
-    snippet = (enc.context_snippet or "").strip() if enc else ""
-    if snippet.startswith("browser:") and len(snippet) > len("browser:"):
-        return f"Captured from your study session on: {snippet[len('browser:') :].strip()}"
-    if snippet and snippet != "ocr" and len(snippet) > 4:
-        return f"Captured from your study session: {snippet}"
-    return "Automatically tracked from your study sessions — write down what you know about this concept."
+    if not enc:
+        return None
+    return _real_excerpt(enc.context_snippet)
+
+
+def _normalise_concept(concept: str) -> str:
+    """Normalise for duplicate comparison: lowercase, drop non-alphanumeric
+    runs, collapse whitespace ('ATP notes' == 'atp notes')."""
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", concept.lower()).split())
 
 
 def _difficulty_for(relevance_score: Optional[float]) -> str:
@@ -188,6 +210,22 @@ def promote_concept_to_deck(concept: str, subsuming_phrases: Optional[frozenset]
             logger.debug(f"Already in deck: {concept!r}")
             return None
 
+        # Duplicate exclusion (D7): skip when the concept's normalised form
+        # already exists in the deck ('atp' vs an existing 'ATP' question), or
+        # when a single-word capture is just a token of an existing multi-word
+        # deck question ('atp' vs 'ATP notes').
+        norm = _normalise_concept(concept)
+        lc_words = concept.lower().split()
+        for (q,) in db.query(LearningItem.question).all():
+            if not q:
+                continue
+            if _normalise_concept(q) == norm:
+                logger.debug(f"Duplicate of existing deck question {q!r}: {concept!r}")
+                return None
+            if len(lc_words) == 1 and len(q.split()) > 1 and lc_words[0] in q.lower().split():
+                logger.debug(f"Fragment of existing deck question {q!r}: {concept!r}")
+                return None
+
         existing_triage = db.query(TriageQueue).filter(TriageQueue.concept == concept).first()
         if existing_triage:
             logger.debug(f"Already in triage: {concept!r}")
@@ -195,6 +233,9 @@ def promote_concept_to_deck(concept: str, subsuming_phrases: Optional[frozenset]
 
         tc = db.query(TrackedConcept).filter(TrackedConcept.concept == concept).first()
         answer = _answer_for(db, concept)
+        if answer is None:
+            logger.info(f"Skipping deck promotion for {concept!r}: no captured content yet")
+            return None
 
         entry = TriageQueue(
             concept=concept,

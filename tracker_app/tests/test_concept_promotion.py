@@ -6,6 +6,7 @@ approve_triage() promotes from queue to deck.
 """
 
 import pytest
+from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -26,6 +27,21 @@ def db(monkeypatch):
 
 
 def _seed(db, concept, freq=5, relevance=0.6):
+    with db() as s:
+        s.add(TrackedConcept(concept=concept, frequency_count=freq, relevance_score=relevance))
+        s.commit()
+    with db() as s:
+        s.add(
+            models.ConceptEncounter(
+                concept=concept,
+                timestamp=datetime.utcnow() - timedelta(days=30),
+                context_snippet=f"{concept} explained in a real capture",
+            )
+        )
+        s.commit()
+
+
+def _seed_tracked_only(db, concept, freq=5, relevance=0.6):
     with db() as s:
         s.add(TrackedConcept(concept=concept, frequency_count=freq, relevance_score=relevance))
         s.commit()
@@ -200,3 +216,54 @@ def test_curated_exceptions_fallback_on_read_error(monkeypatch, tmp_path):
 
     monkeypatch.setattr(builtins, "open", boom)
     assert cp._load_curated_exceptions() == cp.CURATED_EXCEPTIONS_DEFAULT
+
+
+def test_real_excerpt_rejects_placeholder_and_trivial_contexts():
+    assert cp._real_excerpt(None) is None
+    assert cp._real_excerpt("") is None
+    assert cp._real_excerpt("   ") is None
+    assert cp._real_excerpt("ocr") is None
+    assert cp._real_excerpt("short") is None
+    assert cp._real_excerpt("browser:") is None
+    assert cp._real_excerpt("browser:ATP notes") == "ATP notes"
+    assert cp._real_excerpt("ATP notes") == "ATP notes"
+    assert cp._real_excerpt("exactly nine") == "exactly nine"
+
+
+def test_promote_skipped_when_no_captured_content(db):
+    _seed_tracked_only(db, "hash table", freq=5)
+    assert cp.promote_concept_to_deck("hash table") is None
+    assert _triage_concepts(db) == []
+    assert _questions(db) == []
+
+
+def test_backfill_skips_concepts_without_captured_content(db):
+    _seed(db, "hash table", freq=5)
+    _seed_tracked_only(db, "pytorch", freq=5)
+    result = cp.backfill_items(min_frequency=3)
+    assert result["promoted"] == ["hash table"]
+    assert result["skipped"] == ["pytorch"]
+
+
+def test_promote_skips_normalized_duplicate_of_deck_question(db):
+    from tracker_app.learning.learning_tracker import LearningTracker
+
+    _seed(db, "hash table")
+    LearningTracker().add_learning_item(
+        question="HASH TABLE", answer="A hash table maps keys to values.", difficulty="medium"
+    )
+    assert cp.promote_concept_to_deck("hash table", subsuming_phrases=frozenset()) is None
+    assert _triage_concepts(db) == []
+    assert _questions(db) == ["HASH TABLE"]
+
+
+def test_promote_skips_single_word_fragment_of_deck_question(db):
+    from tracker_app.learning.learning_tracker import LearningTracker
+
+    _seed(db, "atp")
+    LearningTracker().add_learning_item(
+        question="ATP synthase", answer="ATP synthase produces ATP.", difficulty="medium"
+    )
+    assert cp.promote_concept_to_deck("atp", subsuming_phrases=frozenset()) is None
+    assert _triage_concepts(db) == []
+    assert _questions(db) == ["ATP synthase"]

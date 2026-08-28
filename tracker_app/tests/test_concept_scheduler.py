@@ -250,7 +250,9 @@ def test_reexposure_auto_promotes_to_deck_at_threshold(db, monkeypatch, no_graph
 
     scheduler = ConceptScheduler()
     for _ in range(PROMOTE_AFTER_ENCOUNTERS):
-        scheduler.add_concept("hash table", confidence=0.5, context="browser:Notes")
+        scheduler.add_concept(
+            "hash table", confidence=0.5, context="Notes: hash tables map keys to values in Python dictionaries"
+        )
 
     with db() as session:
         tc = session.query(TrackedConcept).filter(TrackedConcept.concept == "hash table").first()
@@ -263,7 +265,9 @@ def test_reexposure_auto_promotes_to_deck_at_threshold(db, monkeypatch, no_graph
         )
 
     # A 4th encounter must not create a duplicate triage entry.
-    scheduler.add_concept("hash table", confidence=0.5, context="browser:Notes")
+    scheduler.add_concept(
+        "hash table", confidence=0.5, context="Notes: hash tables map keys to values in Python dictionaries"
+    )
     with db() as session:
         assert (
             session.query(TriageQueue)
