@@ -1,8 +1,8 @@
-"""Tests: ActivityMonitor bounded buffers (M-2/M-3).
+"""Tests: ActivityMonitor bounded buffers .
 
-M-2: `prediction_buffer` must be a bounded deque (maxlen=100) - it was an
+`prediction_buffer` must be a bounded deque (maxlen=100) - it was an
      unbounded list that was never consumed.
-M-3: `session_attention_scores` must be a running sum/count (O(1) memory)
+`session_attention_scores` must be a running sum/count (O(1) memory)
      instead of a list that grew forever; the average must be unchanged.
 
 Run: python -m pytest tracker_app/tests/test_activity_monitor_bounds.py -v

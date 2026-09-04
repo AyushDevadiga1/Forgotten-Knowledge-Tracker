@@ -1,4 +1,4 @@
-"""Regression tests for M-5: export_tracking_data() must not crash on a
+"""Regression tests: export_tracking_data() must not crash on a
 bare filename with no directory component.
 
 Finding: activity_monitor.py exported via

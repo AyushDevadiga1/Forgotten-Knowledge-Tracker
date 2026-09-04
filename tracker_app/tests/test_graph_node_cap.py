@@ -1,4 +1,4 @@
-"""Tests: knowledge graph node cap with zero-edge eviction (H-6).
+"""Tests: knowledge graph node cap with zero-edge eviction.
 
 The graph used to grow without bound: every concept gained a 384-dim
 embedding node and _load_graph() kept getting slower. _save_graph() now

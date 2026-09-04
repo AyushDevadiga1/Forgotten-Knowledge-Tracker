@@ -1,4 +1,4 @@
-"""Study-session endpoints (Phase 9 - session-gated concept capture), review
+"""Study-session endpoints, review
 recording, and the right-to-be-forgotten concept deletion."""
 
 import logging

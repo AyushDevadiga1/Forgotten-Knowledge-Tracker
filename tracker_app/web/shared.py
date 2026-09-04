@@ -1,7 +1,7 @@
 """Shared web-layer infrastructure.
 
 Holds the pieces every route module needs but that must exist exactly once:
-the LearningTracker singleton, the background-retrain lock (C-2), the
+the LearningTracker singleton, the background-retrain lock, the
 API-key gate, and small parsing/sanitising helpers used by several modules.
 """
 
@@ -13,7 +13,7 @@ from flask import jsonify, request
 
 from tracker_app.learning.learning_tracker import LearningTracker
 
-# C-2: only one background retraining subprocess may run at a time - two
+# Only one background retraining subprocess may run at a time - two
 # concurrent writes to models/intent_classifier.pkl corrupt the pickle.
 _retrain_lock = threading.Lock()
 

@@ -37,7 +37,7 @@ def _get_yake():
     The extractor is created once with FIXED parameters (English, bigram
     window, top 20): YAKE bakes its configuration into the instance at
     construction time, so per-call parameters would be silently ignored
-    after the first init (M-10). Callers slice the result to their own top_n.
+    after the first init. Callers slice the result to their own top_n.
     """
     global _yake_extractor
     if _yake_extractor is None:

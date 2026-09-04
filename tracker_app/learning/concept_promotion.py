@@ -143,7 +143,7 @@ def _load_subsuming_phrases() -> frozenset:
 
     Backfill used to issue a leading-wildcard LIKE '%concept%' query per
     candidate -- a full-table scan SQLite can never index. One query up-front
-    plus Python set membership replaces it (M-8).
+    plus Python set membership replaces it.
     """
     with SessionLocal() as db:
         rows = (
@@ -166,7 +166,7 @@ def _is_subsumed_single_word(concept: str, subsuming_phrases: Optional[frozenset
     promotion threshold.
 
     subsuming_phrases: preloaded frozenset of deck-eligible multi-word
-    concepts (M-8). When omitted, falls back to the per-concept DB lookup.
+    concepts. When omitted, falls back to the per-concept DB lookup.
     """
     if " " in concept:
         return False

@@ -1,8 +1,6 @@
 """Tests: concept drift keywords, dead-branch collapse, and gap embeddings.
 
-Covers Phase 11.3 (drift must receive real session concepts instead of []),
-Phase 11.4 (dead 'stable' branch collapsed), and Phase 11.5 (gap detection
-reuses the node embeddings that built the edges instead of loading spaCy).
+Covers drift receiving real session concepts instead of [], dead 'stable' branch collapse, and gap detection reusing the node embeddings that built the edges instead of loading spaCy.
 
 Run: python -m pytest tracker_app/tests/test_graph_drift_gaps.py -v
 """

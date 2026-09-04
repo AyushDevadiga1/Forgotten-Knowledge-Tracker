@@ -158,7 +158,7 @@ def recalibrate_lambda(
     # Decay window = time since the LAST review/encounter (last_seen), not
     # the concept's total age. first_seen makes predicted retention ~0 for
     # any long-lived concept (exp(-0.1 * 2000) ~= 0), so the adjustment
-    # stops responding to actual recall and drives lambda to a bound (H-3).
+    # stops responding to actual recall and drives lambda to a bound.
     t_hours = (_utcnow() - last_seen).total_seconds() / 3600.0
     predicted_rate = math.exp(-current_lambda * t_hours) if t_hours > 0 else 1.0
 

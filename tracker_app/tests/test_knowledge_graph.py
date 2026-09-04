@@ -122,7 +122,7 @@ def test_ensure_graph_loaded_reconciles_mid_process(clean_graph, monkeypatch):
 
 
 def test_graph_stats_includes_real_edges(clean_graph):
-    """M-7: /graph/stats must return the actual weighted edges among the top
+    """/graph/stats must return the actual weighted edges among the top
     concepts (the frontend drew fabricated spokes before). Edges to concepts
     outside the visible top set are excluded."""
     with kg._graph_lock:
@@ -193,7 +193,7 @@ class _CountingLock:
 
 
 def test_load_graph_renamed_to_locked_contract(clean_graph):
-    # M-9: the loader is explicitly a lock-holding helper, never a self-locking
+    # The loader is explicitly a lock-holding helper, never a self-locking
     # entry point.
     assert not hasattr(kg, "_load_graph")
     assert hasattr(kg, "_load_graph_locked")

@@ -1,5 +1,5 @@
 """
-Tests: micro-quiz trigger thresholds + gating (Phase 10).
+Tests: micro-quiz trigger thresholds + gating.
 
 - IDLE_CYCLES_REQUIRED is 12 (~60 s at 5 s cadence), not the old 3.
 - should_show_quiz never fires outside an active study session.
@@ -57,7 +57,7 @@ class TestQuizTrigger(unittest.TestCase):
         self.assertTrue(quiz_engine.should_show_quiz(12, False, 0.0))
 
     def test_reset_quiz_state_clears_cooldown(self):
-        # H-1: a stale cooldown timer from a previous track_loop() run in
+        # A stale cooldown timer from a previous track_loop() run in
         # the same process must not censor the first quiz of a new session.
         quiz_engine._last_quiz_time = datetime.utcnow()
         self.assertFalse(quiz_engine.should_show_quiz(12, False, 0.0))

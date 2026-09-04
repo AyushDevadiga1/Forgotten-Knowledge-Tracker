@@ -1,5 +1,5 @@
 """
-Tests: intent-feedback toast rate limiting (Phase 10).
+Tests: intent-feedback toast rate limiting.
 
 The toast must never nag every cycle. /intent/recent only surfaces an
 unanswered prediction that has never been shown and is outside the
@@ -112,7 +112,7 @@ class TestToastCooldown(ToastCooldownTestBase):
 
 
 class TestAtomicClaim(ToastCooldownTestBase):
-    """H-3: the prompted_at stamp must be an atomic claim.
+    """The prompted_at stamp must be an atomic claim.
 
     Two concurrent requests can both read the same eligible row before either
     writes (TOCTOU). The conditional UPDATE makes exactly one of them win; the

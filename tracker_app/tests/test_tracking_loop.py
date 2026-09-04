@@ -1,7 +1,7 @@
 """Tests for track_loop() and _maybe_trigger_quiz() (F-7).
 
 track_loop() had zero test coverage despite being the most stateful, most
-bug-prone code path (bugs H-1 and M-6 slipped through). These tests drive a
+bug-prone code path (bugs slipped through in the past). These tests drive a
 full multi-cycle run with mocked pipelines and exercise the quiz trigger:
 idle accumulation, the session gate, and the cooldown window.
 """
@@ -177,7 +177,7 @@ def test_track_loop_runs_two_cycles_with_mocked_pipelines(loop_env):
 def test_track_loop_resets_state_before_restart(loop_env):
     loop._idle_cycles = 9
     loop.track_loop(stop_event=_StopAfter(2), webcam_enabled=True)
-    assert loop._idle_cycles == 0, "H-1: stale idle cycles must not survive a restart"
+    assert loop._idle_cycles == 0, "Stale idle cycles must not survive a restart"
 
 
 def test_maybe_trigger_quiz_resets_idle_when_session_inactive(monkeypatch):

@@ -1,4 +1,4 @@
-"""Tests: knowledge-graph memory_score sync (Phase 11.2).
+"""Tests: knowledge-graph memory_score sync.
 
 The graph's memory_score must track the live SM-2/AWFC state — not stay frozen
 at the 0.3 assigned at node creation — so the dashboard's average memory and

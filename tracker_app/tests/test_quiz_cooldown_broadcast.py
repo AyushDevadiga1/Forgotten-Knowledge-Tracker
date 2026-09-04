@@ -1,4 +1,4 @@
-"""Tests: quiz cooldown stamped only after a successful broadcast (M-6).
+"""Tests: quiz cooldown stamped only after a successful broadcast.
 
 The cooldown used to be consumed when the quiz was *generated*; if the
 dashboard broadcast failed, the user never saw the quiz but still paid the

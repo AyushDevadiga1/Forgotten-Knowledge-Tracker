@@ -28,7 +28,7 @@ _last_quiz_time: Optional[datetime] = None
 
 
 def reset_quiz_state():
-    """Clear the quiz cooldown timer (H-1).
+    """Clear the quiz cooldown timer.
 
     Called when a fresh tracking session starts so a `_last_quiz_time` left
     over from a previous track_loop() run cannot censor the first quiz of
@@ -40,7 +40,7 @@ def reset_quiz_state():
 
 
 def record_quiz_broadcast():
-    """Stamp the cooldown AFTER a quiz is actually delivered (M-6).
+    """Stamp the cooldown AFTER a quiz is actually delivered.
 
     generate_micro_quiz() no longer stamps the timer at generation time --
     the broadcast can fail (dashboard not running, client disconnected),

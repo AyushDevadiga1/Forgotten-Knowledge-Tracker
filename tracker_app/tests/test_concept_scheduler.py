@@ -1,4 +1,4 @@
-"""Tests: TrackedConcept SM-2 scheduling (Phase 11.6).
+"""Tests: TrackedConcept SM-2 scheduling.
 
 The auto-tracked concept system previously re-implemented SM-2 off
 `interval <= 1`, which skipped the canonical 1-day initial-reinforcement step
@@ -158,7 +158,7 @@ def test_matches_tested_sm2_scheduler_across_quality_sequence(db, scheduler, no_
 
 
 def test_review_counters_track_quizzes(db, scheduler, no_graph_sync):
-    # M-6: every schedule_next_review call is one quiz review. Verify the
+    # every schedule_next_review call is one quiz review. Verify the
     # cumulative counters that feed recalibration.
     scheduler.schedule_next_review("backpropagation", quality=5)
     scheduler.schedule_next_review("backpropagation", quality=5)
@@ -169,7 +169,7 @@ def test_review_counters_track_quizzes(db, scheduler, no_graph_sync):
 
 
 def test_recalibration_waits_for_five_reviews(db, scheduler, no_graph_sync):
-    # M-6: no lambda recalibration before 5 quiz reviews, no matter how many
+    # no lambda recalibration before 5 quiz reviews, no matter how many
     # OCR re-encounters the concept had.
 
     with db() as session:
@@ -187,9 +187,9 @@ def test_recalibration_waits_for_five_reviews(db, scheduler, no_graph_sync):
 
 
 def test_recalibration_uses_cumulative_success_rate(db, scheduler, no_graph_sync):
-    # M-6: at the 5th review, lambda must be recalibrated from the CUMULATIVE
+    # at the 5th review, lambda must be recalibrated from the CUMULATIVE
     # success rate (4/5), not the last review's single rating (quality 2 -> 0.4).
-    # H-3: the decay window is time since the LAST review, not the concept's
+    # the decay window is time since the LAST review, not the concept's
     # total age (first_seen) -- an old concept must not have its adjustment
     # decoupled from actual recall and driven to a bound.
     from datetime import datetime, timedelta
@@ -217,7 +217,7 @@ def test_recalibration_uses_cumulative_success_rate(db, scheduler, no_graph_sync
 
 
 def test_recalibrate_lambda_decay_window_is_last_seen():
-    # H-3: predicted retention must be computed over the time since the last
+    # predicted retention must be computed over the time since the last
     # review (last_seen), so the adjustment responds to the user's actual
     # recall instead of being ~0 for every long-lived concept.
     from datetime import datetime, timedelta
@@ -239,7 +239,7 @@ def test_recalibrate_lambda_decay_window_is_last_seen():
 
 
 def test_reexposure_auto_promotes_to_deck_at_threshold(db, monkeypatch, no_graph_sync):
-    # Phase 12: a concept re-encountered enough times is auto-promoted into
+    # a concept re-encountered enough times is auto-promoted into
     # the triage queue (H3). Uses the same in-memory SessionLocal
     # so the promotion write lands in the test DB, and only promotes once.
     from tracker_app.db.models import TriageQueue
@@ -358,7 +358,7 @@ def test_add_concept_default_source_is_ocr(db, no_graph_sync):
 
 
 def test_get_scheduler_is_singleton():
-    # H-2: record_quiz_result must reuse one shared scheduler instead of
+    # record_quiz_result must reuse one shared scheduler instead of
     # spawning a throw-away ConceptScheduler on every call.
     from tracker_app.learning.concept_scheduler import get_scheduler
 

@@ -13,7 +13,7 @@ import threading
 
 
 def test_app_import_generates_secret_key_when_missing():
-    """C-1: when SECRET_KEY is missing, config.py auto-generates one
+    """When SECRET_KEY is missing, config.py auto-generates one
     and writes it to .env so the app always starts securely."""
     root = str(Path(__file__).parent.parent.parent)
     env = {k: v for k, v in os.environ.items() if k not in ("SECRET_KEY", "DEBUG")}
@@ -36,7 +36,7 @@ def test_app_import_generates_secret_key_when_missing():
 
 
 def test_app_import_always_has_valid_secret_key(tmp_path):
-    """C-1: whether DEBUG is set or not, the app must always have a
+    """Whether DEBUG is set or not, the app must always have a
     valid SECRET_KEY (auto-generated if missing from env)."""
     root = str(Path(__file__).parent.parent.parent)
     env = {k: v for k, v in os.environ.items() if k not in ("SECRET_KEY",)}
@@ -54,7 +54,7 @@ def test_app_import_always_has_valid_secret_key(tmp_path):
 
 
 def test_auth_enforced_when_no_auth_false_and_key_set(monkeypatch):
-    """C-1: with NO_AUTH=false and API_KEY set, the before_request hook must
+    """With NO_AUTH=false and API_KEY set, the before_request hook must
     require X-API-Key (401 missing, 403 wrong, 404 once authenticated)."""
     import tracker_app.web.auth as auth
     from tracker_app.web.app import app
@@ -86,7 +86,7 @@ def test_auth_skipped_when_no_auth_true(monkeypatch):
 
 
 def test_retrain_lock_allows_single_concurrent_run(monkeypatch):
-    """C-2: two near-simultaneous triggers must start at most one retraining
+    """Two near-simultaneous triggers must start at most one retraining
     subprocess (the second skips while the first holds the lock)."""
     import tracker_app.web.routes.intent as intent_mod
     import tracker_app.web.shared as shared_mod

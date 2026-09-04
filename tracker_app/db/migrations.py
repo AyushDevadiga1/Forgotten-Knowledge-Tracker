@@ -154,7 +154,7 @@ MIGRATIONS = [
     # â”€â”€ 009: SM-2 repetition counter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # TrackedConcept previously re-implemented SM-2 by hand off `interval <= 1`,
     # which collapsed the canonical 1-day / 3-day ramp into a straight 3-day
-    # jump. A real repetition counter fixes that (Phase 11.6).
+    # jump. A real repetition counter fixes that .
     (
         "009_tracked_repetitions",
         "Add repetitions to tracked_concepts",
@@ -166,7 +166,7 @@ MIGRATIONS = [
     # recalibrate_lambda() expects a cumulative success rate over n_reviews, but
     # schedule_next_review was passing a single review's quality/5 while also
     # claiming n_reviews = frequency_count (OCR re-encounters, not reviews). The
-    # real counters make the success rate a true historical average (M-6).
+    # real counters make the success rate a true historical average .
     (
         "010_tracked_review_counts",
         "Add review_count and correct_count to tracked_concepts",

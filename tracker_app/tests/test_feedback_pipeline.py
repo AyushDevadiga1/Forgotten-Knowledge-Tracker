@@ -1,5 +1,5 @@
 """
-Tests: ADR-003 feedback-retraining pipeline integrity (Phase 11.1).
+Tests: ADR-003 feedback-retraining pipeline integrity.
 
 The intent classifier is retrained on *real* user corrections, so the stored
 feature vector must be the exact 6-element vector used at prediction time —

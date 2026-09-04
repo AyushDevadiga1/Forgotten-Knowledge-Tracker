@@ -1,4 +1,4 @@
-"""Tests: failed lazy-model loads are not retried (H-5).
+"""Tests: failed lazy-model loads are not retried.
 
 _get_embed_model and _get_spacy_vectors (knowledge_graph) and _get_nlp
 (keyword_extractor) used to leave their cache at None after a failed load, so

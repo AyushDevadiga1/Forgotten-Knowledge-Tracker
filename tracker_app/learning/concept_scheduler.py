@@ -126,7 +126,7 @@ class ConceptScheduler:
             db.commit()
 
         # Keep the in-memory knowledge graph in step with the live SM-2/AWFC
-        # row (Phase 11.2) â€” a re-encounter resets the retention clock.
+        # row  â€” a re-encounter resets the retention clock.
         try:
             from tracker_app.tracking.knowledge_graph import sync_concept_to_graph
 
@@ -193,7 +193,7 @@ class ConceptScheduler:
             # fresh recall rather than the last OCR encounter.
             tracked.last_seen = _utcnow()
 
-            # Cumulative review history (M-6): every schedule_next_review call
+            # Cumulative review history: every schedule_next_review call
             # is one quiz review, so review_count/correct_count give a true
             # cumulative success rate for recalibration instead of the old
             # "single rating / 5" approximation.
@@ -224,7 +224,7 @@ class ConceptScheduler:
                 f"(quality={quality}, â•¬â•—={tracked.lambda_personalised:.4f})"
             )
 
-            # Reflect the fresh review in the knowledge graph (Phase 11.2).
+            # Reflect the fresh review in the knowledge graph .
             try:
                 from tracker_app.tracking.knowledge_graph import sync_concept_to_graph
 
@@ -300,7 +300,7 @@ _default_scheduler: Optional["ConceptScheduler"] = None
 
 
 def get_scheduler() -> "ConceptScheduler":
-    """Return the shared module-level ConceptScheduler singleton (H-2)."""
+    """Return the shared module-level ConceptScheduler singleton."""
     global _default_scheduler
     if _default_scheduler is None:
         _default_scheduler = ConceptScheduler()

@@ -151,7 +151,7 @@ def compute_attention_score(ear_values, ear_low=0.2, ear_high=0.35):
 # ----------------------------
 # Persistent camera handle
 # ----------------------------
-_cap = None  # cv2.VideoCapture opened once and reused (H-4)
+_cap = None  # cv2.VideoCapture opened once and reused
 
 
 def _get_cap():

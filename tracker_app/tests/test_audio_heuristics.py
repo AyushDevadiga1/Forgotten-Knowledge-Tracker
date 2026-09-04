@@ -1,5 +1,5 @@
 """
-Tests: audio classification is honest heuristics, not a synthetic ML stub (C-4).
+Tests: audio classification is honest heuristics, not a synthetic ML stub.
 
 FKT previously shipped a GaussianNB `audio_classifier.pkl` trained on fully
 synthetic random MFCC vectors. That trainer and its loading path were removed;

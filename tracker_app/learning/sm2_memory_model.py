@@ -21,7 +21,7 @@ MAX_EASE_FACTOR = 3.5  # Never increase above this
 # 5 = Correct (extend interval)
 QUALITY_THRESHOLD = 3
 
-# Deliberate choice (Phase 11.6): canonical SM-2 uses 6 days for the second
+# Deliberate choice : canonical SM-2 uses 6 days for the second
 # successful review; we use a gentler 3-day ramp for first-time learners.
 # Shared by sm2_memory_model.py and concept_scheduler.py so both subsystems
 # implement the same schedule.

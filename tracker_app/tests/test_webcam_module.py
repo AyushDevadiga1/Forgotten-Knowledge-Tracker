@@ -1,4 +1,4 @@
-"""Tests: persistent webcam capture handle (H-4).
+"""Tests: persistent webcam capture handle.
 
 The camera used to be opened and closed on every capture_frame() call, so a
 3-frame webcam cycle did 3 open/close cycles (~300 ms each) and toggled the
@@ -106,4 +106,4 @@ def test_runtime_code_uses_logger_not_print():
     src = inspect.getsource(wm)
     main_idx = src.find('if __name__ == "__main__":')
     body = src if main_idx == -1 else src[:main_idx]
-    assert "print(" not in body  # M-7: runtime messages must reach the log
+    assert "print(" not in body  # Runtime messages must reach the log

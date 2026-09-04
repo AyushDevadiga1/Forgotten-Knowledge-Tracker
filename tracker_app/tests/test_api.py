@@ -204,7 +204,7 @@ class TestAPIRecordReview(TestAPIBase):
 
 
 class TestAPISessions(TestAPIBase):
-    """Phase 9: study-session toggle endpoints."""
+    """Study-session toggle endpoints."""
 
     def test_status_defaults_inactive(self):
         resp = self.client.get("/api/v1/session/status")
@@ -246,7 +246,7 @@ class TestAPISessions(TestAPIBase):
 
 
 class TestAPIStatsTrend(TestAPIBase):
-    """Real per-day time-series backing the Overview sparklines (H-2)."""
+    """Real per-day time-series backing the Overview sparklines."""
 
     def test_trend_defaults_to_7_day_buckets(self):
         resp = self.client.get("/api/v1/stats/trend")
@@ -294,7 +294,7 @@ class TestAPIStatsTrend(TestAPIBase):
 
 
 class TestDailySummaryRange(TestAPIBase):
-    """M-4: date filter must be a range, not a string LIKE."""
+    """Date filter must be a range, not a string LIKE."""
 
     def test_daily_summary_uses_range_boundaries(self):
         from datetime import datetime, timedelta

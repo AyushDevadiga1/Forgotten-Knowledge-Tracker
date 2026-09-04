@@ -5,7 +5,7 @@ syllabic-rate amplitude modulation. FKT previously shipped a "trained"
 GaussianNB classifier fed entirely by synthetic random MFCC vectors
 (`train_audio_classifier`) — a stub that created a false sense of quality
 (see ADR-002). The synthetic trainer and its model-loading path were removed;
-the feature-driven heuristic is the honest classifier (C-4).
+the feature-driven heuristic is the honest classifier.
 """
 
 import threading
@@ -133,7 +133,7 @@ def classify_audio(audio: np.ndarray) -> Tuple[str, float]:
     """Classify audio using deterministic RMS/spectral/modulation heuristics.
 
     This is the only classifier (see module docstring — the synthetic ML trainer
-    and loader were removed per C-4 / ADR-002).
+    and loader were removed per ADR-002).
     """
     return energy_based_classification(audio)
 

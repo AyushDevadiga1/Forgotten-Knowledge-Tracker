@@ -237,7 +237,7 @@ def extract_keywords(text, top_n=TEXT_TOP_KEYWORDS, boost_repeats=True, graph=No
 
     graph: optional preloaded knowledge graph. When provided the node-boost
     lookup uses it directly instead of calling get_graph() (which may
-    trigger a DB sync) from the OCR worker thread (M-4).
+    trigger a DB sync) from the OCR worker thread.
     """
     if not text or len(text.strip()) < 10:
         return {}
@@ -327,7 +327,7 @@ def ocr_pipeline():
         if not text.strip():
             return {"keywords": {}, "raw_text": ""}
 
-        # Extract keywords with scores (graph loaded once per pipeline, M-4)
+        # Extract keywords with scores (graph loaded once per pipeline)
         G = get_graph()
         keywords_with_scores = extract_keywords(text, top_n=TEXT_TOP_KEYWORDS, graph=G)
 

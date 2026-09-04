@@ -28,7 +28,7 @@ _loaded = False
 _last_db_sync = 0.0
 _graph_dirty = False
 
-# Cap on in-memory graph size (H-6): _save_graph() evicts the lowest-
+# Cap on in-memory graph size : _save_graph() evicts the lowest-
 # memory_score zero-edge nodes once the count exceeds this, keeping the
 # JSON file small and _load_graph() fast after months of use.
 MAX_GRAPH_NODES = 5000
@@ -151,7 +151,7 @@ def _load_graph_locked() -> bool:
     the JSON migration), migrating any pickle found to JSON on success. The
     graph is a rebuildable cache: a corrupt/missing file is not fatal.
 
-    Must be called with `_graph_lock` already held (M-9): this function
+    Must be called with `_graph_lock` already held: this function
     mutates the shared in-memory graph and never acquires the lock itself --
     the caller's acquire is the single point of entry.
     """
@@ -328,7 +328,7 @@ def add_concepts(concepts):
         embeddings = _get_spacy_vectors(valid_concepts)
 
     with _graph_lock:
-        # Pull live memory state so new nodes don't start frozen at 0.3 (Phase 11.2).
+        # Pull live memory state so new nodes don't start frozen at 0.3.
         live_scores = _fetch_live_memory_scores(valid_concepts)
         for idx, concept in enumerate(valid_concepts):
             if concept not in knowledge_graph:
@@ -495,7 +495,7 @@ def remove_concept_from_graph(concept):
 
 
 def _refresh_all_memory_scores(concepts):
-    """Batch-refresh graph node memory fields from live DB state (Phase 11.2).
+    """Batch-refresh graph node memory fields from live DB state .
 
     The graph is a cache; without this its memory_score stays frozen at the
     value assigned at node creation, so the dashboard's average memory and the
@@ -791,7 +791,7 @@ def get_graph_stats() -> dict:
             reverse=True,
         )[:10]
 
-        # Real edges among the visible top concepts (M-7). The frontend used to
+        # Real edges among the visible top concepts. The frontend used to
         # fabricate spoke lines from a fake "HUB"; return the actual weighted
         # semantic edges so the map draws the true graph structure.
         top_set = set(top_concepts)

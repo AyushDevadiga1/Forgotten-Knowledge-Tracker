@@ -1,10 +1,10 @@
 """
-Tests for the mandatory privacy gate in the OCR pipeline (Phase 12, [C-1]/[M-5]).
+Tests for the mandatory privacy gate in the OCR pipeline.
 
-C-1: privacy filtering must be a hard, module-level import — never a best-effort
+Privacy filtering must be a hard, module-level import — never a best-effort
      import that silently disappears. A capture with sensitive content must be
      redacted before it ever reaches keyword/concept extraction.
-M-5: `should_skip_window()` must delegate to the canonical keyword list in
+`should_skip_window()` must delegate to the canonical keyword list in
      `privacy_filter.py`, so the OCR module and the privacy module can never
      disagree about which window titles are sensitive.
 
@@ -49,7 +49,7 @@ def test_should_skip_window_delegates_to_privacy_filter():
 
 def test_should_skip_window_catches_extended_keyword_union():
     # Regression: 'authentication', 'payment', 'health', 'prescription' existed
-    # only in privacy_filter's list. After M-5 both lists agree — all must skip.
+    # only in privacy_filter's list. Afterward both lists agree — all must skip.
     for title in SENSITIVE_TITLES:
         assert ocr_module.should_skip_window(title) is True, title
 
@@ -61,7 +61,7 @@ def test_should_skip_window_accepts_study_titles():
 
 
 def test_privacy_gate_is_mandatory_module_level_import():
-    # C-1: sanitize_text_for_storage must be the canonical function bound at
+    # sanitize_text_for_storage must be the canonical function bound at
     # import time — not a lazily-imported, swallowable dependency.
     assert ocr_module.sanitize_text_for_storage is privacy_filter.sanitize_text_for_storage
 
@@ -82,7 +82,7 @@ def test_extract_keywords_redacts_sensitive_content(monkeypatch):
 
 
 def test_extract_keywords_retains_camelcase_compound(monkeypatch):
-    # M-1 regression: 'backPropagation' is a meaningful YAKE unit and must be
+    # Regression: 'backPropagation' is a meaningful YAKE unit and must be
     # retained as 'backpropagation' - the split fragments are bonus entries.
     class FakeExtractor:
         def extract_keywords(self, text, top_n=15):
@@ -101,7 +101,7 @@ def test_extract_keywords_retains_camelcase_compound(monkeypatch):
 
 
 def test_extract_keywords_uses_passed_graph_without_get_graph(monkeypatch):
-    # M-4 regression: the OCR pipeline hands extract_keywords a preloaded graph
+    # Regression: the OCR pipeline hands extract_keywords a preloaded graph
     # so the node-boost never re-triggers _ensure_graph_loaded()/DB sync.
     calls = {"n": 0}
 
@@ -134,7 +134,7 @@ def test_runtime_code_uses_logger_not_print():
     src = inspect.getsource(ocr_module)
     main_idx = src.find('if __name__ == "__main__":')
     body = src if main_idx == -1 else src[:main_idx]
-    assert "print(" not in body  # M-7: runtime messages must reach the log
+    assert "print(" not in body  # Runtime messages must reach the log
 
 
 def test_ocr_pipeline_returns_empty_on_blank_screen(monkeypatch):

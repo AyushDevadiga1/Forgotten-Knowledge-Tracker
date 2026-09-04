@@ -298,7 +298,7 @@ def _maybe_trigger_quiz(
                 except Exception:
                     logger.debug("dashboard may not be running")
                 else:
-                    # M-6: cooldown starts only after a successful broadcast.
+                    # Cooldown starts only after a successful broadcast.
                     record_quiz_broadcast()
                 logger.info(f"Micro-quiz triggered: '{quiz['concept']}'")
     except Exception as e:
@@ -320,7 +320,7 @@ def track_loop(
 
     init_all_databases()
 
-    # H-1: a previous track_loop() run in the same process (test runs,
+    # A previous track_loop() run in the same process (test runs,
     # signal-based reload) leaves stale state behind -- accumulated idle
     # cycles could fire a quiz on the very first cycle of a fresh run, and
     # a leftover cooldown timer could censor the first quiz of the session.

@@ -1,4 +1,4 @@
-"""Tests: startup warm-up pre-builds the knowledge graph (Phase 10.5).
+"""Tests: startup warm-up pre-builds the knowledge graph.
 
 warm_up_all_pipelines() pre-loads lazy models in a background thread at startup
 so the micro-quiz hot path never triggers a multi-minute SentenceTransformer
