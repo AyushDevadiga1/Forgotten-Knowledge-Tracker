@@ -77,3 +77,13 @@ legacy/
 
 # errors
 workflow-errors
+# Agent configuration folders (local tooling, not part of the app)
+.agent/
+.hermes/
+.opencode/
+.qodo/
+.superpowers/
+.audit/
+docs/superpowers/
+fkt-audit-v3/
+

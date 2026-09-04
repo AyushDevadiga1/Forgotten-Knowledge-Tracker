@@ -1,4 +1,0 @@
-FKT Audit v3
-Graph-aware, bounded-neighborhood, evidence-driven audit architecture.
-Does NOT replace OpenSpec-generated integration files.
-Does NOT include .opencode/node_modules.
