@@ -1,4 +1,4 @@
-﻿.git
+.git
 .github
 .hermes
 .opencode
@@ -15,7 +15,7 @@ __pycache__
 data/
 outputs/
 docs/
-documentation/
+documents/
 architecture/
 fkt-audit-v3/
 openspec/
