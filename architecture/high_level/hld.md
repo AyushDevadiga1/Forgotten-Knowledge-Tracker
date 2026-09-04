@@ -8,7 +8,7 @@ At a high level, the system comprises the following components:
    - **OCR Pipeline**: Periodically checks the screen and extracts top TF-IDF keywords.
    - **Webcam Pipeline**: Determines gaze orientation and attention using `mediapipe` facial landmarks (FaceMesh).
 3. **Intent & Concept Engine**: Cross-references signals at a defined interval (e.g., 5 seconds) to assign an action Intent ("idle", "passive", "studying") and extract active concepts.
-4. **Storage Layer**: A unified SQLite database (`fkt_tracking.db`) via SQLAlchemy + a Repository pattern (`db/repository.py`) stores periodic telemetry, concept metrics, and session timelines. The repository layer keeps all raw ORM queries isolated from business logic.
+4. **Storage Layer**: A unified SQLite database (`sessions.db`) via SQLAlchemy + a Repository pattern (`db/repository.py`) stores periodic telemetry, concept metrics, and session timelines. The repository layer keeps all raw ORM queries isolated from business logic.
 5. **Dashboard Layer**: Flask (`web/app.py`) serves REST and WebSocket endpoints. A separate **React 18 + TypeScript + Vite** SPA (`web/frontend/`) consumes those endpoints and provides real-time visualisation of memory decay, the knowledge graph, quiz interrupts, and learning reviews.
 
 ## 2. Integrations

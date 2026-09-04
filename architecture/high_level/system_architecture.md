@@ -14,7 +14,7 @@ Both subsystems are orchestrated via `main.py` and share a local SQLAlchemy SQLi
 - **Backend & Orchestration**: Python 3.11+
 - **Database**: SQLite3 via SQLAlchemy (Local, lightweight, zero-configuration)
 - **Web Server**: Flask + Flask-SocketIO
-- **UI/Frontend**: (Pending redesign) Native HTML/JS/CSS 
+- **UI/Frontend**: React 18 + TypeScript SPA (Vite build), consuming REST/WebSocket endpoints 
 - **OCR**: Tesseract + Pillow
 - **Audio Processing**: Sounddevice + librosa (RMS energy thresholding)
 - **Webcam Tracking**: Mediapipe FaceMesh for facial pose / attention

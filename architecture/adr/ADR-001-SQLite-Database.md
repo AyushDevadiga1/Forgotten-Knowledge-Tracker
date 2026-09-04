@@ -7,7 +7,7 @@ Accepted
 The Forgotten Knowledge Tracker requires a persistent data layer to log session metrics, encounters, and spaced repetition intervals. Initially, there were discussions around deploying PostgreSQL, MongoDB, or other client-server architectures to manage the `tracking_sessions` and `tracked_concepts`.
 
 ## Decision
-We chose to persist strictly with Python's inbuilt `sqlite3` using a unified local database file (`fkt_tracking.db`) managed via SQLAlchemy.
+We chose to persist strictly with Python's inbuilt `sqlite3` using a unified local database file (`sessions.db`) managed via SQLAlchemy.
 
 ## Rationale
 1. **Single-User Local First paradigm**: The tracker runs natively on a single user's OS and hooks into their local IO/Devices. There is zero multi-user collaboration overhead that would necessitate a centralized DB server.

@@ -7,7 +7,7 @@ sequenceDiagram
     participant Tracker as track_loop
     participant CV as OCR/Webcam Pipeline
     participant Audio as Audio Pipeline
-    participant DB as fkt_tracking.db
+    participant DB as sessions.db
 
     loop Every 5 seconds
         Tracker->>OS: Poll interaction counters
@@ -32,10 +32,10 @@ sequenceDiagram
     participant Browser
     participant Flask Route
     participant LearningTracker
-    participant DB as fkt_tracking.db
+    participant DB as sessions.db
 
-    User->>Browser: Selects Review Quality (1-5)
-    Browser->>Flask Route: POST /api/v1/learning/reviews (quality=4)
+    User->>Browser: Selects Review Quality (0-5)
+    Browser->>Flask Route: POST /api/v1/reviews (quality=4)
     Flask Route->>LearningTracker: record_review("123", 4)
     
     LearningTracker->>DB: Query LearningItem WHERE id="123"

@@ -26,4 +26,4 @@ The data flow within the Forgotten Knowledge Tracker follows an Event-Driven per
    - The aggregate session is fired to `ActivityMonitor` bounding the time frame and average interactions.
 5. **Retrieval**
    - User loads the Web Dashboard (`app.py`).
-   - `LearningTracker` reads SQLite databases and pushes data to the Jinja templates.
+   - The React SPA (`web/frontend/`) fetches data via REST endpoints and subscribes to WebSocket pushes; `LearningTracker` reads the SQLite database to serve those requests.
