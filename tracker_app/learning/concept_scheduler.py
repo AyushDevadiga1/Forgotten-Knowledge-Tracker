@@ -27,7 +27,7 @@ class ConceptScheduler:
         concept: str,
         confidence: float = 0.5,
         context: str = "",
-        attention_at_encoding: float = NEUTRAL_ATTENTION,
+        attention_at_encoding: Optional[float] = None,
         source: str = "ocr",
     ) -> str:
         """
@@ -61,10 +61,17 @@ class ConceptScheduler:
             existing = db.query(TrackedConcept).filter(TrackedConcept.concept == concept).with_for_update().first()
 
             if existing:
-                # Rolling average of attention at encoding (EMA 80/20)
-                existing.attention_at_encoding = (
-                    0.8 * (existing.attention_at_encoding or NEUTRAL_ATTENTION) + 0.2 * attention_at_encoding
-                )
+                # Rolling average of attention at encoding (EMA 80/20). A
+                # re-encounter without a measured attention (None) leaves the
+                # stored attention untouched; a first real measurement is
+                # stored as-is rather than blended against a fabricated default.
+                if attention_at_encoding is not None:
+                    if existing.attention_at_encoding is None:
+                        existing.attention_at_encoding = attention_at_encoding
+                    else:
+                        existing.attention_at_encoding = (
+                            0.8 * existing.attention_at_encoding + 0.2 * attention_at_encoding
+                        )
                 # Once schedule_next_review() has recalibrated lambda from real
                 # recall performance (repetitions > 0), a passive re-encounter
                 # must not overwrite that with a fresh attention-only estimate
@@ -120,7 +127,10 @@ class ConceptScheduler:
                 timestamp=now,
                 source=source,
                 confidence=confidence,
-                context_snippet=context[:200] if context else "",
+                # Full capture text, not a 200-char slice: browser-ingest
+                # excerpts are already privacy-gated and capped by
+                # BROWSER_INGEST_MAX_TEXT upstream (capture fidelity).
+                context_snippet=context or "",
             )
             db.add(encounter)
             db.commit()

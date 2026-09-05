@@ -111,8 +111,10 @@ def test_reexposure_recomputes_lambda_before_any_reviews(db, scheduler, no_graph
 
     scheduler.add_concept("backpropagation", attention_at_encoding=90.0)
     row = _row(db)
-    # EMA: 0.8*50 (default) + 0.2*90 = 58
-    expected = compute_awfc_lambda(DEFAULT_LAMBDA, 58.0)
+    # First real measurement is stored as-is (no EMA against a fabricated
+    # default), so lambda is computed from the measured 90.
+    assert row.attention_at_encoding == 90.0
+    expected = compute_awfc_lambda(DEFAULT_LAMBDA, 90.0)
     assert abs(row.lambda_personalised - expected) < 1e-9
 
 
@@ -131,10 +133,58 @@ def test_reexposure_nudges_not_overwrites_lambda_after_reviews(db, scheduler, no
 
     scheduler.add_concept("backpropagation", attention_at_encoding=90.0)
     row = _row(db)
-    attention_lambda = compute_awfc_lambda(DEFAULT_LAMBDA, 58.0)
+    # First real attention (stored as-is) drives the attention-based estimate.
+    attention_lambda = compute_awfc_lambda(DEFAULT_LAMBDA, 90.0)
     expected = 0.9 * 0.42 + 0.1 * attention_lambda
     assert row.lambda_personalised != 0.42
     assert abs(row.lambda_personalised - expected) < 1e-9
+
+
+def test_add_concept_without_attention_uses_base_lambda(db, no_graph_sync):
+    from tracker_app.config import DEFAULT_LAMBDA
+
+    # An unmeasured capture (e.g. browser highlight) must not receive a
+    # fabricated attention score (GIGO Phase 2): attention stays NULL and
+    # lambda stays at the base value so no fake number enters the model.
+    scheduler = ConceptScheduler()
+    scheduler.add_concept("antecedent")
+    row = _row(db, concept="antecedent")
+    assert row.attention_at_encoding is None
+    assert abs(row.lambda_personalised - DEFAULT_LAMBDA) < 1e-9
+
+
+def test_first_real_attention_is_stored_as_is(db, no_graph_sync):
+    # The first real measurement replaces the unmeasured NULL directly
+    # instead of being blended with a fabricated baseline (0.8*50 + 0.2*new).
+    scheduler = ConceptScheduler()
+    scheduler.add_concept("antecedent")
+    scheduler.add_concept("antecedent", attention_at_encoding=90.0)
+    row = _row(db, concept="antecedent")
+    assert row.attention_at_encoding == 90.0
+
+
+def test_unmeasured_reexposure_preserves_stored_attention(db, no_graph_sync):
+    # A re-encounter with no measurement must not nudge the stored real
+    # attention toward a fabricated default.
+    scheduler = ConceptScheduler()
+    scheduler.add_concept("antecedent", attention_at_encoding=75.0)
+    scheduler.add_concept("antecedent")
+    row = _row(db, concept="antecedent")
+    assert row.attention_at_encoding == 75.0
+
+
+def test_add_concept_persists_full_context(db, no_graph_sync):
+    # The full capture excerpt is persisted, not a 200-char slice, so deck
+    # answers and triage review see the real selected text (GIGO Phase 2).
+    from tracker_app.db.models import ConceptEncounter
+
+    long_ctx = "x" * 500
+    scheduler = ConceptScheduler()
+    scheduler.add_concept("antecedent", context=long_ctx)
+    with db() as session:
+        enc = session.query(ConceptEncounter).filter(ConceptEncounter.concept == "antecedent").first()
+    assert enc is not None
+    assert enc.context_snippet == long_ctx
 
 
 def test_matches_tested_sm2_scheduler_across_quality_sequence(db, scheduler, no_graph_sync):

@@ -8,7 +8,6 @@ from tracker_app.constants import (
     BROWSER_INGEST_MAX_TEXT,
     BROWSER_INGEST_MIN_TEXT,
     TITLE_MAX_LENGTH,
-    CONTEXT_MAX_LENGTH,
     TEXT_TOP_KEYWORDS,
 )
 from tracker_app.web.shared import _sanitize_title, check_api_key
@@ -73,10 +72,11 @@ def browser_ingest():
         if not keywords:
             return jsonify({"success": True, "message": "No keywords extracted"})
 
-        # Persist a sanitized excerpt of the actual selected text, never just
-        # the window title. cleaned_text already passed the privacy + quality
-        # gates above; sensitive windows dropped the title entirely.
-        context = validation["cleaned_text"][:CONTEXT_MAX_LENGTH]
+        # Persist the FULL sanitized excerpt of the actual selected text, never
+        # just the window title or a truncated slice. cleaned_text already
+        # passed the privacy + quality gates above and is capped by
+        # BROWSER_INGEST_MAX_TEXT; sensitive windows dropped the title entirely.
+        context = validation["cleaned_text"]
 
         scheduler = ConceptScheduler()
         saved = 0
@@ -86,7 +86,10 @@ def browser_ingest():
                     concept=concept,
                     confidence=float(score),
                     context=context,
-                    attention_at_encoding=60.0,  # assume moderate engagement
+                    # No attention is measured for a passive browser-highlight
+                    # capture; leave it unset so no fabricated score enters the
+                    # AWFC model (a real measured attention can still arrive on
+                    # a later tracking-loop encounter, GIGO Phase 2).
                     source="browser_extension",
                 )
                 if result:

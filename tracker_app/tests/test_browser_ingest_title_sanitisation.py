@@ -61,14 +61,14 @@ class TestBrowserIngestTitleSanitised(unittest.TestCase):
         self._patch_cs = None
         self._patch_kg = None
 
-    def _patch_heavy_deps(self):
+    def _patch_heavy_deps(self, cleaned_text="python decorators"):
         from unittest import mock
 
         self._patch_ke = mock.patch.object(ke_mod, "extract_concepts", side_effect=_fake_extract_concepts)
         self._patch_tq = mock.patch.object(
             tq_mod,
             "validate_and_clean_extraction",
-            return_value={"is_useful": True, "cleaned_text": "python decorators"},
+            return_value={"is_useful": True, "cleaned_text": cleaned_text},
         )
         self._patch_cs = mock.patch.object(cs_mod, "ConceptScheduler", return_value=self.scheduler)
         # The ingest route records co-occurrence edges via record_capture_window;
@@ -114,13 +114,21 @@ class TestBrowserIngestTitleSanitised(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(self.scheduler.added[0]["context"], "python decorators")
 
-    def test_context_truncated_to_80_chars(self):
+    def test_ingest_does_not_fabricate_attention(self):
         self._patch_heavy_deps()
-        long_title = "word-" * 40
-        self._ingest(long_title)
-        ctx = self.scheduler.added[0]["context"]
-        self.assertEqual(ctx, "python decorators")
-        self.assertLessEqual(len(ctx), 80)
+        resp = self._ingest("A Title")
+        self.assertEqual(resp.status_code, 200)
+        for call in self.scheduler.added:
+            self.assertNotIn("attention_at_encoding", call)
+
+    def test_context_is_full_excerpt_not_truncated(self):
+        long_text = " ".join(["word"] * 40)
+        self._patch_heavy_deps(cleaned_text=long_text)
+        resp = self._ingest("A Title")
+        self.assertEqual(resp.status_code, 200)
+        for call in self.scheduler.added:
+            self.assertEqual(call["context"], long_text)
+            self.assertGreater(len(call["context"]), 80)
 
     def test_missing_title_keeps_body_context(self):
         self._patch_heavy_deps()

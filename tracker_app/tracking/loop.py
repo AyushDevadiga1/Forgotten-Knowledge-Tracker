@@ -168,6 +168,23 @@ def _get_attention_score(
     return round(cle_score, 1)
 
 
+def _attention_is_fabricated(webcam_result: Optional[dict]) -> bool:
+    """True when the current cycle's webcam attention is a placeholder.
+
+    The webcam pipeline returns a constant 50.0 when MediaPipe is unavailable
+    or when no frames could be captured; persisting concepts with that value
+    would store a fabricated attention score (GIGO). A no-face result derived
+    from real frames is a measured 0.0 write-off, not a placeholder, so it is
+    not fabricated. CLE-only cycles (webcam disabled or not yet evaluated)
+    are real measurements too.
+    """
+    if webcam_result is None:
+        return False
+    if webcam_result.get("status") == "mediapipe_unavailable":
+        return True
+    return webcam_result.get("status") == "no_face_detected" and not webcam_result.get("frames_processed")
+
+
 # â”€â”€â”€ Adaptive interval throttling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
@@ -490,7 +507,10 @@ def track_loop(
             # intent classifier labels as active studying, so a mid-session
             # distraction (YouTube tab, chat message) is not captured.
             intent_label = intent_result.get("intent_label", "unknown")
-            if intent_label in SESSION_ALLOWED_INTENTS:
+            # Also skip concept capture while the webcam attention signal is
+            # fabricated (MediaPipe/camera unavailable), so no concept is
+            # persisted with a made-up attention value (GIGO Phase 2).
+            if intent_label in SESSION_ALLOWED_INTENTS and not _attention_is_fabricated(webcam_result):
                 monitor.process_concepts(
                     ocr_result.get("keywords", {}),
                     attention_score=attention_score,  # AWFC

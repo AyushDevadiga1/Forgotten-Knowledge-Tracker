@@ -53,7 +53,7 @@ def safe_parse_datetime(dt_value, default=None) -> datetime:
 
 def compute_awfc_lambda(
     base_lambda: float,
-    attention_at_encoding: float,
+    attention_at_encoding: Optional[float],
     alpha: float = AWFC_ALPHA,
 ) -> float:
     """
@@ -69,7 +69,10 @@ def compute_awfc_lambda(
     Returns:
         Personalised lambda in [LAMBDA_FLOOR, LAMBDA_CEIL]
     """
-    att_norm = max(0.0, min(attention_at_encoding / 100.0, 1.0))
+    # None attention (no measurement at capture time) means no lambda
+    # personalisation: the base decay is used unchanged rather than a
+    # fabricated attention score.
+    att_norm = 0.0 if attention_at_encoding is None else max(0.0, min(attention_at_encoding / 100.0, 1.0))
     lambda_p = base_lambda * (1.0 - att_norm * alpha)
     return max(LAMBDA_FLOOR, min(lambda_p, LAMBDA_CEIL))
 

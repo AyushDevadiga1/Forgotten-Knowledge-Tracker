@@ -240,3 +240,32 @@ def test_maybe_trigger_quiz_fires_once_cooldown_expired(monkeypatch):
 
     assert broadcast == [{"concept": "hash table"}]
     assert quiz_engine._last_quiz_time is not None
+
+
+def test_attention_is_fabricated_only_for_unavailable_webcam():
+    assert loop._attention_is_fabricated(None) is False
+    assert loop._attention_is_fabricated({"status": "active", "frames_processed": 3}) is False
+    assert loop._attention_is_fabricated({"status": "no_face_detected", "frames_processed": 3}) is False
+    assert loop._attention_is_fabricated({"status": "mediapipe_unavailable", "frames_processed": 0}) is True
+    assert loop._attention_is_fabricated({"status": "no_face_detected", "frames_processed": 0}) is True
+
+
+def test_track_loop_skips_concepts_when_webcam_attention_fabricated(loop_env, monkeypatch):
+    # When the webcam produces no real attention signal (MediaPipe
+    # unavailable / zero frames), the pipeline's constant 50.0 is a
+    # fabrication: concepts must not be persisted with it (GIGO Phase 2).
+    monkeypatch.setattr(
+        loop,
+        "get_webcam_pipeline",
+        lambda: (
+            lambda: {
+                "attentiveness_score": 50.0,
+                "face_count": 0,
+                "frames_processed": 0,
+                "status": "mediapipe_unavailable",
+            }
+        ),
+    )
+    loop.track_loop(stop_event=_StopAfter(3), webcam_enabled=True)
+    assert loop_env["monitor"].concept_calls == [], "fabricated attention must not persist concepts"
+    assert len(loop_env["ocr_calls"]) == 2

@@ -317,7 +317,8 @@ class ActivityMonitor:
                     score = compute_memory_score_awfc(
                         row.last_seen or row.first_seen,
                         base_lambda=row.lambda_personalised or DEFAULT_LAMBDA,
-                        attention_at_encoding=row.attention_at_encoding or 50.0,
+                        # Unmeasured attention (None) means no personalisation: base lambda.
+                        attention_at_encoding=row.attention_at_encoding or 0.0,
                     )
                     db.add(
                         Metric(
