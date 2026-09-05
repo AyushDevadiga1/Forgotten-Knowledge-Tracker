@@ -23,6 +23,7 @@ All notable changes to FKT are documented here.
 - `824891f` docs: add project metrics tracking (snapshots, changelog, health)
 - `d0ab77b` docs: add GIGO remediation diagnosis and refresh dependency graph
 - `2bcaa66` feat(gigo): Phase 0/1 - guarded DB reset tool (`reset_database`), seed-clear aligned to the purge table list
+- `4b68fe1` feat(gigo): Phase 2 - optional attention (no fabricated score instead of hardcoded 60/50), full excerpt persistence (no 80/200-char truncation), webcam-unavailable persistence gate
 
 ### Changed
 - `6dadeff` docs: rewrite README for a broader audience with the current feature set
