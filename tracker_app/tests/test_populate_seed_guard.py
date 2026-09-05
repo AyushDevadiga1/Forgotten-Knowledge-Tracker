@@ -40,3 +40,37 @@ def test_populate_marks_seeded_db(tmp_path):
     finally:
         conn.close()
     assert marker == [("__seed__", 0.0)]
+
+
+def test_seed_clears_residue_beyond_seeded_tables(tmp_path):
+    """A re-seed must clear tables populate.py never writes (shared PURGE_TABLES
+    with the Phase 1 reset tool), so stale deck/intent rows cannot survive."""
+    db_file = str(tmp_path / "residue.db")
+    env = dict(os.environ)
+    env["FKT_TEST_DB"] = db_file
+    env["SECRET_KEY"] = "test-secret"
+    subprocess.run(
+        [sys.executable, "-c", "from tracker_app.db.db_module import init_all_databases; init_all_databases()"],
+        capture_output=True,
+        text=True,
+        cwd=str(PROJECT_ROOT),
+        env=env,
+        check=True,
+    )
+    conn = sqlite3.connect(db_file)
+    try:
+        conn.execute(
+            "INSERT INTO learning_items (id, question, answer, created_at, updated_at) VALUES ('stale-item', 'stale question', 'placeholder', '2026-01-01T00:00:00', '2026-01-01T00:00:00')"
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    proc = _run_populate({"FKT_TEST_DB": db_file, "FKT_SEED": "1"})
+    assert proc.returncode == 0, proc.stderr
+    conn = sqlite3.connect(db_file)
+    try:
+        stale = conn.execute("SELECT COUNT(*) FROM learning_items WHERE id = 'stale-item'").fetchone()[0]
+    finally:
+        conn.close()
+    assert stale == 0

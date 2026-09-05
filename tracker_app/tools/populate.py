@@ -5,6 +5,7 @@ import random
 from datetime import timedelta
 from tracker_app.db.db_module import init_all_databases
 from tracker_app.config import get_db_path
+from tracker_app.tools.reset_database import PURGE_TABLES
 import sqlite3
 import logging
 
@@ -30,7 +31,7 @@ def main():
     cursor = conn.cursor()
 
     # Clear old data
-    for table in ("sessions", "multi_modal_logs", "memory_decay", "metrics", "tracked_concepts", "concept_encounters"):
+    for table in PURGE_TABLES:
         try:
             cursor.execute(f"DELETE FROM {table}")
         except Exception as exc:
