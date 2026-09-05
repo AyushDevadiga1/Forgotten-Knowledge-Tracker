@@ -21,6 +21,8 @@ All notable changes to FKT are documented here.
 - `f7fb84d` docs: add 9-phase diagnosis report, CURRENT-PROBLEMS.md
 - `5d11067` docs: update README, add project health analysis
 - `824891f` docs: add project metrics tracking (snapshots, changelog, health)
+- `d0ab77b` docs: add GIGO remediation diagnosis and refresh dependency graph
+- `2bcaa66` feat(gigo): Phase 0/1 - guarded DB reset tool (`reset_database`), seed-clear aligned to the purge table list
 
 ### Changed
 - `6dadeff` docs: rewrite README for a broader audience with the current feature set
