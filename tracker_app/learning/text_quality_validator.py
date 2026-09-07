@@ -1483,7 +1483,7 @@ def is_coherent_text(text: str) -> bool:
         return False
 
     # Check for control characters
-    if any(ord(c) < 32 or ord(c) > 126 for c in text if ord(c) not in [9, 10, 13]):
+    if any(ord(c) < 32 or ord(c) == 127 for c in text if ord(c) not in [9, 10, 13]):
         return False
 
     # Check garbage patterns

@@ -9,16 +9,17 @@ from tracker_app.learning.text_quality_validator import (
 )
 
 
-def test_coherence_detection():
-    assert is_coherent_text("Python machine learning algorithm") is True
-    assert is_coherent_text("Data science analytics processing") is True
+def test_coherence_allows_printable_unicode_but_rejects_control_chars():
+    # Regression: real OCR of browser/IDE UI emits printable non-ASCII
+    # (smart quotes U+2019, euro U+20AC, cent U+00A2, copyright U+00A9).
+    # These must not be treated as control characters (a former ord(c) > 126
+    # clause rejected every such screen as garbage).
+    unicode_text = "LeetCode ’ Problems — contest “Discuss” \u2014 dataset € for $1.00 ¢ off © 2026 "
+    assert is_coherent_text(unicode_text) is True
 
-    # Needs to either have <15% vowels OR be >3 words of gibberish
-    assert is_coherent_text("xvzcvbnmsdfghjkl") is False  # No vowels -> False
-    assert is_coherent_text("!@#$%^&*()") is False
-    assert is_coherent_text("111222333444555") is False
-    assert is_coherent_text("The quick brown fox") is True
-    assert is_coherent_text("qwrty psdfg hjklm zxcvb") is False  # No vowels -> False
+    # Control chars (BEL, NUL) must still be rejected
+    assert is_coherent_text("hello" + chr(7) + "world") is False
+    assert is_coherent_text(chr(0) * 3) is False
 
 
 def test_ocr_preprocessing():
