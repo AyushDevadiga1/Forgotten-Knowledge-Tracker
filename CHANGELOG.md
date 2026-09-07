@@ -13,8 +13,13 @@ All notable changes to FKT are documented here.
 - `77b4964` fix: trend boundary test mock _utcnow instead of datetime
 - `824891f` fix: remove BOM markers from source files
 - `21342a1` fix: broken launcher check command, update stale frontend status
+- `44d6b60` fix(ocr): preserve real screen text (PSM 3, no confidence gate, grayscale-only preprocessing); concept recall 0.00 -> 0.80 on golden set
+- `a6697b5` fix(quality): printable unicode no longer treated as control characters in OCR coherence check
 
 ### Added
+- `360b97f` feat(golden): golden OCR eval harness + hand-labelled dataset (data/golden/, 001-015) with baseline report
+- `ed7e9f4` docs(proposal): SLM/VLM offline extraction upgrade path (PROPOSAL.md)
+- `36ca170` feat(intent): silent-reading cluster added to synthetic intent training data
 - `4be4bca` feat: extract 30+ magic numbers to named constants (constants.py)
 - `44d5191` build: add coverage config with 60% fail-under threshold
 - `2a796f8` style: add ruff linting config + CI lint job
