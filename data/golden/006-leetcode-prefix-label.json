@@ -1,0 +1,18 @@
+{
+  "id": "006",
+  "source": "Browser, LeetCode",
+  "mode": "code_ide",
+  "theme": "algorithms",
+  "true_intent": "studying",
+  "expected_concepts": [
+    "leetcode",
+    "longest common prefix",
+    "python",
+    "string"
+  ],
+  "expected_hierarchy": {
+    "title": "14. Longest Common Prefix",
+    "sections": []
+  },
+  "notes": "solving a coding problem"
+}

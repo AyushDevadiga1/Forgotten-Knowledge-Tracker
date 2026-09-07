@@ -1,0 +1,19 @@
+{
+  "id": "005",
+  "source": "Browser, LeetCode problem set",
+  "mode": "browser_article",
+  "theme": "algorithms",
+  "true_intent": "studying",
+  "expected_concepts": [
+    "leetcode",
+    "two sum",
+    "dynamic programming",
+    "array",
+    "sorting"
+  ],
+  "expected_hierarchy": {
+    "title": "LeetCode Problems",
+    "sections": []
+  },
+  "notes": "browsing problems to solve"
+}

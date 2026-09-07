@@ -1,0 +1,18 @@
+{
+  "id": "003",
+  "source": "PDF, Designing Machine Learning Systems",
+  "mode": "textbook_pdf",
+  "theme": "machine learning",
+  "true_intent": "studying",
+  "expected_concepts": [
+    "machine learning systems",
+    "deployment",
+    "model training",
+    "data distribution"
+  ],
+  "expected_hierarchy": {
+    "title": "Preface",
+    "sections": []
+  },
+  "notes": "reading the preface"
+}

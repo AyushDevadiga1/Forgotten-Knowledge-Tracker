@@ -1,0 +1,21 @@
+{
+  "id": "013",
+  "source": "Kaggle Dataset",
+  "mode": "browser_article",
+  "theme": "data science / datasets",
+  "true_intent": "studying",
+  "expected_concepts": [
+    "kaggle",
+    "youtube video statistics",
+    "dataset",
+    "json",
+    "data explorer"
+  ],
+  "expected_hierarchy": {
+    "title": "Trending YouTube Video Statistics",
+    "sections": [
+      { "heading": "About this file", "level": 2 }
+    ]
+  },
+  "notes": "exploring a dataset"
+}

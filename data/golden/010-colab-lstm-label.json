@@ -1,0 +1,16 @@
+{
+  "id": "010",
+  "source": "Google Colab",
+  "mode": "code_ide",
+  "theme": "machine learning / deep learning",
+  "true_intent": "studying",
+  "expected_concepts": [
+    "colab",
+    "lstm",
+    "next word predictor",
+    "python",
+    "machine learning"
+  ],
+  "expected_hierarchy": {},
+  "notes": "working in a jupyter notebook"
+}

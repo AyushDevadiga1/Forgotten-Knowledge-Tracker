@@ -1,0 +1,20 @@
+{
+  "id": "014",
+  "source": "Google Careers",
+  "mode": "browser_article",
+  "theme": "job search",
+  "true_intent": "passive",
+  "expected_concepts": [
+    "google careers",
+    "student researcher",
+    "minimum qualifications",
+    "computer science"
+  ],
+  "expected_hierarchy": {
+    "title": "Student Researcher, PhD, Fall 2026",
+    "sections": [
+      { "heading": "Minimum qualifications", "level": 2 }
+    ]
+  },
+  "notes": "job hunting, not studying"
+}

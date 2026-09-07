@@ -1,0 +1,20 @@
+{
+  "id": "007",
+  "source": "VS Code, GOLDEN_DATASET.md",
+  "mode": "code_ide",
+  "theme": "project documentation",
+  "true_intent": "studying",
+  "expected_concepts": [
+    "golden dataset",
+    "markdown",
+    "fkt pipeline",
+    "labeling"
+  ],
+  "expected_hierarchy": {
+    "title": "FKT Golden Dataset",
+    "sections": [
+      { "heading": "Where things live", "level": 2 }
+    ]
+  },
+  "notes": "reading/writing docs"
+}

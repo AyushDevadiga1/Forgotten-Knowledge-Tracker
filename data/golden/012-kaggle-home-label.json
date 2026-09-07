@@ -1,0 +1,20 @@
+{
+  "id": "012",
+  "source": "Kaggle Home",
+  "mode": "browser_article",
+  "theme": "data science",
+  "true_intent": "idle",
+  "expected_concepts": [
+    "kaggle",
+    "datasets",
+    "notebooks",
+    "competitions"
+  ],
+  "expected_hierarchy": {
+    "title": "Welcome, Ayush Devadiga!",
+    "sections": [
+      { "heading": "Next Steps", "level": 2 }
+    ]
+  },
+  "notes": "just visiting the kaggle homepage, not actively studying"
+}

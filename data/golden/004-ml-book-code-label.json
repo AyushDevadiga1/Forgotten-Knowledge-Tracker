@@ -1,0 +1,19 @@
+{
+  "id": "004",
+  "source": "PDF, Designing Machine Learning Systems",
+  "mode": "textbook_pdf",
+  "theme": "machine learning deployment",
+  "true_intent": "studying",
+  "expected_concepts": [
+    "fastapi",
+    "deployment",
+    "post request",
+    "flask",
+    "container"
+  ],
+  "expected_hierarchy": {
+    "title": "Designing Machine Learning Systems",
+    "sections": []
+  },
+  "notes": "reading about model deployment"
+}

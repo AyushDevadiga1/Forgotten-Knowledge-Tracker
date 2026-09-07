@@ -1,0 +1,15 @@
+{
+  "id": "009",
+  "source": "Windows File Explorer",
+  "mode": "notes_app",
+  "theme": "file management",
+  "true_intent": "idle",
+  "expected_concepts": [
+    "file explorer",
+    "fkt",
+    "desktop",
+    "folders"
+  ],
+  "expected_hierarchy": {},
+  "notes": "genuinely non-study screenshot for negative testing"
+}

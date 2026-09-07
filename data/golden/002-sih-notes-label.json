@@ -1,0 +1,19 @@
+{
+  "id": "002",
+  "source": "Claude/Notion notes, SIH projects",
+  "mode": "notes_app",
+  "theme": "machine learning / projects",
+  "true_intent": "studying",
+  "expected_concepts": [
+    "sih",
+    "learning platform",
+    "voice cloning",
+    "llm",
+    "xgboost"
+  ],
+  "expected_hierarchy": {
+    "title": "Here's where all five actually land",
+    "sections": []
+  },
+  "notes": "reviewing project ideas"
+}

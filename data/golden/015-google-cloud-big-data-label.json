@@ -1,0 +1,19 @@
+{
+  "id": "015",
+  "source": "Google Cloud Docs",
+  "mode": "browser_article",
+  "theme": "cloud computing / big data",
+  "true_intent": "studying",
+  "expected_concepts": [
+    "google cloud",
+    "big data",
+    "structured data",
+    "unstructured data",
+    "machine learning"
+  ],
+  "expected_hierarchy": {
+    "title": "What is Big Data?",
+    "sections": []
+  },
+  "notes": "reading documentation about big data"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "011",
+  "source": "Google Colab",
+  "mode": "code_ide",
+  "theme": "machine learning / deep learning",
+  "true_intent": "studying",
+  "expected_concepts": [
+    "tensorflow",
+    "pad_sequences",
+    "padded_input_sequences",
+    "keras"
+  ],
+  "expected_hierarchy": {},
+  "notes": "deep learning notebook output"
+}

@@ -1,0 +1,15 @@
+{
+  "id": "008",
+  "source": "OpenCode Terminal",
+  "mode": "code_ide",
+  "theme": "terminal usage",
+  "true_intent": "studying",
+  "expected_concepts": [
+    "terminal",
+    "opencode",
+    "powershell",
+    "golden dataset"
+  ],
+  "expected_hierarchy": {},
+  "notes": "using a terminal"
+}

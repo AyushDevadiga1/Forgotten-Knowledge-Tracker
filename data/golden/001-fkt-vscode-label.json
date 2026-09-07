@@ -1,0 +1,15 @@
+{
+  "id": "001",
+  "source": "VS Code, FKT project",
+  "mode": "code_ide",
+  "theme": "software development",
+  "true_intent": "studying",
+  "expected_concepts": [
+    "fkt",
+    "python",
+    "ide",
+    "tracking session"
+  ],
+  "expected_hierarchy": {},
+  "notes": "development of the tracking app"
+}

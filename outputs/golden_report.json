@@ -1,0 +1,762 @@
+{
+  "summary": {
+    "n": 15,
+    "image_loaded": 15,
+    "avg_text_recall": 0.7967,
+    "avg_keyword_precision": 0.1363,
+    "avg_keyword_recall": 0.2567,
+    "avg_hierarchy_score": 0.0,
+    "intent_accuracy": 0.8,
+    "intent_confusion": {
+      "studying": {
+        "studying": 12
+      },
+      "idle": {
+        "studying": 2
+      },
+      "passive": {
+        "studying": 1
+      }
+    },
+    "by_mode": {
+      "code_ide": {
+        "n": 6,
+        "intent_ok": 6,
+        "avg_text_recall": 0.725,
+        "avg_keyword_recall": 0.2083
+      },
+      "notes_app": {
+        "n": 2,
+        "intent_ok": 1,
+        "avg_text_recall": 0.65,
+        "avg_keyword_recall": 0.1
+      },
+      "textbook_pdf": {
+        "n": 2,
+        "intent_ok": 2,
+        "avg_text_recall": 0.75,
+        "avg_keyword_recall": 0.125
+      },
+      "browser_article": {
+        "n": 5,
+        "intent_ok": 3,
+        "avg_text_recall": 0.96,
+        "avg_keyword_recall": 0.43
+      }
+    }
+  },
+  "reading_context": {
+    "audio_label": "silence",
+    "attention_score": 50.0,
+    "interaction_rate": 0.2,
+    "audio_confidence": 0.9
+  },
+  "reports": [
+    {
+      "id": "001",
+      "image": "001-fkt-vscode.png",
+      "mode": "code_ide",
+      "true_intent": "studying",
+      "theme": "software development",
+      "image_loaded": true,
+      "privacy_rejected": false,
+      "text_recall": 0.75,
+      "keyword_recall": 0.25,
+      "keyword_precision": 0.0714,
+      "keyword_count": 14,
+      "top_keywords": [
+        "file edit selection view explorer y open editors",
+        "editor",
+        "fkt y \u00a9",
+        "tracker_app",
+        "+ tools",
+        "tool",
+        "training_data",
+        "config.py \u00ae"
+      ],
+      "ocr_text_chars": 2259,
+      "ocr_text_preview": "A\n7 CS \u00a9 B\n\u00e9]\nee\nae @\nx\nFile Edit Selection View\nExplorer\nY Open Editors\nFKT\nY \u00a9 tracker_app\n? + tools\n> \u00a9 tracking\n> \u00a9 ",
+      "hierarchy": {
+        "title_hit": false,
+        "heading_hits": [],
+        "headings_expected": [],
+        "hierarchy_score": 0.0
+      },
+      "intent": {
+        "predicted": "studying",
+        "true": "studying",
+        "confidence": 0.9842,
+        "source": "classifier",
+        "features": [
+          14.0,
+          0.0,
+          50.0,
+          0.2,
+          0.7,
+          0.9
+        ],
+        "correct": true
+      }
+    },
+    {
+      "id": "002",
+      "image": "002-sih-notes.png",
+      "mode": "notes_app",
+      "true_intent": "studying",
+      "theme": "machine learning / projects",
+      "image_loaded": true,
+      "privacy_rejected": false,
+      "text_recall": 0.8,
+      "keyword_recall": 0.2,
+      "keyword_precision": 0.1333,
+      "keyword_count": 15,
+      "top_keywords": [
+        "sih",
+        "path xgbc",
+        "xgbc",
+        "churn major project",
+        "project",
+        "fkt",
+        "logistic regression",
+        "regression"
+      ],
+      "ocr_text_chars": 1083,
+      "ocr_text_preview": "=O Q\u00a2\u20ac\u00a2 >\nQ Chat and Cowork\n+ New\n\u00a9 Projects\n& Artifacts\n& Customize\nChats and tasks\nSIH\nThe Path\nXGBC Churn\nMajor Proje",
+      "hierarchy": {
+        "title_hit": true,
+        "heading_hits": [],
+        "headings_expected": [],
+        "hierarchy_score": 1.0
+      },
+      "intent": {
+        "predicted": "studying",
+        "true": "studying",
+        "confidence": 0.9842,
+        "source": "classifier",
+        "features": [
+          15.0,
+          0.0,
+          50.0,
+          0.2,
+          0.7,
+          0.9
+        ],
+        "correct": true
+      }
+    },
+    {
+      "id": "003",
+      "image": "003-ml-book-preface.png",
+      "mode": "textbook_pdf",
+      "true_intent": "studying",
+      "theme": "machine learning",
+      "image_loaded": true,
+      "privacy_rejected": false,
+      "text_recall": 0.5,
+      "keyword_recall": 0.25,
+      "keyword_precision": 0.0833,
+      "keyword_count": 12,
+      "top_keywords": [
+        "\u00a9 atthe current stage",
+        "stage",
+        "isthe",
+        "designing machine leaming sy x =",
+        "designing%20machine%201earning%20systems.pdf",
+        "systems",
+        "100%",
+        "preface"
+      ],
+      "ocr_text_chars": 1376,
+      "ocr_text_preview": "<\n\u00a9 Atthe current stage what isthe xX | @ Designing Machine Leaming Sy X = + +> Ask Gemini = x\n\u20ac G@ @fFile C/Users/hp/De",
+      "hierarchy": {
+        "title_hit": true,
+        "heading_hits": [],
+        "headings_expected": [],
+        "hierarchy_score": 1.0
+      },
+      "intent": {
+        "predicted": "studying",
+        "true": "studying",
+        "confidence": 0.9654,
+        "source": "classifier",
+        "features": [
+          12.0,
+          0.0,
+          50.0,
+          0.2,
+          0.7,
+          0.9
+        ],
+        "correct": true
+      }
+    },
+    {
+      "id": "004",
+      "image": "004-ml-book-code.png",
+      "mode": "textbook_pdf",
+      "true_intent": "studying",
+      "theme": "machine learning deployment",
+      "image_loaded": true,
+      "privacy_rejected": false,
+      "text_recall": 1.0,
+      "keyword_recall": 0.0,
+      "keyword_precision": 0.0,
+      "keyword_count": 14,
+      "top_keywords": [
+        "\u00a9 atthe current stage",
+        "stage",
+        "isthe",
+        "designing machine learingsy x",
+        "systems",
+        "= 100%",
+        "production",
+        "spectrum"
+      ],
+      "ocr_text_chars": 1709,
+      "ocr_text_preview": "<\n\u00a9 Atthe current stage what isthe * | @ Designing Machine LearingSy X + > Ask Gemini = x\n\u20ac G@ @fFile C/Users/hp/Desktop",
+      "hierarchy": {
+        "title_hit": true,
+        "heading_hits": [],
+        "headings_expected": [],
+        "hierarchy_score": 1.0
+      },
+      "intent": {
+        "predicted": "studying",
+        "true": "studying",
+        "confidence": 0.9842,
+        "source": "classifier",
+        "features": [
+          14.0,
+          0.0,
+          50.0,
+          0.2,
+          0.7,
+          0.9
+        ],
+        "correct": true
+      }
+    },
+    {
+      "id": "005",
+      "image": "005-leetcode.png",
+      "mode": "browser_article",
+      "true_intent": "studying",
+      "theme": "algorithms",
+      "image_loaded": true,
+      "privacy_rejected": false,
+      "text_recall": 1.0,
+      "keyword_recall": 0.2,
+      "keyword_precision": 0.2667,
+      "keyword_count": 15,
+      "top_keywords": [
+        "allbookmarks 5",
+        "p73",
+        "atthe current stage",
+        "stage",
+        "what",
+        "premium or library n quest",
+        "quest",
+        "* \u2018si \u2018 leet"
+      ],
+      "ocr_text_chars": 1109,
+      "ocr_text_preview": "Y @ Atthe current stage what isthe x + Problems -LeetCode x + +> Ask Gemini = x\n<\u20ac @ 5 _leetcode.com/problemset/ @AskGoo",
+      "hierarchy": {
+        "title_hit": true,
+        "heading_hits": [],
+        "headings_expected": [],
+        "hierarchy_score": 1.0
+      },
+      "intent": {
+        "predicted": "studying",
+        "true": "studying",
+        "confidence": 0.9926,
+        "source": "classifier",
+        "features": [
+          15.0,
+          0.0,
+          50.0,
+          0.2,
+          0.7133,
+          0.9
+        ],
+        "correct": true
+      }
+    },
+    {
+      "id": "006",
+      "image": "006-leetcode-prefix.png",
+      "mode": "code_ide",
+      "true_intent": "studying",
+      "theme": "algorithms",
+      "image_loaded": true,
+      "privacy_rejected": false,
+      "text_recall": 1.0,
+      "keyword_recall": 0.5,
+      "keyword_precision": 0.2143,
+      "keyword_count": 14,
+      "top_keywords": [
+        "atthe current stage",
+        "stage",
+        "what",
+        "gemini = x <\u20ac > g",
+        "bg \u00a9",
+        "problemlist",
+        "\u00aesubmt",
+        "submt"
+      ],
+      "ocr_text_chars": 1115,
+      "ocr_text_preview": "\u00a5 \u2014 @ Atthe current stage what isthe x } LongestCommon Prefix-Leet x + +> Ask Gemini = x\n<\u20ac > G & leetcode.com/problems/",
+      "hierarchy": {
+        "title_hit": true,
+        "heading_hits": [],
+        "headings_expected": [],
+        "hierarchy_score": 1.0
+      },
+      "intent": {
+        "predicted": "studying",
+        "true": "studying",
+        "confidence": 0.9842,
+        "source": "classifier",
+        "features": [
+          14.0,
+          0.0,
+          50.0,
+          0.2,
+          0.7,
+          0.9
+        ],
+        "correct": true
+      }
+    },
+    {
+      "id": "007",
+      "image": "007-vscode-golden.png",
+      "mode": "code_ide",
+      "true_intent": "studying",
+      "theme": "project documentation",
+      "image_loaded": true,
+      "privacy_rejected": false,
+      "text_recall": 0.5,
+      "keyword_recall": 0.25,
+      "keyword_precision": 0.0714,
+      "keyword_count": 14,
+      "top_keywords": [
+        "fkt",
+        "o agent \u00a9 audit",
+        "audit",
+        "# o o github hermes opencode -pytest_cache",
+        "-pytest_cache",
+        "\u00a9 golden vvvvvvvvvy",
+        "vvvvvvvvvy",
+        "eoeweovoeccgrcec]e|ec"
+      ],
+      "ocr_text_chars": 2638,
+      "ocr_text_preview": "A\nis)\nfe)\nSe\noa ey\n)\n@\n&\nFile\nEdit\nSelection\nExplorer\nY Open Editors\nX M+ GOLDEN_DATASETmd\nv FKT\n>\n>\n>\n>\n>\n>\n>\n>\n>\n>\nv\no",
+      "hierarchy": {
+        "title_hit": true,
+        "heading_hits": [
+          true
+        ],
+        "headings_expected": [
+          "Where things live"
+        ],
+        "hierarchy_score": 1.0
+      },
+      "intent": {
+        "predicted": "studying",
+        "true": "studying",
+        "confidence": 0.9842,
+        "source": "classifier",
+        "features": [
+          14.0,
+          0.0,
+          50.0,
+          0.2,
+          0.7,
+          0.9
+        ],
+        "correct": true
+      }
+    },
+    {
+      "id": "008",
+      "image": "008-opencode-terminal.png",
+      "mode": "code_ide",
+      "true_intent": "studying",
+      "theme": "terminal usage",
+      "image_loaded": true,
+      "privacy_rejected": false,
+      "text_recall": 0.5,
+      "keyword_recall": 0.25,
+      "keyword_precision": 0.0714,
+      "keyword_count": 14,
+      "top_keywords": [
+        "opencode",
+        "good extractor",
+        "extractor",
+        "5-10 real concepts",
+        "concept",
+        "lowercase |",
+        "06123:05:08",
+        "structure"
+      ],
+      "ocr_text_chars": 2055,
+      "ocr_text_preview": "Fe] OpenCode =\nbug |\n| ~expected_concepts\u201d | Terms a good extractor *should* find | 5-10 real concepts, in lowercase | N",
+      "hierarchy": {
+        "title_hit": false,
+        "heading_hits": [],
+        "headings_expected": [],
+        "hierarchy_score": 0.0
+      },
+      "intent": {
+        "predicted": "studying",
+        "true": "studying",
+        "confidence": 0.9842,
+        "source": "classifier",
+        "features": [
+          14.0,
+          0.0,
+          50.0,
+          0.2,
+          0.7,
+          0.9
+        ],
+        "correct": true
+      }
+    },
+    {
+      "id": "009",
+      "image": "009-file-explorer.png",
+      "mode": "notes_app",
+      "true_intent": "idle",
+      "theme": "file management",
+      "image_loaded": true,
+      "privacy_rejected": false,
+      "text_recall": 0.5,
+      "keyword_recall": 0.0,
+      "keyword_precision": 0.0,
+      "keyword_count": 15,
+      "top_keywords": [
+        "gm |r file home share view \u00a2",
+        "cut | copy path cantor",
+        "cantor",
+        "copy paste ay paste",
+        "paste",
+        "bl bleach * bl ice guy",
+        "guy",
+        "# sgat8"
+      ],
+      "ocr_text_chars": 970,
+      "ocr_text_preview": "@) GM |r\nFile Home Share View\n\u00a2 ] Cut |\nCopy path\ncantor: Copy Paste ay paste shortcut ota\nClipboard\n\u20ac > \u00bb Dl > ThisPC >",
+      "hierarchy": {
+        "title_hit": false,
+        "heading_hits": [],
+        "headings_expected": [],
+        "hierarchy_score": 0.0
+      },
+      "intent": {
+        "predicted": "studying",
+        "true": "idle",
+        "confidence": 0.9842,
+        "source": "classifier",
+        "features": [
+          15.0,
+          0.0,
+          50.0,
+          0.2,
+          0.7,
+          0.9
+        ],
+        "correct": false
+      }
+    },
+    {
+      "id": "010",
+      "image": "010-colab-lstm.png",
+      "mode": "code_ide",
+      "true_intent": "studying",
+      "theme": "machine learning / deep learning",
+      "image_loaded": true,
+      "privacy_rejected": false,
+      "text_recall": 0.6,
+      "keyword_recall": 0.0,
+      "keyword_precision": 0.0,
+      "keyword_count": 15,
+      "top_keywords": [
+        "y \u00a9 atthe current stage",
+        "stage",
+        "what",
+        "longestcommon prefix-leet\u2019 x \u20aco istm-project-next-word-predici x | kaggle",
+        "world's al proving",
+        "proving",
+        "gemini = x \u20ac > g",
+        "\u00a9 allbookmarks"
+      ],
+      "ocr_text_chars": 1836,
+      "ocr_text_preview": "Y \u00a9 Atthe current stage what isthe x | } LongestCommon Prefix-Leet\u2019 X \u20acO Istm-project-next-word-predici X | Kaggle: The ",
+      "hierarchy": {
+        "title_hit": false,
+        "heading_hits": [],
+        "headings_expected": [],
+        "hierarchy_score": 0.0
+      },
+      "intent": {
+        "predicted": "studying",
+        "true": "studying",
+        "confidence": 0.9842,
+        "source": "classifier",
+        "features": [
+          15.0,
+          0.0,
+          50.0,
+          0.2,
+          0.7,
+          0.9
+        ],
+        "correct": true
+      }
+    },
+    {
+      "id": "011",
+      "image": "011-colab-lstm-padding.png",
+      "mode": "code_ide",
+      "true_intent": "studying",
+      "theme": "machine learning / deep learning",
+      "image_loaded": true,
+      "privacy_rejected": false,
+      "text_recall": 1.0,
+      "keyword_recall": 0.0,
+      "keyword_precision": 0.0,
+      "keyword_count": 15,
+      "top_keywords": [
+        "atthe current stage",
+        "stage",
+        "next-word-predici",
+        "predici",
+        "world's al proving x |",
+        "gemini = x \u20ac %",
+        "colab.research.google.com/drive/1pbdquzxjifm3hw_yeqfvps721ghnuz9iv",
+        "= \u00a9 allbookmarks"
+      ],
+      "ocr_text_chars": 961,
+      "ocr_text_preview": "Y \u2014 @ Atthe current stage what isthe X | > LongestCommon Prefix-Leet\u2019 X CO Istm-project-next-word-predici Kaggle: The Wo",
+      "hierarchy": {
+        "title_hit": false,
+        "heading_hits": [],
+        "headings_expected": [],
+        "hierarchy_score": 0.0
+      },
+      "intent": {
+        "predicted": "studying",
+        "true": "studying",
+        "confidence": 0.9842,
+        "source": "classifier",
+        "features": [
+          15.0,
+          0.0,
+          50.0,
+          0.2,
+          0.7,
+          0.9
+        ],
+        "correct": true
+      }
+    },
+    {
+      "id": "012",
+      "image": "012-kaggle-home.png",
+      "mode": "browser_article",
+      "true_intent": "idle",
+      "theme": "data science",
+      "image_loaded": true,
+      "privacy_rejected": false,
+      "text_recall": 1.0,
+      "keyword_recall": 0.5,
+      "keyword_precision": 0.2,
+      "keyword_count": 15,
+      "top_keywords": [
+        "benchmarks 2 game arena",
+        "gemini",
+        "gc \u00a9",
+        "login",
+        "expert",
+        "home welcome",
+        "welcome",
+        "ayush devadiga"
+      ],
+      "ocr_text_chars": 834,
+      "ocr_text_preview": "je what isthe X - Common Pref CO Istm-p Kaggle: The World's Al Proving X = + > Ask Gemini\nkaggle.com Gc\n\u00a9 All Bookmarks\n",
+      "hierarchy": {
+        "title_hit": true,
+        "heading_hits": [
+          true
+        ],
+        "headings_expected": [
+          "Next Steps"
+        ],
+        "hierarchy_score": 1.0
+      },
+      "intent": {
+        "predicted": "studying",
+        "true": "idle",
+        "confidence": 0.9909,
+        "source": "classifier",
+        "features": [
+          15.0,
+          0.0,
+          50.0,
+          0.2,
+          0.7067,
+          0.9
+        ],
+        "correct": false
+      }
+    },
+    {
+      "id": "013",
+      "image": "013-kaggle-youtube-dataset.png",
+      "mode": "browser_article",
+      "true_intent": "studying",
+      "theme": "data science / datasets",
+      "image_loaded": true,
+      "privacy_rejected": false,
+      "text_recall": 1.0,
+      "keyword_recall": 0.4,
+      "keyword_precision": 0.3333,
+      "keyword_count": 15,
+      "top_keywords": [
+        "atthe current stage",
+        "stage",
+        "what",
+        "x > longest common prefix-leet",
+        "leet",
+        "youtube video statis",
+        "statis",
+        "gemini"
+      ],
+      "ocr_text_chars": 1156,
+      "ocr_text_preview": "\u00a9 Atthe current stage what is the x > Longest Common Prefix-Leet\u2019 x | CO -next-word x Trending YouTube Video Statis > As",
+      "hierarchy": {
+        "title_hit": true,
+        "heading_hits": [
+          true
+        ],
+        "headings_expected": [
+          "About this file"
+        ],
+        "hierarchy_score": 1.0
+      },
+      "intent": {
+        "predicted": "studying",
+        "true": "studying",
+        "confidence": 0.9842,
+        "source": "classifier",
+        "features": [
+          15.0,
+          0.0,
+          50.0,
+          0.2,
+          0.7,
+          0.9
+        ],
+        "correct": true
+      }
+    },
+    {
+      "id": "014",
+      "image": "014-google-careers.png",
+      "mode": "browser_article",
+      "true_intent": "passive",
+      "theme": "job search",
+      "image_loaded": true,
+      "privacy_rejected": false,
+      "text_recall": 1.0,
+      "keyword_recall": 0.25,
+      "keyword_precision": 0.2,
+      "keyword_count": 15,
+      "top_keywords": [
+        "phd",
+        "atthe current stage",
+        "stage",
+        "what",
+        "longest common prefix-leet",
+        "leet",
+        "x | \u00a9 search jobs",
+        "jobs"
+      ],
+      "ocr_text_chars": 1352,
+      "ocr_text_preview": "\u00a9 Atthe current stage what is tt x > Longest Common Prefix-Leet\u2019 x | \u00a9 Search Jobs\u2014Google Careers xX + > Ask Gemini\n@ 2%",
+      "hierarchy": {
+        "title_hit": true,
+        "heading_hits": [
+          true
+        ],
+        "headings_expected": [
+          "Minimum qualifications"
+        ],
+        "hierarchy_score": 1.0
+      },
+      "intent": {
+        "predicted": "studying",
+        "true": "passive",
+        "confidence": 0.9909,
+        "source": "classifier",
+        "features": [
+          15.0,
+          0.0,
+          50.0,
+          0.2,
+          0.7067,
+          0.9
+        ],
+        "correct": false
+      }
+    },
+    {
+      "id": "015",
+      "image": "015-google-cloud-big-data.png",
+      "mode": "browser_article",
+      "true_intent": "studying",
+      "theme": "cloud computing / big data",
+      "image_loaded": true,
+      "privacy_rejected": false,
+      "text_recall": 0.8,
+      "keyword_recall": 0.8,
+      "keyword_precision": 0.4,
+      "keyword_count": 15,
+      "top_keywords": [
+        "what",
+        "t longest common prefix-leet",
+        "leet",
+        "gemini google cloud",
+        "cloud",
+        "big data",
+        "datum",
+        "data"
+      ],
+      "ocr_text_chars": 1748,
+      "ocr_text_preview": "\u00a9 Atthe current\nge what is t\nLongest Common Prefix-Leet\u2019 x \u20ac) Big Data Defined: Examplesane X = +\ncloud.google.com/learn",
+      "hierarchy": {
+        "title_hit": true,
+        "heading_hits": [],
+        "headings_expected": [],
+        "hierarchy_score": 1.0
+      },
+      "intent": {
+        "predicted": "studying",
+        "true": "studying",
+        "confidence": 0.9842,
+        "source": "classifier",
+        "features": [
+          15.0,
+          0.0,
+          50.0,
+          0.2,
+          0.7,
+          0.9
+        ],
+        "correct": true
+      }
+    }
+  ]
+}
