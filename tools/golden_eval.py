@@ -77,7 +77,7 @@ class _EmptyGraph:
     nodes: dict = {}
 
 
-def _run_screenshot(image_path: Path, label: dict) -> dict:
+def _run_screenshot(image_path: Path, label: dict, known_concepts: list[str] | None = None) -> dict:
     img = cv2.imread(str(image_path))
     report: dict = {
         "id": str(label.get("id", image_path.stem)),
@@ -136,6 +136,7 @@ def _run_screenshot(image_path: Path, label: dict) -> dict:
         attention_score=READING_CONTEXT["attention_score"],
         interaction_rate=READING_CONTEXT["interaction_rate"],
         audio_confidence=READING_CONTEXT["audio_confidence"],
+        known_concepts=known_concepts,
     )
     report["intent"] = {
         "predicted": intent.get("intent_label"),
@@ -143,6 +144,7 @@ def _run_screenshot(image_path: Path, label: dict) -> dict:
         "confidence": intent.get("confidence"),
         "source": intent.get("source"),
         "features": intent.get("features"),
+        "content_relevance": intent.get("content_relevance"),
         "correct": intent.get("intent_label") == label.get("true_intent"),
     }
     return report
@@ -177,6 +179,25 @@ def find_label(png: Path, prefix: str) -> dict | None:
     return None
 
 
+
+def _study_concepts(pairs: list[tuple[Path, dict]]) -> list[str]:
+    """User's study history for the harness: expected_concepts of studying labels only.
+
+    Content-aware intent measures whether WHAT is on screen matches topics the
+    user is actually studying. Contributing only the studying samples' concepts
+    makes idle/passive screens (file explorer, Kaggle home, careers) score near
+    zero relevance while studying screens score high.
+    """
+    concepts: list[str] = []
+    for _, label in pairs:
+        if label.get("true_intent") != "studying":
+            continue
+        for c in label.get("expected_concepts") or []:
+            c_s = str(c).strip()
+            if c_s and c_s not in concepts:
+                concepts.append(c_s)
+    return concepts
+
 def main() -> int:
     get_keyword_extractor()
     pairs = _load_pairs()
@@ -185,7 +206,8 @@ def main() -> int:
         return 1
 
     print(f"Evaluating {len(pairs)} golden screenshots...\n")
-    reports = [_run_screenshot(png, label) for png, label in pairs]
+    study_concepts = _study_concepts(pairs)
+    reports = [_run_screenshot(png, label, known_concepts=study_concepts) for png, label in pairs]
 
     agg = _aggregate(reports)
     _print_summary(reports, agg)
@@ -278,4 +300,3 @@ def _print_summary(reports: list[dict], agg: dict) -> None:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

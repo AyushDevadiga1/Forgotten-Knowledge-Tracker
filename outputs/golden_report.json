@@ -12,7 +12,8 @@
         "studying": 12
       },
       "idle": {
-        "studying": 2
+        "passive": 1,
+        "studying": 1
       },
       "passive": {
         "studying": 1
@@ -95,6 +96,7 @@
           0.7,
           0.9
         ],
+        "content_relevance": 0.2857,
         "correct": true
       }
     },
@@ -141,6 +143,7 @@
           0.7,
           0.9
         ],
+        "content_relevance": 0.2,
         "correct": true
       }
     },
@@ -187,6 +190,7 @@
           0.7,
           0.9
         ],
+        "content_relevance": 0.1667,
         "correct": true
       }
     },
@@ -233,6 +237,7 @@
           0.7,
           0.9
         ],
+        "content_relevance": 0.1429,
         "correct": true
       }
     },
@@ -279,6 +284,7 @@
           0.7133,
           0.9
         ],
+        "content_relevance": 0.1963,
         "correct": true
       }
     },
@@ -325,6 +331,7 @@
           0.7,
           0.9
         ],
+        "content_relevance": 0.2143,
         "correct": true
       }
     },
@@ -375,6 +382,7 @@
           0.7,
           0.9
         ],
+        "content_relevance": 0.2857,
         "correct": true
       }
     },
@@ -421,6 +429,7 @@
           0.7,
           0.9
         ],
+        "content_relevance": 0.0714,
         "correct": true
       }
     },
@@ -455,10 +464,10 @@
         "hierarchy_score": 0.0
       },
       "intent": {
-        "predicted": "studying",
+        "predicted": "passive",
         "true": "idle",
         "confidence": 0.9842,
-        "source": "classifier",
+        "source": "rules+content",
         "features": [
           15.0,
           0.0,
@@ -467,6 +476,7 @@
           0.7,
           0.9
         ],
+        "content_relevance": 0.0,
         "correct": false
       }
     },
@@ -513,6 +523,7 @@
           0.7,
           0.9
         ],
+        "content_relevance": 0.1333,
         "correct": true
       }
     },
@@ -559,6 +570,7 @@
           0.7,
           0.9
         ],
+        "content_relevance": 0.2667,
         "correct": true
       }
     },
@@ -609,6 +621,7 @@
           0.7067,
           0.9
         ],
+        "content_relevance": 0.066,
         "correct": false
       }
     },
@@ -659,6 +672,7 @@
           0.7,
           0.9
         ],
+        "content_relevance": 0.3333,
         "correct": true
       }
     },
@@ -709,6 +723,7 @@
           0.7067,
           0.9
         ],
+        "content_relevance": 0.2642,
         "correct": false
       }
     },
@@ -755,6 +770,7 @@
           0.7,
           0.9
         ],
+        "content_relevance": 0.5333,
         "correct": true
       }
     }
