@@ -35,7 +35,7 @@ FEEDBACK_SAMPLE_RETENTION_DAYS = 90
 
 
 # Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-def generate_synthetic_data(n_studying=900, n_passive=900, n_idle=700, seed=42) -> dict:
+def generate_synthetic_data(n_studying=900, n_passive=900, n_idle=700, n_reading=250, seed=42) -> dict:
     """
     Generate synthetic training samples.
     Feature order: [ocr_keyword_count, audio_val, attention_score,
@@ -124,6 +124,28 @@ def generate_synthetic_data(n_studying=900, n_passive=900, n_idle=700, seed=42) 
                     cl(rng.normal(0.60, 0.15), 0.2, 1.0),
                 ],
                 "idle",
+            )
+        )
+
+    # SILENT READING - evidence-based studying variant (golden dataset, real
+    # sessions): studying happens with NO speech (audio=0), near-zero input
+    # interaction, and neutral/fabricated attention (webcam off -> ~50).
+    # The original studying cluster assumed speech + high interaction, so real
+    # silent reading fell into the passive region. Added post-hoc so the rng
+    # stream (and therefore all pre-existing synthetic samples) is unchanged.
+    rng_r = np.random.default_rng(seed + 1)
+    for _ in range(n_reading):
+        samples.append(
+            (
+                [
+                    cl(int(rng_r.integers(6, 21)) + rng_r.normal(0, 2), 1, 25),
+                    0,
+                    cl(rng_r.normal(50, 12), 30, 75),
+                    cl(rng_r.normal(1.0, 1.0), 0, 3),
+                    cl(rng_r.normal(0.70, 0.12), 0.4, 0.9),
+                    cl(rng_r.normal(0.85, 0.08), 0.5, 1.0),
+                ],
+                "studying",
             )
         )
 
