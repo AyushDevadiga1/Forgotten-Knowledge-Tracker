@@ -18,6 +18,9 @@ All notable changes to FKT are documented here.
 
 ### Added
 - `360b97f` feat(golden): golden OCR eval harness + hand-labelled dataset (data/golden/, 001-015) with baseline report
+- `e1cd358` feat(golden): harness seeds intent concepts from studying labels and reports content relevance per screenshot
+- `0f0e09a` feat(intent): content-aware rule bias (screen keywords vs study concepts) demotes irrelevant studying, promotes relevant passive
+- `7ca38e6` test(intent): content-relevance helpers and rule bias coverage
 - `ed7e9f4` docs(proposal): SLM/VLM offline extraction upgrade path (PROPOSAL.md)
 - `36ca170` feat(intent): silent-reading cluster added to synthetic intent training data
 - `4be4bca` feat: extract 30+ magic numbers to named constants (constants.py)

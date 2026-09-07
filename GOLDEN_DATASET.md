@@ -109,3 +109,33 @@ The evaluation runner (`tools/golden_eval.py`) will be built to:
 5. Emit `outputs/golden_report.json` + a per-screenshot summary, and drive regression tests.
 
 Start collecting screenshots anytime — the harness will read whatever is in `data/golden/`.
+
+## 7. Content awareness: what a single frame can and cannot prove
+
+`predict_intent` now takes a rule-level content-relevance bias: on-screen
+keywords are measured against the user's study concepts (from the knowledge
+graph), and the label is promoted to `studying` only when real study content
+is visible, or demoted to `passive` when the screen shows nothing relevant
+(see `tracker_app/tracking/intent_module.py`).
+
+What the golden data has established so far:
+
+- A genuinely non-study screen (e.g. `009`, a bare file-explorer window) scores
+  relevance 0.000 and is demoted correctly.
+- A screen whose visible text overlaps the study-concept graph **cannot be told
+  apart from studying by content alone** when the overlap comes from context
+  the user isn't acting on. Real studying sample `002` (heavily OCR-garbled)
+  scores the same relevance as the negatives `009/012/014`, and a semantic
+  (embedding) comparison ranks the negatives *above* some genuine studying
+  frames. No lexical or semantic threshold separates them without
+  misclassifying real studying.
+- Distinguishing `012` (Kaggle home) and `014` (a careers page with a stale
+  study tab visible) from genuine study requires a **session-level / active
+  window signal** (sustained study content over cycles, or which browser tab is
+  focused), not per-frame content. This is tracked as a follow-up, not a
+  content-relevance defeat.
+
+Keep `true_intent` honest in new samples: a screen that merely shows study
+adjacent text while the user is doing something else (job search, browsing a
+hub page) should stay `passive`/`idle`, and the runner will report if content
+awareness drifts on them.
