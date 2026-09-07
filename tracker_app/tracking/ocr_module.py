@@ -5,7 +5,7 @@ import numpy as np
 import pytesseract
 import hashlib
 from mss import mss
-from tracker_app.config import TESSERACT_PATH, OCR_MIN_WORD_CONFIDENCE
+from tracker_app.config import TESSERACT_PATH
 import spacy
 import logging
 from tracker_app.tracking.knowledge_graph import get_graph
@@ -121,7 +121,7 @@ def capture_screenshot(use_roi=True):
                         logger.warning(f"[PRIVACY] Skipped sensitive window: {window_info['title']}")
                         return None
 
-                    # Deduplication check — hash a small thumbnail (~100x faster than full frame)
+                    # Deduplication check â€” hash a small thumbnail (~100x faster than full frame)
                     thumb = cv2.resize(img, (192, 108)) if img is not None else img
                     img_hash = hashlib.md5(thumb.tobytes()).hexdigest()
                     if img_hash == _last_screenshot_hash:
@@ -137,7 +137,7 @@ def capture_screenshot(use_roi=True):
             monitor = sct.monitors[1]
             img = np.array(sct.grab(monitor))
 
-            # Calculate hash for deduplication — use thumbnail for speed
+            # Calculate hash for deduplication â€” use thumbnail for speed
             thumb = cv2.resize(img, (192, 108))
             img_hash = hashlib.md5(thumb.tobytes()).hexdigest()
 
@@ -158,53 +158,54 @@ def capture_screenshot(use_roi=True):
 
 
 def preprocess_image(img):
-    """Preprocess image for better OCR results"""
+    """Preprocess image for better OCR results.
+
+    Golden-dataset evidence: Otsu binarization + median blur + morphological
+    close destroyed modern screen fonts (concept recall 0.80 -> 0.57 on raw
+    grayscale vs binarized input). Output stays a multi-level 8-bit grayscale
+    so thin/antialiased text survives; noise filtering is deferred to the
+    downstream text-quality validator instead of destroying pixels up front.
+    """
     if img is None:
         return None
 
     try:
-        # Convert to grayscale
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if len(img.shape) == 3 else img
-
-        # Apply preprocessing for better OCR
-        # 1. Noise reduction
-        denoised = cv2.medianBlur(gray, 3)
-
-        # 2. Thresholding to binary
-        _, binary = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-        # 3. Morphological operations to clean up text
-        kernel = np.ones((2, 2), np.uint8)
-        cleaned = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
-
-        return cleaned
-
+        if len(img.shape) == 3:
+            return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        return img
     except Exception as e:
         logger.warning(f"Error preprocessing image: {e}")
-        return gray if "gray" in locals() else img
+        return img
 
 
 def extract_text(img, min_confidence: int = None):
-    """Extract text from image using optimized OCR strategy.
+    """Extract text from an image using Tesseract (PSM 3 auto-segmentation).
 
-    Uses per-word confidence (image_to_data) and drops words below
-    OCR_MIN_WORD_CONFIDENCE. Tesseract scores misreads of UI chrome /
-    overlapping windows very low (often 0.0) while readable study content
-    scores 50-95 — so this filters OCR garble at the source instead of
-    letting every misread try the plausibility gate downstream.
+    Word confidence is NOT a gate by default: the golden dataset showed real
+    on-screen study content scoring 0-9, so the previous confidence-30 floor
+    erased real text while keeping junk (concept recall 0.00 -> 0.80 with the
+    floor removed). Garbage is handled downstream by the text-quality
+    validator, not by Tesseract's unreliable per-word confidence.
+    An explicit positive min_confidence still acts as an opt-in floor.
     """
     if img is None:
         return ""
 
     if min_confidence is None:
-        min_confidence = OCR_MIN_WORD_CONFIDENCE
+        min_confidence = 0
 
     try:
-        # Use ONLY PSM 6 (default) - removed PSM 7 and 8 for performance
-        custom_config = r"--oem 3 --psm 6 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,!?;:()[]{}@#$%&*+-/=<> "
+        # PSM 3 (fully automatic page segmentation). PSM 6 assumes a single
+        # uniform text block, which is wrong for full-window UI screenshots with
+        # multiple columns/panels. A char whitelist also destroyed non-ASCII
+        # glyphs (arrows, smart quotes); both removed (golden-set evidence).
+        custom_config = "--oem 3 --psm 3"
         data = pytesseract.image_to_data(img, config=custom_config, output_type=pytesseract.Output.DICT)
 
-        # Reconstruct text line-by-line, keeping only confident words.
+        # Reconstruct text line-by-line. Word confidence is NOT a gate:
+        # screen content routinely scores 0-9, so a confidence floor erased
+        # real study text while keeping junk (golden: recall 0.00 with the
+        # filter, 0.80 without). Only an explicitly provided floor is applied.
         # Key = (block, paragraph, line) so reading order survives sorting.
         lines: dict = {}
         n = len(data.get("text", []))
@@ -212,12 +213,13 @@ def extract_text(img, min_confidence: int = None):
             word = (data["text"][i] or "").strip()
             if not word:
                 continue
-            try:
-                conf = float(data["conf"][i])
-            except (TypeError, ValueError):
-                continue
-            if conf < min_confidence:
-                continue
+            if min_confidence:
+                try:
+                    conf = float(data["conf"][i])
+                except (TypeError, ValueError):
+                    continue
+                if conf < min_confidence:
+                    continue
             key = (data["block_num"][i], data["par_num"][i], data["line_num"][i])
             lines.setdefault(key, []).append(word)
 
@@ -242,7 +244,7 @@ def extract_keywords(text, top_n=TEXT_TOP_KEYWORDS, boost_repeats=True, graph=No
     if not text or len(text.strip()) < 10:
         return {}
 
-    # Privacy filter FIRST (mandatory structural gate — imported at module load,
+    # Privacy filter FIRST (mandatory structural gate â€” imported at module load,
     # so this can never silently disappear)
     sanitized = sanitize_text_for_storage(text)
 
@@ -358,3 +360,4 @@ if __name__ == "__main__":
     result = ocr_pipeline()
     print("Keywords count:", len(result.get("keywords", {})))
     print("Text snippet:", result.get("raw_text", "")[:200] + "...")
+
