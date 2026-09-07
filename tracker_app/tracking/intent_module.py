@@ -7,6 +7,7 @@ Feature vector: [ocr_keyword_count, audio_val, attention_score,
 import pickle
 import logging
 import numpy as np
+import re
 from pathlib import Path
 from typing import Union, List, Dict
 
@@ -103,6 +104,66 @@ def extract_features(
 
     return np.array([[kw_count, audio_val, att, inter, kw_avg_score, aconf]], dtype=np.float32)
 
+# ---- Content-awareness (rule-level, no feature-vector change) ----
+RELEVANCE_HIGH = 0.30      # screen matches study topics strongly enough to promote
+RELEVANCE_LOW = 0.05       # screen matches almost nothing -> demote studying
+MIN_CONTENT_KEYWORDS = 3   # need enough on-screen keywords before relevance matters
+
+_TOKEN_RE = re.compile(r"[a-z0-9]+")
+
+
+def _keyword_score(value) -> float:
+    """Score from extract_keywords' value, either a float or a dict holding 'score'."""
+    if isinstance(value, dict):
+        return _safe_float(value.get("score", 0.5))
+    return _safe_float(value, 0.5)
+
+
+def _tokenize(phrase: str) -> set:
+    """Lowercase alphanumeric tokens (len >= 3) from a phrase or concept."""
+    return {t for t in _TOKEN_RE.findall(str(phrase).lower()) if len(t) >= 3}
+
+
+def compute_content_relevance(ocr_keywords: Union[List, Dict], known_concepts: List[str]) -> float:
+    """Weighted fraction of on-screen keywords that share a token with a known study concept.
+
+    Deterministic lexical overlap (no embedding model): a keyword matches when any of its
+    len>=3 tokens appears in any concept's token set. Weights are the keyword scores, so
+    real, higher-scored content keywords drive relevance more than chrome noise.
+
+    Returns 0.0 when there is nothing to compare.
+    """
+    kw = ocr_keywords if isinstance(ocr_keywords, dict) else {}
+    if not kw or not known_concepts:
+        return 0.0
+
+    concept_tokens = set()
+    for c in known_concepts:
+        concept_tokens |= _tokenize(c)
+
+    total_score = 0.0
+    matched_score = 0.0
+    for phrase, value in kw.items():
+        score = _keyword_score(value)
+        total_score += score
+        if _tokenize(phrase) & concept_tokens:
+            matched_score += score
+    if total_score <= 0:
+        return 0.0
+    return min(1.0, matched_score / total_score)
+
+
+def _load_known_concepts() -> List[str]:
+    """Lazy-load the user's study concepts from the knowledge graph; [] on failure."""
+    try:
+        from tracker_app.tracking.knowledge_graph import get_graph
+
+        g = get_graph()
+        return [n for n in g.nodes() if isinstance(n, str) and len(n) > 2]
+    except Exception as e:
+        logger.debug("knowledge-graph load failed for content relevance: %s", e)
+        return []
+
 
 # â”€â”€ Rule-based fallback (v1 logic, kept as safety net) â”€â”€â”€
 _RULE_MAP = [
@@ -133,22 +194,34 @@ def predict_intent(
     interaction_rate: float = 0.0,
     use_webcam: bool = False,
     audio_confidence: float = 0.7,
+    known_concepts: Union[List[str], None] = None,
 ) -> Dict:
     """
     Predict user intent from multi-modal signals.
+
+    known_concepts: optional study-history concepts to measure screen content
+        against. When omitted, they are lazy-loaded from the knowledge graph,
+        so callers (tracker loop, golden harness) can inject a deterministic set.
 
     Returns:
         {
             'intent_label': 'studying' | 'passive' | 'idle',
             'confidence':   float,
-            'source':       'classifier' | 'rules',
+            'source':       'classifier' | 'rules' | 'rules+content',
             'features':     [f1, f2, f3, f4, f5, f6],  # exact vector fed to model
+            'content_relevance': 0..1 # on-screen keyword overlap with study topics
         }
     """
     # Compute the feature vector once so the exact inputs used at prediction
     # time can be persisted for feedback-driven retraining (ADR-003).
     feats = extract_features(ocr_keywords, audio_label, attention_score, interaction_rate, audio_confidence)
     feature_list = [round(float(x), 4) for x in feats[0]]
+
+    # Content awareness: compare on-screen keywords against the user's study
+    # topics. Explicit concepts win over lazy knowledge-graph load (deterministic
+    # in the golden harness; cheap in the loop).
+    concepts = known_concepts if known_concepts is not None else _load_known_concepts()
+    content_relevance = compute_content_relevance(ocr_keywords, concepts)
 
     model_data = _load_model()
 
@@ -158,7 +231,7 @@ def predict_intent(
             label = model.predict(feats)[0]
             proba = model.predict_proba(feats)[0]
             confidence = float(np.max(proba))
-            return {
+            result = {
                 "intent_label": str(label),
                 "confidence": round(confidence, 4),
                 "source": "classifier",
@@ -166,10 +239,24 @@ def predict_intent(
             }
         except Exception as e:
             logger.warning(f"Classifier prediction failed: {e}. Using rules.")
+            result = _rule_predict(ocr_keywords, audio_label, attention_score, interaction_rate)
+            result["features"] = feature_list
+    else:
+        # Fallback to rule-based
+        result = _rule_predict(ocr_keywords, audio_label, attention_score, interaction_rate)
+        result["features"] = feature_list
 
-    # Fallback to rule-based
-    result = _rule_predict(ocr_keywords, audio_label, attention_score, interaction_rate)
-    result["features"] = feature_list
+    # Rule-level content bias (applied AFTER the classifier; never touches the
+    # persisted feature vector, so the feedback/training contract is unchanged).
+    result["content_relevance"] = round(content_relevance, 4)
+    kw_count = len(ocr_keywords) if isinstance(ocr_keywords, (list, dict)) else 0
+    if kw_count >= MIN_CONTENT_KEYWORDS:
+        if content_relevance >= RELEVANCE_HIGH and result["intent_label"] in ("passive", "idle"):
+            result["intent_label"] = "studying"
+            result["source"] = "rules+content"
+        elif content_relevance <= RELEVANCE_LOW and result["intent_label"] == "studying":
+            result["intent_label"] = "passive"
+            result["source"] = "rules+content"
     return result
 
 
