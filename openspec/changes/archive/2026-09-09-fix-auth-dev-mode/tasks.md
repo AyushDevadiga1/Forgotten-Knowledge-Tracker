@@ -14,7 +14,7 @@
 
 ## 4. Environment file hygiene (local dev)
 
-- [ ] 4.1 In the repo `.env`, delete every accumulated `API_KEY=` line (keep `SECRET_KEY`, keep `NO_AUTH=true`); confirm the sibling `tracker_app/tests` still pass with the cleaned file present
+- [x] 4.1 In the repo `.env`, delete every accumulated `API_KEY=` line (keep `SECRET_KEY`, keep `NO_AUTH=true`); confirm the sibling `tracker_app/tests` still pass with the cleaned file present (verified: .env has 0 API_KEY lines; full suite 472 passed)
 
 ## 5. Manual verification
 
