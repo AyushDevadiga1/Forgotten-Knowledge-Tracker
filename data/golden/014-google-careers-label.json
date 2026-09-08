@@ -13,8 +13,13 @@
   "expected_hierarchy": {
     "title": "Student Researcher, PhD, Fall 2026",
     "sections": [
-      { "heading": "Minimum qualifications", "level": 2 }
+      {
+        "heading": "Minimum qualifications",
+        "level": 2
+      }
     ]
   },
-  "notes": "job hunting, not studying"
+  "notes": "job hunting, not studying",
+  "focused_tab_title": "Student Researcher, PhD, Fall 2026 - Google Careers",
+  "focused_tab_url": "https://careers.google.com/jobs/results/?emp_type=DEGREE"
 }

@@ -54,7 +54,7 @@ BOUND = datetime(2026, 8, 13, 10, 0, 0)
 # tracker_app/db/migrations.py — bump when a migration is appended
 # (currently 13: 001..013 including 011_datetime_storage_format, 012
 # drop_duplicate_feedback_index, and 013_feedback_used_in_training).
-TOTAL_MIGRATIONS = 13
+TOTAL_MIGRATIONS = 14
 
 
 class _FixedUtcnow:

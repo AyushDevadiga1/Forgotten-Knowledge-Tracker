@@ -36,6 +36,7 @@ class _FakeMonitor:
         self.mouse_counter = _FakeCounter()
         self.concept_calls = []
         self.context_calls = []
+        self.multimodal_calls = []
 
     def start_session(self):
         self.is_running = True
@@ -56,6 +57,9 @@ class _FakeMonitor:
 
     def export_tracking_data(self):
         pass
+
+    def log_multimodal(self, **kwargs):
+        self.multimodal_calls.append(kwargs)
 
 
 class _FakeListener:
@@ -269,3 +273,31 @@ def test_track_loop_skips_concepts_when_webcam_attention_fabricated(loop_env, mo
     loop.track_loop(stop_event=_StopAfter(3), webcam_enabled=True)
     assert loop_env["monitor"].concept_calls == [], "fabricated attention must not persist concepts"
     assert len(loop_env["ocr_calls"]) == 2
+
+
+
+def test_track_loop_sensitive_window_never_captures_tab(loop_env, monkeypatch):
+    monkeypatch.setattr(loop, "is_sensitive_window", lambda title: True)
+    spy = []
+    monkeypatch.setattr(loop, "get_focused_tab_fn", lambda: lambda: spy.append(1) or object())
+    loop.track_loop(stop_event=_StopAfter(3), webcam_enabled=True)
+    assert spy == [], "a sensitive window must not be probed for a focused tab"
+    assert loop_env["monitor"].multimodal_calls, "telemetry must still be logged"
+    assert all(c.get("focused_tab") is None for c in loop_env["monitor"].multimodal_calls)
+    assert all("active_tab_title" not in c or c["active_tab_title"] is None for c in loop_env["monitor"].multimodal_calls)
+
+
+def test_track_loop_forwards_tab_signal(loop_env, monkeypatch):
+    class _Tab:
+        title = "Two Sum - LeetCode"
+        url = "https://leetcode.com/problems/two-sum/"
+
+    monkeypatch.setattr(loop, "get_focused_tab_fn", lambda: lambda: _Tab())
+    monkeypatch.setattr(loop, "is_sensitive_window", lambda title: False)
+    loop.track_loop(stop_event=_StopAfter(3), webcam_enabled=True)
+
+    assert loop_env["intent_calls"], "predict_intent must be reached each cycle"
+    assert loop_env["intent_calls"][-1]["active_tab_title"] == "Two Sum - LeetCode"
+    assert loop_env["intent_calls"][-1]["active_tab_url"] == "https://leetcode.com/problems/two-sum/"
+    last = loop_env["monitor"].multimodal_calls[-1]
+    assert last.get("focused_tab") == {"title": "Two Sum - LeetCode", "url": "https://leetcode.com/problems/two-sum/"}

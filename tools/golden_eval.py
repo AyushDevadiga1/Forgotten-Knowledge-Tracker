@@ -137,6 +137,8 @@ def _run_screenshot(image_path: Path, label: dict, known_concepts: list[str] | N
         interaction_rate=READING_CONTEXT["interaction_rate"],
         audio_confidence=READING_CONTEXT["audio_confidence"],
         known_concepts=known_concepts,
+        active_tab_title=label.get("focused_tab_title"),
+        active_tab_url=label.get("focused_tab_url"),
     )
     report["intent"] = {
         "predicted": intent.get("intent_label"),
@@ -145,6 +147,9 @@ def _run_screenshot(image_path: Path, label: dict, known_concepts: list[str] | N
         "source": intent.get("source"),
         "features": intent.get("features"),
         "content_relevance": intent.get("content_relevance"),
+        "tab_relevance": intent.get("tab_relevance"),
+        "focused_tab_title": label.get("focused_tab_title"),
+        "focused_tab_url": label.get("focused_tab_url"),
         "correct": intent.get("intent_label") == label.get("true_intent"),
     }
     return report
@@ -278,15 +283,18 @@ def _by_mode(reports: list[dict]) -> dict:
 
 
 def _print_summary(reports: list[dict], agg: dict) -> None:
-    hdr = f"{'id':>3} {'mode':<15} {'intent(t/p)':<13} {'prec':>6} {'rec':>6} {'tRec':>6} {'hier':>6}"
+    hdr = f"{'id':>3} {'mode':<15} {'intent(t/p)':<13} {'prec':>6} {'rec':>6} {'tRec':>6} {'hier':>6} {'tabRel':>7}"
     print(hdr)
     print("-" * len(hdr))
     for r in sorted(reports, key=lambda x: x["id"]):
+        tr = (r.get("intent") or {}).get("tab_relevance")
+        tr_s = "-" if tr is None else f"{tr:.2f}"
         print(
             f"{r['id']:>3} {r.get('mode','')[:15]:<15} "
             f"{r.get('true_intent','?'):>9}/{(r.get('intent') or {}).get('predicted','?'):<3} "
             f"{r.get('keyword_precision',0):>6.2f} {r.get('keyword_recall',0):>6.2f} "
-            f"{r.get('text_recall',0):>6.2f} {(r.get('hierarchy') or {}).get('hierarchy_score',0):>6.2f}"
+            f"{r.get('text_recall',0):>6.2f} {(r.get('hierarchy') or {}).get('hierarchy_score',0):>6.2f} "
+            f"{tr_s:>7}"
         )
     print("-" * len(hdr))
     s = agg

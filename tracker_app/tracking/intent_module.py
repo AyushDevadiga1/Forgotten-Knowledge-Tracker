@@ -153,6 +153,46 @@ def compute_content_relevance(ocr_keywords: Union[List, Dict], known_concepts: L
     return min(1.0, matched_score / total_score)
 
 
+def compute_tab_relevance(tab_phrases: Dict[str, float], known_concepts: List[str]) -> float:
+    """Focused-tab overlap with the user's study concepts (0..1).
+
+    Unlike compute_content_relevance (single-token co-occurrence, tuned for
+    OCR keyword floods), the tab carries 1-2 short phrases, so a single shared
+    generic token is not evidence of study: "careers.google.com" shares the
+    token "google" with the concept "google cloud" but is not about that
+    concept. A tab phrase matches a concept only when it covers the concept's
+    token set - either the FULL set (single-word concepts like "kaggle" or
+    "leetcode" match a tab that contains them) or >= 2 of its tokens (longer
+    concepts). Deterministic; no embedding or similarity machinery.
+    """
+    kw = tab_phrases if isinstance(tab_phrases, dict) else {}
+    if not kw or not known_concepts:
+        return 0.0
+
+    concept_token_sets = [_tokenize(c) for c in known_concepts]
+    total_score = 0.0
+    matched_score = 0.0
+    for phrase, value in kw.items():
+        score = _keyword_score(value)
+        total_score += score
+        phrase_tokens = _tokenize(phrase)
+        if not phrase_tokens:
+            continue
+        covered = False
+        for c_tokens in concept_token_sets:
+            if not c_tokens:
+                continue
+            inter = phrase_tokens & c_tokens
+            if len(inter) >= min(2, len(c_tokens)):
+                covered = True
+                break
+        if covered:
+            matched_score += score
+    if total_score <= 0:
+        return 0.0
+    return min(1.0, matched_score / total_score)
+
+
 def _load_known_concepts() -> List[str]:
     """Lazy-load the user's study concepts from the knowledge graph; [] on failure."""
     try:
@@ -195,6 +235,8 @@ def predict_intent(
     use_webcam: bool = False,
     audio_confidence: float = 0.7,
     known_concepts: Union[List[str], None] = None,
+    active_tab_title: Union[str, None] = None,
+    active_tab_url: Union[str, None] = None,
 ) -> Dict:
     """
     Predict user intent from multi-modal signals.
@@ -203,13 +245,22 @@ def predict_intent(
         against. When omitted, they are lazy-loaded from the knowledge graph,
         so callers (tracker loop, golden harness) can inject a deterministic set.
 
+    active_tab_title / active_tab_url: optional focused browser tab. When
+        present, the tab is treated as ground truth of what the user is
+        engaged with and OVERRIDES the OCR-only content bias: a tab with no
+        study-concept overlap demotes studying->passive even when the screen
+        OCR is study-relevant; a strongly study-relevant tab promotes
+        passive/idle->studying. No tab (or non-browser window) keeps the
+        OCR-only bias exactly as before.
+
     Returns:
         {
             'intent_label': 'studying' | 'passive' | 'idle',
             'confidence':   float,
-            'source':       'classifier' | 'rules' | 'rules+content',
+            'source':       'classifier' | 'rules' | 'rules+content' | 'rules+tabs',
             'features':     [f1, f2, f3, f4, f5, f6],  # exact vector fed to model
             'content_relevance': 0..1 # on-screen keyword overlap with study topics
+            'tab_relevance': 0..1 | None # focused-tab overlap (None when no tab)
         }
     """
     # Compute the feature vector once so the exact inputs used at prediction
@@ -249,14 +300,34 @@ def predict_intent(
     # Rule-level content bias (applied AFTER the classifier; never touches the
     # persisted feature vector, so the feedback/training contract is unchanged).
     result["content_relevance"] = round(content_relevance, 4)
-    kw_count = len(ocr_keywords) if isinstance(ocr_keywords, (list, dict)) else 0
-    if kw_count >= MIN_CONTENT_KEYWORDS:
-        if content_relevance >= RELEVANCE_HIGH and result["intent_label"] in ("passive", "idle"):
-            result["intent_label"] = "studying"
-            result["source"] = "rules+content"
-        elif content_relevance <= RELEVANCE_LOW and result["intent_label"] == "studying":
+
+    # Focused-tab gate: when a browser tab is the active window, it is treated
+    # as ground truth and OVERRIDES the OCR-only bias. The tab carries 1-2
+    # phrases (title/url), so the OCR keyword-count guard does not apply here.
+    tab_phrases: Dict[str, float] = {}
+    if active_tab_title and str(active_tab_title).strip():
+        tab_phrases[str(active_tab_title).strip()] = 1.0
+    if active_tab_url and str(active_tab_url).strip():
+        tab_phrases[str(active_tab_url).strip()] = 1.0
+    if tab_phrases:
+        tab_relevance = compute_tab_relevance(tab_phrases, concepts)
+        result["tab_relevance"] = round(tab_relevance, 4)
+        if tab_relevance <= RELEVANCE_LOW and result["intent_label"] == "studying":
             result["intent_label"] = "passive"
-            result["source"] = "rules+content"
+            result["source"] = "rules+tabs"
+        elif tab_relevance >= RELEVANCE_HIGH and result["intent_label"] in ("passive", "idle"):
+            result["intent_label"] = "studying"
+            result["source"] = "rules+tabs"
+    else:
+        result["tab_relevance"] = None
+        kw_count = len(ocr_keywords) if isinstance(ocr_keywords, (list, dict)) else 0
+        if kw_count >= MIN_CONTENT_KEYWORDS:
+            if content_relevance >= RELEVANCE_HIGH and result["intent_label"] in ("passive", "idle"):
+                result["intent_label"] = "studying"
+                result["source"] = "rules+content"
+            elif content_relevance <= RELEVANCE_LOW and result["intent_label"] == "studying":
+                result["intent_label"] = "passive"
+                result["source"] = "rules+content"
     return result
 
 

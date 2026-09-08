@@ -6,7 +6,7 @@
     "avg_keyword_precision": 0.1363,
     "avg_keyword_recall": 0.2567,
     "avg_hierarchy_score": 0.0,
-    "intent_accuracy": 0.8,
+    "intent_accuracy": 0.8667,
     "intent_confusion": {
       "studying": {
         "studying": 12
@@ -16,7 +16,7 @@
         "studying": 1
       },
       "passive": {
-        "studying": 1
+        "passive": 1
       }
     },
     "by_mode": {
@@ -40,7 +40,7 @@
       },
       "browser_article": {
         "n": 5,
-        "intent_ok": 3,
+        "intent_ok": 4,
         "avg_text_recall": 0.96,
         "avg_keyword_recall": 0.43
       }
@@ -97,6 +97,9 @@
           0.9
         ],
         "content_relevance": 0.2857,
+        "tab_relevance": null,
+        "focused_tab_title": null,
+        "focused_tab_url": null,
         "correct": true
       }
     },
@@ -144,6 +147,9 @@
           0.9
         ],
         "content_relevance": 0.2,
+        "tab_relevance": null,
+        "focused_tab_title": null,
+        "focused_tab_url": null,
         "correct": true
       }
     },
@@ -191,6 +197,9 @@
           0.9
         ],
         "content_relevance": 0.1667,
+        "tab_relevance": null,
+        "focused_tab_title": null,
+        "focused_tab_url": null,
         "correct": true
       }
     },
@@ -238,6 +247,9 @@
           0.9
         ],
         "content_relevance": 0.1429,
+        "tab_relevance": null,
+        "focused_tab_title": null,
+        "focused_tab_url": null,
         "correct": true
       }
     },
@@ -285,6 +297,9 @@
           0.9
         ],
         "content_relevance": 0.1963,
+        "tab_relevance": null,
+        "focused_tab_title": null,
+        "focused_tab_url": null,
         "correct": true
       }
     },
@@ -332,6 +347,9 @@
           0.9
         ],
         "content_relevance": 0.2143,
+        "tab_relevance": null,
+        "focused_tab_title": null,
+        "focused_tab_url": null,
         "correct": true
       }
     },
@@ -383,6 +401,9 @@
           0.9
         ],
         "content_relevance": 0.2857,
+        "tab_relevance": null,
+        "focused_tab_title": null,
+        "focused_tab_url": null,
         "correct": true
       }
     },
@@ -430,6 +451,9 @@
           0.9
         ],
         "content_relevance": 0.0714,
+        "tab_relevance": null,
+        "focused_tab_title": null,
+        "focused_tab_url": null,
         "correct": true
       }
     },
@@ -477,6 +501,9 @@
           0.9
         ],
         "content_relevance": 0.0,
+        "tab_relevance": null,
+        "focused_tab_title": null,
+        "focused_tab_url": null,
         "correct": false
       }
     },
@@ -524,6 +551,9 @@
           0.9
         ],
         "content_relevance": 0.1333,
+        "tab_relevance": null,
+        "focused_tab_title": null,
+        "focused_tab_url": null,
         "correct": true
       }
     },
@@ -571,6 +601,9 @@
           0.9
         ],
         "content_relevance": 0.2667,
+        "tab_relevance": null,
+        "focused_tab_title": null,
+        "focused_tab_url": null,
         "correct": true
       }
     },
@@ -622,6 +655,9 @@
           0.9
         ],
         "content_relevance": 0.066,
+        "tab_relevance": 1.0,
+        "focused_tab_title": "Kaggle: Your Machine Learning and Data Science Community",
+        "focused_tab_url": "https://www.kaggle.com/",
         "correct": false
       }
     },
@@ -673,6 +709,9 @@
           0.9
         ],
         "content_relevance": 0.3333,
+        "tab_relevance": null,
+        "focused_tab_title": null,
+        "focused_tab_url": null,
         "correct": true
       }
     },
@@ -711,10 +750,10 @@
         "hierarchy_score": 1.0
       },
       "intent": {
-        "predicted": "studying",
+        "predicted": "passive",
         "true": "passive",
         "confidence": 0.9909,
-        "source": "classifier",
+        "source": "rules+tabs",
         "features": [
           15.0,
           0.0,
@@ -724,7 +763,10 @@
           0.9
         ],
         "content_relevance": 0.2642,
-        "correct": false
+        "tab_relevance": 0.0,
+        "focused_tab_title": "Student Researcher, PhD, Fall 2026 - Google Careers",
+        "focused_tab_url": "https://careers.google.com/jobs/results/?emp_type=DEGREE",
+        "correct": true
       }
     },
     {
@@ -771,6 +813,9 @@
           0.9
         ],
         "content_relevance": 0.5333,
+        "tab_relevance": null,
+        "focused_tab_title": null,
+        "focused_tab_url": null,
         "correct": true
       }
     }

@@ -48,9 +48,9 @@ CREATE TABLE intent_predictions (
 
 # Total migration count tracks the MIGRATIONS registry in
 # tracker_app/db/migrations.py — bump when a migration is appended
-# (currently 13: 001..013 including 011_datetime_storage_format,
+# (currently 14: 001..014 including 011_datetime_storage_format,
 # 012_drop_duplicate_feedback_index, and 013_feedback_used_in_training).
-TOTAL_MIGRATIONS = 13
+TOTAL_MIGRATIONS = 14
 
 
 def _create_stale_db(db_file):

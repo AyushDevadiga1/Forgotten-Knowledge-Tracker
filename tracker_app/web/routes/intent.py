@@ -63,6 +63,8 @@ class FeedbackService:
                             actual_label=actual_intent,
                             confidence=pred.confidence or 0.0,
                             window_title=pred.window_title or "",
+                            focused_tab_title=pred.focused_tab_title,
+                            focused_tab_url=pred.focused_tab_url,
                         )
                         FeedbackRepository.log_feedback_sample(db, sample)
                     else:

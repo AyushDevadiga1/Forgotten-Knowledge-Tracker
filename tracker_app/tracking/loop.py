@@ -73,6 +73,19 @@ def get_webcam_pipeline():
     return _webcam_pipeline
 
 
+_focused_tab_fn = None
+
+
+def get_focused_tab_fn():
+    """Lazy accessor for the focused-tab capture (Windows-only, never raises)."""
+    global _focused_tab_fn
+    if _focused_tab_fn is None:
+        from tracker_app.tracking.focused_tab import get_focused_tab
+
+        _focused_tab_fn = get_focused_tab
+    return _focused_tab_fn
+
+
 # â”€â”€â”€ Input listener factory â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Callbacks are closures over the loop-local monitor/cle so that importing
 # this module does NOT instantiate any live resources at module load time.
@@ -417,7 +430,20 @@ def track_loop(
             # Privacy: a sensitive window title (bank, login, medicalâ€¦) is
             # never persisted â€” the OCR capture was already skipped for it, so
             # storing the title would leak exactly the info we refused to read.
-            context = "" if is_sensitive_window(window_title) else window_title
+            sensitive = is_sensitive_window(window_title)
+            context = "" if sensitive else window_title
+
+            # Focused browser tab (title + URL) when a supported browser
+            # window is in front. Gated on the same sensitive-window check
+            # so a sensitive browser session never yields (nor persists) a tab.
+            focused_tab = None
+            if not sensitive:
+                try:
+                    focused_tab = get_focused_tab_fn()()
+                except Exception as e:
+                    logger.debug(f"focused-tab capture skipped: {e}")
+            tab_title = focused_tab.title if focused_tab else None
+            tab_url = focused_tab.url if focused_tab else None
 
             # Adaptive intervals based on current CPU
             intervals = _get_effective_intervals()
@@ -481,6 +507,8 @@ def track_loop(
                     interaction_rate=interaction_rate,
                     use_webcam=webcam_enabled,
                     audio_confidence=audio_result.get("confidence", 0.7),
+                    active_tab_title=tab_title,
+                    active_tab_url=tab_url,
                 )
                 monitor.process_intent(intent_result, context=context)
             except Exception as e:
@@ -498,6 +526,7 @@ def track_loop(
                     interaction_rate=interaction_rate,
                     intent_label=intent_result.get("intent_label", "unknown"),
                     intent_confidence=intent_result.get("confidence", 0.0),
+                    focused_tab={"title": tab_title, "url": tab_url} if focused_tab else None,
                 )
             except Exception as e:
                 logger.debug(f"log_multimodal skipped: {e}")

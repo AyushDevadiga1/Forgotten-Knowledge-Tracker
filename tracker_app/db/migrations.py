@@ -229,6 +229,24 @@ MIGRATIONS = [
             "ALTER TABLE feedback_training_samples ADD COLUMN used_in_training INTEGER DEFAULT 0",
         ],
     ),
+    # ---- 014: Focused browser tab signal ------------------------------------------
+    # The focused tab (title + URL) is a stronger "what is the user engaged with"
+    # signal than OCR-wide content. multi_modal_logs stores it as JSON
+    # {title, url}; feedback_training_samples gets nullable per-field copies so the
+    # signal is available to retraining without changing the 6-feature vector
+    # (schema-ready, not gated on in training yet). ADD COLUMN guards keep these
+    # no-ops on fresh create_all databases.
+    (
+        "014_focused_tab",
+        "Add focused browser tab columns to multi_modal_logs and feedback_training_samples",
+        [
+            "ALTER TABLE multi_modal_logs ADD COLUMN focused_tab TEXT",
+            "ALTER TABLE feedback_training_samples ADD COLUMN focused_tab_title TEXT",
+            "ALTER TABLE feedback_training_samples ADD COLUMN focused_tab_url TEXT",
+            "ALTER TABLE intent_predictions ADD COLUMN focused_tab_title TEXT",
+            "ALTER TABLE intent_predictions ADD COLUMN focused_tab_url TEXT",
+        ],
+    ),
 ]
 
 
