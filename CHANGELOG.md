@@ -17,6 +17,7 @@ All notable changes to FKT are documented here.
 - `a6697b5` fix(quality): printable unicode no longer treated as control characters in OCR coherence check
 
 ### Added
+- `319c876` feat(intent): focused-browser-tab signal (Windows UIA) overrides OCR bias; tab-overrides-OCR rule in `predict_intent`, migration `014_focused_tab` (tab columns on `intent_predictions`, `multi_modal_logs`, `feedback_training_samples`), new `pywinauto` dependency; golden intent_acc 0.87 (014 fixed, 012 documented hub-page limit)
 - `360b97f` feat(golden): golden OCR eval harness + hand-labelled dataset (data/golden/, 001-015) with baseline report
 - `e1cd358` feat(golden): harness seeds intent concepts from studying labels and reports content relevance per screenshot
 - `0f0e09a` feat(intent): content-aware rule bias (screen keywords vs study concepts) demotes irrelevant studying, promotes relevant passive

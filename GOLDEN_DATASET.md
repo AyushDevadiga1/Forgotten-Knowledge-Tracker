@@ -88,9 +88,9 @@ Copy this template and fill it in:
 | `true_intent` | What you were actually doing: `studying`, `passive`, or `idle` | **Most important field** — this is the ground truth for the misclassification bug |
 | `expected_concepts` | Terms a good extractor *should* find | 5–10 real concepts, in lowercase |
 | `expected_hierarchy` | The document structure you can see | title + headings you can spot; omit if none |
+| `focused_tab_title` | The browser tab that is frontmost when the frame was captured | e.g. `Two Sum - LeetCode` |
+| `focused_tab_url` | The address of that tab | e.g. `https://leetcode.com/problems/two-sum/` |
 | `notes` | Anything that matters for later review | optional |
-
-## 5. Quality checklist
 
 - [ ] 30 screenshots, 5–7 per mode, varied real content
 - [ ] Every screenshot has a matching `-label.json` with the same `id`
@@ -129,11 +129,18 @@ What the golden data has established so far:
   (embedding) comparison ranks the negatives *above* some genuine studying
   frames. No lexical or semantic threshold separates them without
   misclassifying real studying.
-- Distinguishing `012` (Kaggle home) and `014` (a careers page with a stale
-  study tab visible) from genuine study requires a **session-level / active
-  window signal** (sustained study content over cycles, or which browser tab is
-  focused), not per-frame content. This is tracked as a follow-up, not a
-  content-relevance defeat.
+- The focused browser tab is now captured (Windows UIA; pywinauto) and treated
+  as ground truth of what the user is engaged with: a non-study tab demotes
+  studying to passive even when the screen text overlaps study concepts, a
+  study tab promotes passive/idle to studying, and no browser (or a sensitive
+  window) keeps the OCR-only behavior. Record `focused_tab_title`/`focused_tab_url`
+  in browser-mode labels so the harness can verify this (see
+  `tracker_app/tracking/focused_tab.py`).
+- Measured effect on the golden set: `014` (Google Careers) is now correctly
+  `passive` via the tab signal (`rules+tabs`), intent accuracy 0.80 -> 0.87.
+  `012` (Kaggle home) remains a **documented limit**: its tab genuinely matches
+  the study concepts (tab_relevance 1.0), so no lexical tab signal can overrule
+  the `idle` ground truth.
 
 Keep `true_intent` honest in new samples: a screen that merely shows study
 adjacent text while the user is doing something else (job search, browsing a

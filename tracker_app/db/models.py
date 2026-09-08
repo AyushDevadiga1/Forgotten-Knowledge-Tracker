@@ -203,6 +203,8 @@ class IntentPrediction(Base):
     feedback_timestamp = Column(DateTime, nullable=True)
     prompted_at = Column(DateTime, nullable=True)  # when the feedback toast last surfaced this row
     window_title = Column(String, nullable=True)  # what was on screen when predicted
+    focused_tab_title = Column(String, nullable=True)  # focused browser tab title
+    focused_tab_url = Column(String, nullable=True)   # focused browser tab URL
 
 
 class IntentAccuracy(Base):
@@ -320,6 +322,7 @@ class MultiModalLog(Base):
     intent_label = Column(String)
     intent_confidence = Column(Float, default=0.0)
     memory_score = Column(Float, default=0.0)
+    focused_tab = Column(String)  # JSON {title, url}, NULL when no browser tab
 
 
 class MemoryDecay(Base):
@@ -362,6 +365,8 @@ class FeedbackTrainingSample(Base):
     actual_label = Column(String, nullable=False)  # ground truth from user
     confidence = Column(Float, default=0.0)
     window_title = Column(String, default="")
+    focused_tab_title = Column(String, nullable=True)
+    focused_tab_url = Column(String, nullable=True)
     used_in_training = Column(Integer, default=0, nullable=False)
 
 

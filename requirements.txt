@@ -33,6 +33,7 @@ numpy>=1.26.0
 networkx>=3.0
 psutil>=5.9.0
 # pywin32: win32gui for foreground-window detection (Windows only; no-op on CI/Linux)
+# pywinauto: Windows UI Automation for focused browser-tab capture (Windows only; no-op elsewhere)
 pywin32>=305; platform_system == "Windows"
 
 # Testing

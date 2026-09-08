@@ -13,8 +13,13 @@
   "expected_hierarchy": {
     "title": "Welcome, Ayush Devadiga!",
     "sections": [
-      { "heading": "Next Steps", "level": 2 }
+      {
+        "heading": "Next Steps",
+        "level": 2
+      }
     ]
   },
-  "notes": "just visiting the kaggle homepage, not actively studying"
+  "notes": "just visiting the kaggle homepage, not actively studying",
+  "focused_tab_title": "Kaggle: Your Machine Learning and Data Science Community",
+  "focused_tab_url": "https://www.kaggle.com/"
 }

@@ -48,13 +48,22 @@ class IntentValidator:
         # now go through the shared SQLAlchemy engine in models.py.
         self.prediction_buffer = deque(maxlen=100)
 
-    def log_prediction(self, predicted_intent: str, confidence: float, context: str = "", features=None):
+    def log_prediction(
+        self,
+        predicted_intent: str,
+        confidence: float,
+        context: str = "",
+        features=None,
+        focused_tab_title: Optional[str] = None,
+        focused_tab_url: Optional[str] = None,
+    ):
         """Log an intent prediction to the shared ORM database.
 
         context is the active window title (kept for display context).
-        features is the exact 6-element feature vector the classifier saw â€”
+        features is the exact 6-element feature vector the classifier saw -
         JSON-encoded into context_keywords so feedback-driven retraining
-        (ADR-003) gets real inputs, not a window-title string.
+        (ADR-003) gets real inputs, not a window-title string. focused_tab_title/url
+        carry the focused browser tab (schema-ready for retraining).
         """
         try:
             with SessionLocal() as db:
@@ -64,6 +73,8 @@ class IntentValidator:
                     confidence=confidence,
                     context_keywords=json.dumps(features) if features else "[]",
                     window_title=context or "",
+                    focused_tab_title=focused_tab_title,
+                    focused_tab_url=focused_tab_url,
                 )
                 TrackingRepository.log_intent_prediction(db, pred)
         except Exception as e:
@@ -226,20 +237,30 @@ class ActivityMonitor:
             except Exception as e:
                 logger.error(f"Error processing concept {concept}: {e}")
 
-    def process_intent(self, intent_result: Dict[str, Any], context: str = ""):
+    def process_intent(
+        self,
+        intent_result: Dict[str, Any],
+        context: str = "",
+        focused_tab_title: Optional[str] = None,
+        focused_tab_url: Optional[str] = None,
+    ):
         """Process intent prediction with validation.
-        context is the window title; intent_result['features'] is the exact
+        context is the window title; intent_result["features"] is the exact
         feature vector used at prediction time (stored for retraining).
+        focused_tab_title/url are forwarded to the training sample so the tab
+        signal is available to future retraining (schema-ready).
         """
         intent = intent_result.get("intent_label", "unknown")
         confidence = intent_result.get("confidence", 0.5)
 
-        # Log for validation â€” persists the real feature vector, not the title
+        # Log for validation (exact inputs, ADR-003) - persists the real feature vector
         self.validator.log_prediction(
             intent,
             confidence,
             context=context,
             features=intent_result.get("features"),
+            focused_tab_title=focused_tab_title,
+            focused_tab_url=focused_tab_url,
         )
 
     def update_attention(self, attention_score: float):
@@ -256,6 +277,7 @@ class ActivityMonitor:
         interaction_rate: float = 0.0,
         intent_label: str = "unknown",
         intent_confidence: float = 0.0,
+        focused_tab: Optional[Dict[str, Any]] = None,
     ):
         """Persist one multi-modal log row for a capture cycle (D5).
 
@@ -276,6 +298,7 @@ class ActivityMonitor:
                     intent_label=intent_label,
                     intent_confidence=intent_confidence,
                     memory_score=memory_score,
+                    focused_tab=json.dumps(focused_tab) if focused_tab else None,
                 )
                 TrackingRepository.log_multimodal(db, log_row)
         except Exception as e:
