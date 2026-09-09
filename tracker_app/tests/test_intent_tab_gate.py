@@ -215,3 +215,57 @@ def test_mid_tab_relevance_leaves_classifier_unchanged(monkeypatch):
     assert r["intent_label"] == "passive"
     assert r["source"] == "classifier"
     assert r["tab_relevance"] == 0.2
+def test_tab_relevance_exactly_low_boundary_demotes(monkeypatch):
+    _model_with("studying", monkeypatch)
+    monkeypatch.setattr(intent_module, "compute_tab_relevance",
+                        lambda *a: intent_module.RELEVANCE_LOW)
+    r = intent_module.predict_intent(
+        {"dynamic programming": 0.7},
+        audio_label="silence",
+        attention_score=50.0,
+        interaction_rate=0.2,
+        audio_confidence=0.9,
+        known_concepts=["leetcode"],
+        active_tab_title="Boundary Low",
+    )
+    assert r["intent_label"] == "passive"
+    assert r["source"] == "rules+tabs"
+    assert r["tab_relevance"] == intent_module.RELEVANCE_LOW
+
+
+def test_tab_relevance_exactly_high_boundary_promotes(monkeypatch):
+    _model_with("passive", monkeypatch)
+    monkeypatch.setattr(intent_module, "compute_tab_relevance",
+                        lambda *a: intent_module.RELEVANCE_HIGH)
+    r = intent_module.predict_intent(
+        {"youtube": 0.3},
+        audio_label="music",
+        attention_score=45.0,
+        interaction_rate=2.0,
+        audio_confidence=0.8,
+        known_concepts=["leetcode"],
+        active_tab_title="Boundary High",
+    )
+    assert r["intent_label"] == "studying"
+    assert r["source"] == "rules+tabs"
+    assert r["tab_relevance"] == intent_module.RELEVANCE_HIGH
+
+
+def test_tab_demotion_does_not_need_min_content_keywords(monkeypatch):
+    # Design proof: MIN_CONTENT_KEYWORDS guards OCR-wide content relevance,
+    # NOT the tab. A single-keyword screen with a careers tab must still demote
+    # because the tab is ground truth of engagement.
+    _model_with("studying", monkeypatch)
+    r = intent_module.predict_intent(
+        {"dynamic programming": 0.7},
+        audio_label="silence",
+        attention_score=50.0,
+        interaction_rate=0.2,
+        audio_confidence=0.9,
+        known_concepts=["dynamic programming", "leetcode"],
+        active_tab_title="Student Researcher, PhD, Fall 2026 - Google Careers",
+        active_tab_url="https://careers.google.com/jobs/results/?emp_type=DEGREE",
+    )
+    assert r["intent_label"] == "passive"
+    assert r["source"] == "rules+tabs"
+    assert r["tab_relevance"] == 0.0

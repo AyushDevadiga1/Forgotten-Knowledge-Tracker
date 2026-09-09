@@ -95,3 +95,25 @@ def test_golden_012_kaggle_tab_signal_captured():
     assert intent["source"] in ("classifier", "rules+tabs")
     assert intent["focused_tab_title"] == label.get("focused_tab_title")
     assert intent["focused_tab_url"] == label.get("focused_tab_url")
+
+@needs_golden
+@needs_tesseract
+def test_golden_014_without_tab_keeps_studying_bias():
+    # Causal proof for the headline regression: the SAME screenshot, OCR and
+    # concepts, run with the tab fields stripped, must land on studying. Only
+    # then is the with-tab demotion attributable to the focused-tab signal and
+    # not to the classifier/rules agreeing on their own.
+    pairs = golden_eval._load_pairs()
+    concepts = golden_eval._study_concepts(pairs)
+    png, label = _labelled_png("014")
+
+    no_tab = dict(label)
+    no_tab.pop("focused_tab_title", None)
+    no_tab.pop("focused_tab_url", None)
+    report = golden_eval._run_screenshot(png, no_tab, known_concepts=concepts)
+
+    intent = report["intent"]
+    assert intent["predicted"] == "studying", \
+        f"expected the OCR-only bias (studying) without a tab, got {intent['predicted']}"
+    assert intent["tab_relevance"] is None
+    assert intent["correct"] is False

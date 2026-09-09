@@ -9,11 +9,13 @@ Run: python -m pytest tracker_app/tests/test_focused_tab_persistence.py -v
 """
 
 import json
+import sqlite3
 
 import pytest
 
 import tracker_app.db.models as models
 from tracker_app.db.db_module import init_all_databases
+from tracker_app.db.migrations import run_migrations
 from tracker_app.db.models import FeedbackTrainingSample, IntentPrediction, MultiModalLog
 from tracker_app.tracking import activity_monitor
 from tracker_app.tracking.activity_monitor import ActivityMonitor
@@ -102,3 +104,36 @@ def test_feedback_sample_forwards_tab_fields(db):
         assert sample is not None
         assert sample.focused_tab_title == "Two Sum - LeetCode"
         assert sample.focused_tab_url == "https://leetcode.com/problems/two-sum/"
+
+
+def test_migration_014_adds_tab_columns_to_stale_tables(tmp_path):
+    conn = sqlite3.connect(db_file := str(tmp_path / "stale_tab.db"))
+    try:
+        conn.execute("CREATE TABLE feedback_training_samples (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, feature_vector TEXT NOT NULL, predicted_label TEXT NOT NULL, actual_label TEXT NOT NULL, confidence REAL DEFAULT 0.0, window_title TEXT DEFAULT '', used_in_training INTEGER DEFAULT 0)")
+        conn.execute("CREATE TABLE intent_predictions (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, intent_label TEXT NOT NULL, confidence REAL, features TEXT, context TEXT)")
+        conn.execute("CREATE TABLE multi_modal_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT NOT NULL, window_title TEXT, keywords TEXT, intent_label TEXT, audio_label TEXT, attention_score REAL, interaction_rate REAL)")
+        conn.commit()
+    finally:
+        conn.close()
+
+    result = run_migrations(db_path=db_file)
+    assert result["failed"] == 0, result["errors"]
+
+    conn = sqlite3.connect(db_file)
+    try:
+        cols_mm = [r[1] for r in conn.execute("PRAGMA table_info(multi_modal_logs)")]
+        cols_fb = [r[1] for r in conn.execute("PRAGMA table_info(feedback_training_samples)")]
+        cols_ip = [r[1] for r in conn.execute("PRAGMA table_info(intent_predictions)")]
+        assert "focused_tab" in cols_mm
+        assert "focused_tab_title" in cols_fb and "focused_tab_url" in cols_fb
+        assert "focused_tab_title" in cols_ip and "focused_tab_url" in cols_ip
+        migrated = [r[0] for r in conn.execute(
+            "SELECT id FROM schema_migrations WHERE id = '014_focused_tab'")]
+        assert migrated == ["014_focused_tab"]
+        conn.execute(
+            "INSERT INTO multi_modal_logs (timestamp, window_title, intent_label)"
+            " VALUES ('2026-01-01 00:00:00', 't', 'idle')"
+        )
+        assert conn.execute("SELECT focused_tab FROM multi_modal_logs").fetchone()[0] is None
+    finally:
+        conn.close()
