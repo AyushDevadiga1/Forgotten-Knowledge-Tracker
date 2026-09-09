@@ -109,6 +109,48 @@ RELEVANCE_HIGH = 0.30      # screen matches study topics strongly enough to prom
 RELEVANCE_LOW = 0.05       # screen matches almost nothing -> demote studying
 MIN_CONTENT_KEYWORDS = 3   # need enough on-screen keywords before relevance matters
 
+# Navigation-surface rule (hub pages). A domain root / home / feed URL is a
+# portal the user navigates, not study content - it reads study-adjacent and
+# its tab often echoes study concepts, but it is never study itself. Detected
+# STRUCTURALLY and host-agnostically by URL path so the rule generalizes to
+# any future hub without a host denylist (a per-site list would be golden-set
+# overfit). Extend _NAVIGATION_PATHS only with host-agnostic path shapes.
+_NAVIGATION_PATHS = frozenset({"", "/", "/home", "/feed", "/explore", "/browse", "/trending"})
+# Demote target split: near-idle on a hub -> idle; actively browsing -> passive.
+HUB_IDLE_INTERACTION = 1.0
+
+
+# Host-shaped bare input (no scheme): `example.com` is a host root by
+# definition; anything else without a navigation path is not a URL.
+_BARE_HOST_RE = re.compile(r"^[a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?::\d+)?$", re.IGNORECASE)
+
+
+def is_navigation_surface(url) -> bool:
+    """True when the URL's path is a root/home/feed navigation surface.
+
+    Host-agnostic by construction: the same path shapes apply to any host, so
+    the rule covers hubs that were never seen before. Invalid or unparsable
+    input degrades to False (never raises).
+    """
+    if not url:
+        return False
+    try:
+        from urllib.parse import urlsplit
+
+        s = str(url).strip()
+        parts = urlsplit(s)
+        path = (parts.path or "/").lower()
+        if path in _NAVIGATION_PATHS:
+            return True
+        if not parts.scheme and not parts.netloc:
+            # Scheme-less input: a bare host root (e.g. "kaggle.com") counts;
+            # junk like "Two Sum - LeetCode" does not.
+            return bool(_BARE_HOST_RE.fullmatch(s.lower()))
+        return False
+    except Exception:
+        return False
+
+
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 
 
@@ -328,6 +370,21 @@ def predict_intent(
             elif content_relevance <= RELEVANCE_LOW and result["intent_label"] == "studying":
                 result["intent_label"] = "passive"
                 result["source"] = "rules+content"
+
+    # Navigation-surface rule (hub pages), LAST and highest precedence. A
+    # root/home/feed URL is a portal, not study content: it reads study-adjacent
+    # and its tab echoes study concepts (kaggle.com home), so BOTH the
+    # classifier and the tab gate can be fooled. This OVERRIDES them - a hub can
+    # never be labelled studying. Interaction splits the verdict: near-idle ->
+    # idle; actively browsing the hub -> passive (never studying).
+    if (
+        result["intent_label"] == "studying"
+        and is_navigation_surface(active_tab_url)
+    ):
+        result["intent_label"] = (
+            "idle" if interaction_rate < HUB_IDLE_INTERACTION else "passive"
+        )
+        result["source"] = "rules+hub"
     return result
 
 

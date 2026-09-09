@@ -6,14 +6,14 @@
     "avg_keyword_precision": 0.1363,
     "avg_keyword_recall": 0.2567,
     "avg_hierarchy_score": 0.0,
-    "intent_accuracy": 0.8667,
+    "intent_accuracy": 0.9333,
     "intent_confusion": {
       "studying": {
         "studying": 12
       },
       "idle": {
         "passive": 1,
-        "studying": 1
+        "idle": 1
       },
       "passive": {
         "passive": 1
@@ -40,7 +40,7 @@
       },
       "browser_article": {
         "n": 5,
-        "intent_ok": 4,
+        "intent_ok": 5,
         "avg_text_recall": 0.96,
         "avg_keyword_recall": 0.43
       }
@@ -642,10 +642,10 @@
         "hierarchy_score": 1.0
       },
       "intent": {
-        "predicted": "studying",
+        "predicted": "idle",
         "true": "idle",
         "confidence": 0.9909,
-        "source": "classifier",
+        "source": "rules+hub",
         "features": [
           15.0,
           0.0,
@@ -658,7 +658,7 @@
         "tab_relevance": 1.0,
         "focused_tab_title": "Kaggle: Your Machine Learning and Data Science Community",
         "focused_tab_url": "https://www.kaggle.com/",
-        "correct": false
+        "correct": true
       }
     },
     {

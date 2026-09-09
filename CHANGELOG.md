@@ -17,6 +17,7 @@ All notable changes to FKT are documented here.
 - `a6697b5` fix(quality): printable unicode no longer treated as control characters in OCR coherence check
 
 ### Added
+- hub-page-nonstudy-rule feat(intent): structural, host-agnostic navigation-surface rule (`is_navigation_surface`; root/home/feed URL paths) overrides classifier + tab gate in `predict_intent`: `studying` on a hub URL demotes to `idle`/`passive` (`rules+hub`) by interaction rate; golden intent_acc 0.80 -> 0.93 (012 Kaggle home fixed)
 - `319c876` feat(intent): focused-browser-tab signal (Windows UIA) overrides OCR bias; tab-overrides-OCR rule in `predict_intent`, migration `014_focused_tab` (tab columns on `intent_predictions`, `multi_modal_logs`, `feedback_training_samples`), new `pywinauto` dependency; golden intent_acc 0.87 (014 fixed, 012 documented hub-page limit)
 - `360b97f` feat(golden): golden OCR eval harness + hand-labelled dataset (data/golden/, 001-015) with baseline report
 - `e1cd358` feat(golden): harness seeds intent concepts from studying labels and reports content relevance per screenshot

@@ -136,11 +136,24 @@ What the golden data has established so far:
   window) keeps the OCR-only behavior. Record `focused_tab_title`/`focused_tab_url`
   in browser-mode labels so the harness can verify this (see
   `tracker_app/tracking/focused_tab.py`).
-- Measured effect on the golden set: `014` (Google Careers) is now correctly
-  `passive` via the tab signal (`rules+tabs`), intent accuracy 0.80 -> 0.87.
-  `012` (Kaggle home) remains a **documented limit**: its tab genuinely matches
-  the study concepts (tab_relevance 1.0), so no lexical tab signal can overrule
-  the `idle` ground truth.
+- Measured effect on the golden set: `014` (Google Careers) is correctly
+  `passive` via the tab signal (`rules+tabs`), and `012` (Kaggle home) is now
+  correctly `idle` via the navigation-surface (hub) rule (`rules+hub`), intent
+  accuracy 0.80 -> 0.93.
+- Navigation-surface rule: a **root/home/feed URL** (`""`/`/`, `/home`, `/feed`,
+  `/explore`, `/browse`, `/trending`) is a portal, not study content. The closed
+  classifier can be fooled by a dense, study-adjacent hub page, and the tab gate
+  cannot help because a hub tab genuinely matches study concepts (tab_relevance
+  1.0). The hub rule is applied LAST in `predict_intent`, overriding both:
+  `studying` on a navigation surface demotes to `idle` (interaction below
+  `HUB_IDLE_INTERACTION` = 1.0) or `passive` (actively browsing), source
+  `rules+hub`. Detection is **structural and host-agnostic** (URL path shape),
+  not a host denylist, so the rule generalises to any future hub without being
+  golden-built for `kaggle.com`.
+- Residual limits: content directly hosted on a root path (e.g. a homepage that
+  is real study material) is still demoted by the rule, and portals sitting
+  below a non-`/`/`/home`-style path (e.g. `/back4app/project/...` after login)
+  are still missed by it.
 
 Keep `true_intent` honest in new samples: a screen that merely shows study
 adjacent text while the user is doing something else (job search, browsing a

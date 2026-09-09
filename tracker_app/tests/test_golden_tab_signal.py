@@ -3,9 +3,10 @@
 014 (Google Careers) is the headline regression: OCR reads a dense, career-page
 screen and the classifier says studying, but the focused tab "Google Careers" is
 not a study topic, so the tab gate must demote it to passive. 012 (Kaggle home)
-is a documented limit: the tab itself IS study-relevant (tab_relevance 1.0), so
-the tab cannot overrule the true intent - the sample demonstrates the signal is
-captured, not that the threshold is wrong.
+exercises the navigation-surface (hub) rule: the tab itself IS study-relevant
+(tab_relevance 1.0), so the tab gate cannot and must not overrule the idle
+intent - instead the post-gate hub rule (root/home/feed URL) demotes studying
+to idle. The sample proves the hub rule, not the threshold.
 
 Skipped in CI / lean environments: needs cv2 + tesseract + data/golden.
 """
@@ -81,18 +82,21 @@ def test_golden_014_careers_demotes_on_tab():
 
 @needs_golden
 @needs_tesseract
-def test_golden_012_kaggle_tab_signal_captured():
-    # Documented limit: the Kaggle-home tab genuinely matches the kaggle study
-    # concept (tab_relevance 1.0), so the gate cannot overrule the idle label.
+def test_golden_012_kaggle_hub_demoted_to_idle():
+    # Kaggle home is a navigation surface (root URL). The hub rule fires after
+    # the tab gate: the study-relevant tab (tab_relevance 1.0) can never win
+    # because a root/home/feed portal is not study content. Harness interaction
+    # (0.2) < HUB_IDLE_INTERACTION -> idle, not passive.
     pairs = golden_eval._load_pairs()
     concepts = golden_eval._study_concepts(pairs)
     png, label = _labelled_png("012")
     report = golden_eval._run_screenshot(png, label, known_concepts=concepts)
 
     intent = report["intent"]
-    assert intent["predicted"] == "studying", "012 stays studying: documented hub-page limit"
+    assert intent["predicted"] == "idle", "012 root hub URL must demote studying -> idle"
+    assert intent["correct"] is True
+    assert intent["source"] == "rules+hub"
     assert intent["tab_relevance"] == 1.0, "the tab signal itself must be captured"
-    assert intent["source"] in ("classifier", "rules+tabs")
     assert intent["focused_tab_title"] == label.get("focused_tab_title")
     assert intent["focused_tab_url"] == label.get("focused_tab_url")
 

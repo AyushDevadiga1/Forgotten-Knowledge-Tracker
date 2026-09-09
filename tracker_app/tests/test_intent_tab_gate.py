@@ -269,3 +269,207 @@ def test_tab_demotion_does_not_need_min_content_keywords(monkeypatch):
     assert r["intent_label"] == "passive"
     assert r["source"] == "rules+tabs"
     assert r["tab_relevance"] == 0.0
+
+# ---------------------------------------------------------------------------
+# is_navigation_surface (structural, host-agnostic hub detection)
+# ---------------------------------------------------------------------------
+
+
+def test_navigation_surface_root_and_host_only():
+    for url in ("https://www.kaggle.com", "https://www.kaggle.com/", "kaggle.com"):
+        assert intent_module.is_navigation_surface(url) is True
+
+
+def test_navigation_surface_home_feed_paths():
+    for path in ("/home", "/feed", "/explore", "/browse", "/trending"):
+        url = f"https://example.com{path}"
+        assert intent_module.is_navigation_surface(url) is True, url
+
+
+def test_navigation_surface_query_and_port():
+    assert intent_module.is_navigation_surface("https://github.com/?tab=repositories") is True
+    assert intent_module.is_navigation_surface("http://example.com:8080/") is True
+
+
+def test_navigation_surface_case_normalized():
+    assert intent_module.is_navigation_surface("https://example.com/Home") is True
+
+
+def test_navigation_surface_content_paths_not_hubs():
+    for url in (
+        "https://leetcode.com/problems/two-sum/",
+        "https://careers.google.com/jobs/results/?emp_type=DEGREE",
+        "https://www.kaggle.com/competitions/",
+        "https://example.com/dashboard",
+        "https://github.com/octocat/Hello-World",
+    ):
+        assert intent_module.is_navigation_surface(url) is False, url
+
+
+def test_navigation_surface_invalid_inputs_false():
+    assert intent_module.is_navigation_surface(None) is False
+    assert intent_module.is_navigation_surface("") is False
+    assert intent_module.is_navigation_surface("Two Sum - LeetCode") is False
+
+
+def test_navigation_surface_is_host_agnostic():
+    # The SAME navigation path set must apply to any host - the rule must not
+    # be a host denylist (a kaggle-only rule would be golden-built overfit).
+    for host in ("kaggle.com", "youtube.com", "reddit.com", "something-in-the-future.io"):
+        assert intent_module.is_navigation_surface(f"https://{host}/") is True, host
+        assert intent_module.is_navigation_surface(f"https://{host}/contents") is False, host
+
+# ---------------------------------------------------------------------------
+# Navigation-surface hub rule: post-gate studying demotion in predict_intent
+# ---------------------------------------------------------------------------
+
+_HUB_TITLE = "Kaggle: Your Machine Learning and Data Science Community"
+_HUB_URL = "https://www.kaggle.com/"
+
+
+def test_hub_url_classifier_studying_demotes_to_idle(monkeypatch):
+    _model_with("studying", monkeypatch)
+    r = intent_module.predict_intent(
+        {"dynamic programming": 0.7},
+        audio_label="silence",
+        attention_score=50.0,
+        interaction_rate=0.2,
+        audio_confidence=0.9,
+        known_concepts=["kaggle", "datasets"],
+        active_tab_title=_HUB_TITLE,
+        active_tab_url=_HUB_URL,
+    )
+    assert r["intent_label"] == "idle"
+    assert r["source"] == "rules+hub"
+    assert r["tab_relevance"] == 1.0
+
+
+def test_hub_url_high_interaction_demotes_to_passive(monkeypatch):
+    _model_with("studying", monkeypatch)
+    r = intent_module.predict_intent(
+        {"dynamic programming": 0.7},
+        audio_label="silence",
+        attention_score=50.0,
+        interaction_rate=5.0,
+        audio_confidence=0.9,
+        known_concepts=["kaggle", "datasets"],
+        active_tab_title=_HUB_TITLE,
+        active_tab_url=_HUB_URL,
+    )
+    assert r["intent_label"] == "passive"
+    assert r["source"] == "rules+hub"
+
+
+def test_hub_url_exact_one_interaction_bounds_passive(monkeypatch):
+    # HUB_IDLE_INTERACTION is inclusive: 1.0 is NOT idle, it is active browsing.
+    _model_with("studying", monkeypatch)
+    r = intent_module.predict_intent(
+        {"dynamic programming": 0.7},
+        audio_label="silence",
+        attention_score=50.0,
+        interaction_rate=1.0,
+        audio_confidence=0.9,
+        known_concepts=["kaggle", "datasets"],
+        active_tab_title=_HUB_TITLE,
+        active_tab_url=_HUB_URL,
+    )
+    assert r["intent_label"] == "passive"
+    assert r["source"] == "rules+hub"
+
+
+def test_hub_url_overrides_tab_promoted_studying(monkeypatch):
+    # The tab gate promotes passive -> studying on a highly relevant hub; the
+    # navigation-surface rule must OVERRIDE that promotion (hub wins).
+    _model_with("passive", monkeypatch)
+    r = intent_module.predict_intent(
+        {"dynamic programming": 0.7},
+        audio_label="silence",
+        attention_score=50.0,
+        interaction_rate=0.2,
+        audio_confidence=0.9,
+        known_concepts=["kaggle", "datasets"],
+        active_tab_title=_HUB_TITLE,
+        active_tab_url=_HUB_URL,
+    )
+    assert r["intent_label"] == "idle"
+    assert r["source"] == "rules+hub"
+
+
+def test_content_path_url_keeps_studying(monkeypatch):
+    _model_with("studying", monkeypatch)
+    r = intent_module.predict_intent(
+        {"dynamic programming": 0.7},
+        audio_label="silence",
+        attention_score=50.0,
+        interaction_rate=0.2,
+        audio_confidence=0.9,
+        known_concepts=["kaggle", "datasets"],
+        active_tab_title="Titanic - Kaggle Competitions",
+        active_tab_url="https://www.kaggle.com/competitions/titanic/",
+    )
+    assert r["intent_label"] == "studying"
+    assert r["source"] == "classifier"
+
+
+def test_non_hub_host_content_path_not_overridden(monkeypatch):
+    # careers.google.com/jobs/results/ is NOT a navigation surface; the tab
+    # gate's own demotion decision is left intact (rules+tabs, never rules+hub).
+    _model_with("studying", monkeypatch)
+    r = intent_module.predict_intent(
+        {"dynamic programming": 0.7},
+        audio_label="silence",
+        attention_score=50.0,
+        interaction_rate=0.2,
+        audio_confidence=0.9,
+        known_concepts=["google cloud", "dynamic programming", "leetcode"],
+        active_tab_title="Student Researcher, PhD, Fall 2026 - Google Careers",
+        active_tab_url="https://careers.google.com/jobs/results/?emp_type=DEGREE",
+    )
+    assert r["intent_label"] == "passive"
+    assert r["source"] == "rules+tabs"
+    assert r["tab_relevance"] == 0.0
+
+
+def test_no_url_means_hub_rule_does_not_fire(monkeypatch):
+    _model_with("studying", monkeypatch)
+    r = intent_module.predict_intent(
+        {"dynamic programming": 0.8, "array": 0.6, "sorting": 0.7},
+        audio_label="silence",
+        attention_score=50.0,
+        interaction_rate=0.2,
+        audio_confidence=0.9,
+        known_concepts=["dynamic programming", "array", "sorting"],
+    )
+    assert r["intent_label"] == "studying"
+    assert r["source"] == "classifier"
+    assert r["tab_relevance"] is None
+
+
+def test_hub_url_does_not_further_demote_passive_or_idle(monkeypatch):
+    _model_with("passive", monkeypatch)
+    r_passive = intent_module.predict_intent(
+        {"dirac equation": 0.5},
+        audio_label="silence",
+        attention_score=50.0,
+        interaction_rate=0.2,
+        audio_confidence=0.9,
+        known_concepts=["dirac equation"],
+        active_tab_title=_HUB_TITLE,
+        active_tab_url=_HUB_URL,
+    )
+    assert r_passive["intent_label"] == "passive"
+    assert r_passive["source"] == "classifier"
+
+    _model_with("idle", monkeypatch)
+    r_idle = intent_module.predict_intent(
+        {"dirac equation": 0.5},
+        audio_label="silence",
+        attention_score=50.0,
+        interaction_rate=5.0,
+        audio_confidence=0.9,
+        known_concepts=["dirac equation"],
+        active_tab_title=_HUB_TITLE,
+        active_tab_url=_HUB_URL,
+    )
+    assert r_idle["intent_label"] == "idle"
+    assert r_idle["source"] == "classifier"
