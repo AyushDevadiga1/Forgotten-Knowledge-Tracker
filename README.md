@@ -61,6 +61,10 @@ FKT works with your brain instead of against it. Because it sees *what* you stud
 - **Triage queue** — captured concepts are reviewed before they reach your learning deck.
 - **Contextual micro-quiz interrupts** — generated from your own content and fed back into SM-2.
 
+- **Content-aware intent rules** — on-screen keywords are judged against your study concepts, so a dense, study-adjacent screen no longer counts as studying.
+- **Focused-browser-tab signal (Windows UIA)** — the active tab's title + URL are treated as ground truth of what you are engaged with and override the OCR-only bias (a careers or YouTube tab demotes studying; a study tab promotes it back).
+- **Navigation-surface (hub) rule** — root/home/feed URLs are detected structurally (host-agnostic, not a site denylist) and are never labelled studying, even when the hub tab matches a study concept.
+
 ---
 
 ## How it works (system view)
@@ -173,7 +177,7 @@ The API is organised into nine versioned blueprints under `/api/v1` (`tracker_ap
 # Install dependencies
 python setup.py
 
-# Run the backend test suite (407 tests)
+# Run the backend test suite (499 tests)
 .\venv\Scripts\activate
 python -m pytest tracker_app/tests/
 
@@ -242,9 +246,19 @@ FKT introduces several ideas not found in existing knowledge-management or space
 
 ---
 
+## Current status
+
+The intent pipeline stacks three rule layers on top of the trained classifier:
+screen-content relevance (`rules+content`), the focused-browser-tab signal
+(`rules+tabs`), and a structural navigation-surface hub rule (`rules+hub`). On
+the hand-labelled golden set (`data/golden/`, 001-015) intent accuracy is
+**0.93** (14/15) — see `tools/golden_eval.py` and `GOLDEN_DATASET.md`. Full
+backend suite: **499 tests passing** (`intent_module.py`, `loop.py`,
+`focused_tab.py` covered by focused golden + unit tests).
+
 ## Roadmap
 
-**Completed:** core tracking loop, ML pipeline, DB, AWFC, audio, knowledge graph, quiz interrupt, performance work, browser extension ingest, and the React frontend; plus API-key auth, CSRF protection, rate limiting, privacy filtering, and the extraction pipeline.
+**Completed:** core tracking loop, ML pipeline, DB, AWFC, audio, knowledge graph, quiz interrupt, performance work, browser extension ingest, and the React frontend; plus API-key auth, CSRF protection, rate limiting, privacy filtering, and the extraction pipeline. The intent rule stack (content awareness, focused-tab ground truth, navigation-surface hub rule) is complete with golden evaluation at 0.93.
 
 **Next priorities**
 1. Richer quiz types (cloze, typed recall, fill-in-the-blank).
