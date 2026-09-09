@@ -37,6 +37,7 @@ class _FakeMonitor:
         self.concept_calls = []
         self.context_calls = []
         self.multimodal_calls = []
+        self.intent_args = []
 
     def start_session(self):
         self.is_running = True
@@ -48,8 +49,8 @@ class _FakeMonitor:
     def update_attention(self, score):
         pass
 
-    def process_intent(self, result, context=None):
-        pass
+    def process_intent(self, result, context=None, **kwargs):
+        self.intent_args.append({"result": result, "context": context, **kwargs})
 
     def process_concepts(self, keywords, attention_score=0.0, context_text=""):
         self.concept_calls.append(keywords)
@@ -301,3 +302,20 @@ def test_track_loop_forwards_tab_signal(loop_env, monkeypatch):
     assert loop_env["intent_calls"][-1]["active_tab_url"] == "https://leetcode.com/problems/two-sum/"
     last = loop_env["monitor"].multimodal_calls[-1]
     assert last.get("focused_tab") == {"title": "Two Sum - LeetCode", "url": "https://leetcode.com/problems/two-sum/"}
+
+
+def test_track_loop_forwards_tab_into_persisted_prediction(loop_env, monkeypatch):
+    # Regression (migration 014 contract): the loop must pass the captured tab
+    # into process_intent so intent_predictions.focused_tab_title/url are
+    # written - the columns existing in schema does not populate them.
+    class _Tab:
+        title = "Two Sum - LeetCode"
+        url = "https://leetcode.com/problems/two-sum/"
+
+    monkeypatch.setattr(loop, "get_focused_tab_fn", lambda: lambda: _Tab())
+    monkeypatch.setattr(loop, "is_sensitive_window", lambda title: False)
+    loop.track_loop(stop_event=_StopAfter(3), webcam_enabled=True)
+
+    last = loop_env["monitor"].intent_args[-1]
+    assert last["focused_tab_title"] == "Two Sum - LeetCode"
+    assert last["focused_tab_url"] == "https://leetcode.com/problems/two-sum/"

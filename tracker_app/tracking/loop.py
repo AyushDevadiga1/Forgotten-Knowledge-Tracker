@@ -510,7 +510,12 @@ def track_loop(
                     active_tab_title=tab_title,
                     active_tab_url=tab_url,
                 )
-                monitor.process_intent(intent_result, context=context)
+                monitor.process_intent(
+                    intent_result,
+                    context=context,
+                    focused_tab_title=tab_title,
+                    focused_tab_url=tab_url,
+                )
             except Exception as e:
                 logger.warning(f"Intent prediction error: {e}")
 

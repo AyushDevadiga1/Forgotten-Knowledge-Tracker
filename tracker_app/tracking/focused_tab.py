@@ -13,6 +13,7 @@ or crashes on capture problems.
 from __future__ import annotations
 
 import logging
+import re
 import time
 from dataclasses import dataclass
 from typing import Optional, Tuple
@@ -32,6 +33,22 @@ _MAX_SNAPSHOT_AGE_S = 5.0
 # pywinauto must not be imported at module load: non-Windows installs (CI,
 # Linux dev machines) must import this module safely.
 _pywinauto = None
+
+# Chrome/Edge render the omnibox value scheme-stripped ("google.com/search?..."
+# for https) unless the user has typed a scheme; Firefox never exposes one.
+# _url_from_uia therefore accepts scheme-less values that still look like a
+# hostname[/path...], while rejecting queries ("why do we need ports").
+_URL_LIKE_RE = re.compile(
+    r"^[a-z0-9][a-z0-9.-]*\.[a-z0-9-]{2,}(?:[/:?#].*)?$", re.IGNORECASE
+)
+
+
+def _looks_like_url(text: str) -> bool:
+    if "://" in text:
+        return True
+    if any(ch.isspace() for ch in text):
+        return False
+    return bool(_URL_LIKE_RE.match(text))
 
 
 def _lazy_pywinauto():
@@ -108,11 +125,12 @@ def _url_from_uia(window) -> Optional[str]:
         if not isinstance(value, str):
             continue
         value = value.strip()
-        if "://" in value:
+        if _looks_like_url(value):
             return value
 
-    # Chrome renders the address bar with the name "Address and search bar"
-    # even when empty; use its WHOLE value only if it still looks like a URL.
+    # Some Chrome builds expose the address bar without a URL value but with
+    # the name "Address and search bar"; use its WHOLE value when it looks
+    # like a URL (scheme present or scheme-stripped hostname/path).
     for edit in edits:
         try:
             name = str(edit.window_text() or "").strip().lower()
@@ -123,7 +141,7 @@ def _url_from_uia(window) -> Optional[str]:
                 value = (edit.get_value() or "").strip()
             except Exception:
                 continue
-            if "://" in value:
+            if _looks_like_url(value):
                 return value
     return None
 

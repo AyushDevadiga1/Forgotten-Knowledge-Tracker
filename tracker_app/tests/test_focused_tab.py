@@ -312,3 +312,32 @@ def test_process_name_failure_returns_none(monkeypatch):
         _process_name=boom,
     )
     assert ft.get_focused_tab() is None
+
+def test_url_scheme_stripped_from_omnibox():
+    # Live Chrome exposes the omnibox value scheme-stripped:
+    # "google.com/search?q=..." for an https page. This was the production bug:
+    # every real capture had url=None because the code demanded "://".
+    w = _FakeWindow(edits=[_FakeEdit("search box", ""),
+                           _FakeEdit("Address and search bar", "google.com/search?q=ports+in+networking")])
+    assert ft._url_from_uia(w) == "google.com/search?q=ports+in+networking"
+
+
+def test_url_first_edit_scheme_stripped():
+    w = _FakeWindow(edits=[_FakeEdit("", "kaggle.com/")])
+    assert ft._url_from_uia(w) == "kaggle.com/"
+
+
+def test_url_still_rejects_omnibox_queries():
+    # An unfocused omnibox holding typed search text is NOT a URL: no host dot.
+    assert ft._looks_like_url("why do we need ports") is False
+    assert ft._looks_like_url("hello world") is False
+    assert ft._looks_like_url("") is False
+
+
+def test_looks_like_url_accepts_host_and_scheme():
+    assert ft._looks_like_url("google.com") is True
+    assert ft._looks_like_url("google.com/search?q=1") is True
+    assert ft._looks_like_url("kaggle.com/competitions/") is True
+    assert ft._looks_like_url("https://leetcode.com/problems/two-sum/") is True
+    assert ft._looks_like_url("http://localhost:8000/") is True
+    assert ft._looks_like_url("Two Sum - LeetCode") is False
